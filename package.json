@@ -1,0 +1,105 @@
+{
+  "name": "ags-erp",
+  "private": true,
+  "version": "1.0.0",
+  "main": "main.cjs",
+  "build": {
+    "appId": "software.amitgeneralstore.desktop",
+    "productName": "AGS-ERP",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "main.cjs",
+      "preload.js",
+      "db.js",
+      "ipcHandlers.js",
+      "package.json",
+      "icons/icon.ico"
+    ],
+    "extraResources": [
+      {
+        "from": "erp.db",
+        "to": "erp.db"
+      },
+      {
+        "from": "icons/icon.ico",
+        "to": "icon.ico"
+      }
+    ],
+    "asarUnpack": [
+      "backend/**/*.db"
+    ],
+    "includeSubNodeModules": false,
+    "buildDependenciesFromSource": false,
+    "nodeGypRebuild": false,
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "icons/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "AGS-ERP",
+      "installerIcon": "icons/icon.ico",
+      "installerHeaderIcon": "icons/icon.ico"
+    }
+  },
+  "scripts": {
+    "dev": "vite build && electron .",
+    "build": "npm run build-react && electron-builder",
+    "build-react": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "start": "electron .",
+    "package": "electron-builder",
+    "dist": "electron-builder",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.2.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.25.0",
+    "@tailwindcss/vite": "^4.1.7",
+    "@types/react": "^19.1.2",
+    "@types/react-dom": "^19.1.2",
+    "@vitejs/plugin-react": "^4.4.1",
+    "electron": "^37.2.4",
+    "electron-builder": "^24.13.3",
+    "eslint": "^9.25.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.19",
+    "framer-motion": "^12.12.1",
+    "globals": "^16.0.0",
+    "lightswind": "^3.0.6",
+    "lucide-react": "^0.511.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-hot-toast": "^2.5.2",
+    "react-icons": "^5.5.0",
+    "react-router-dom": "^7.6.0",
+    "react-to-print": "^3.1.1",
+    "reactjs-popup": "^2.0.6",
+    "tailwindcss": "^4.1.7",
+    "vite": "^6.3.5"
+  },
+  "description": "AGS ERP is a lightweight, **100 % offline** Enterprise Resource Planning system designed for Indian SMEs that still rely on pen-and-paper billing.  It bundles an elegant React + Tailwind UI with a blazing-fast Node/Express + SQLite API, giving you everything you need to manage products, invoices, orders and ledgers without internet connectivity or monthly fees.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/agrawalvansh/ags-erp-desktop.git"
+  },
+  "keywords": [],
+  "author": "Vansh Agrawal",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/agrawalvansh/ags-erp-desktop/issues"
+  },
+  "homepage": "https://github.com/agrawalvansh/ags-erp-desktop#readme"
+}

@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+body {
+  @apply overflow-x-hidden bg-slate-100;
+}
+
+/* Custom scrollbar styles */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  @apply bg-slate-800;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  @apply bg-slate-600 rounded-full;
+}
+
+/* Print specific styles */
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    background: white !important;
+  }
+
+  input, textarea {
+    border: none !important;
+    background: transparent !important;
+    -webkit-appearance: none;
+  }
+
+  button {
+    display: none !important;
+  }
+
+  .print-hide, .print\:hidden {
+    display: none !important;
+  }
+}
+
+input, textarea {
+  -webkit-user-modify: read-write-plaintext-only;
+}

@@ -1,0 +1,189 @@
+// backend/db.js
+// This file sets up the SQLite database and creates all required tables.
+// Requires `better-sqlite3` (install via `npm install better-sqlite3`).
+
+const Database = require('better-sqlite3');
+const path = require('path');
+const { app } = require('electron');
+
+// Get the user data directory for the app
+const userDataPath = app.getPath('userData');
+const dbPath = path.join(userDataPath, 'erp.db');
+
+// Open (or create) the SQLite database file in user data directory
+// `verbose: console.log` logs all SQL statements for debugging.
+const db = new Database(dbPath, { verbose: console.log });
+
+// 1. Master Data
+
+// Products table
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS products (
+    code           TEXT    PRIMARY KEY,
+    name           TEXT    NOT NULL,
+    size           TEXT,
+    cost_price     REAL,
+    selling_price  REAL,
+    packing_type   TEXT
+  )
+`).run();
+
+// Customers table
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS customers (
+    customer_id    TEXT    PRIMARY KEY,
+    name           TEXT    NOT NULL,
+    address        TEXT,
+    mobile         TEXT
+  )
+`).run();
+
+// Suppliers table
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS suppliers (
+    supplier_id    TEXT    PRIMARY KEY,
+    name           TEXT    NOT NULL,
+    address        TEXT,
+    mobile         TEXT
+  )
+`).run();
+
+// 2. Invoices
+
+// Invoices header
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS invoices (
+    invoice_id     TEXT    PRIMARY KEY,
+    customer_id    TEXT    NOT NULL,
+    invoice_date   TEXT    NOT NULL,
+    remark         TEXT,
+    packing        REAL DEFAULT 0.0,
+    freight        REAL DEFAULT 0.0,
+    riksha         REAL DEFAULT 0.0,
+    grand_total    REAL DEFAULT 0.0,
+    FOREIGN KEY(customer_id) REFERENCES customers(customer_id)
+  )
+`).run();
+
+// Invoice line items
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS invoice_items (
+    id              INTEGER   PRIMARY KEY AUTOINCREMENT,
+    invoice_id      TEXT      NOT NULL,
+    product_code    TEXT      NOT NULL,
+    quantity        INTEGER   NOT NULL,
+    selling_price   REAL      NOT NULL,
+    FOREIGN KEY(invoice_id)   REFERENCES invoices(invoice_id),
+    FOREIGN KEY(product_code) REFERENCES products(code)
+  )
+`).run();
+
+// 3. Customer Orders
+
+// Orders placed BY customers (you fulfill them)
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS customer_orders (
+    order_id       TEXT    PRIMARY KEY,
+    customer_id    TEXT    NOT NULL,
+    order_date     TEXT    NOT NULL,
+    remark         TEXT,
+    status         TEXT,
+    FOREIGN KEY(customer_id) REFERENCES customers(customer_id)
+  )
+`).run();
+
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS customer_order_items (
+    id             INTEGER   PRIMARY KEY AUTOINCREMENT,
+    order_id       TEXT      NOT NULL,
+    product_code   TEXT      NOT NULL,
+    quantity       INTEGER   NOT NULL,
+    FOREIGN KEY(order_id)     REFERENCES customer_orders(order_id),
+    FOREIGN KEY(product_code) REFERENCES products(code)
+  )
+`).run();
+
+// 4. Supplier Orders
+
+// Orders placed TO suppliers (you’re the buyer)
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS supplier_orders (
+    order_id       TEXT    PRIMARY KEY,
+    supplier_id    TEXT    NOT NULL,
+    order_date     TEXT    NOT NULL,
+    remark         TEXT,
+    status         TEXT,
+    FOREIGN KEY(supplier_id) REFERENCES suppliers(supplier_id)
+  )
+`).run();
+
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS supplier_order_items (
+    id             INTEGER   PRIMARY KEY AUTOINCREMENT,
+    order_id       TEXT      NOT NULL,
+    product_code   TEXT      NOT NULL,
+    quantity       INTEGER   NOT NULL,
+    FOREIGN KEY(order_id)     REFERENCES supplier_orders(order_id),
+    FOREIGN KEY(product_code) REFERENCES products(code)
+  )
+`).run();
+
+
+// 4. Customer Accounts
+
+// Customer Maal (sales) account entries
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS customer_maal_account (
+    id               INTEGER   PRIMARY KEY AUTOINCREMENT,
+    customer_id      TEXT      NOT NULL,
+    maal_date        TEXT      NOT NULL,
+    maal_invoice_no  TEXT,
+    maal_amount      REAL      NOT NULL,
+    maal_remark      TEXT,
+    FOREIGN KEY(customer_id) REFERENCES customers(customer_id)
+  )
+`).run();
+
+// Customer Jama (payments) account entries
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS customer_jama_account (
+    id               INTEGER   PRIMARY KEY AUTOINCREMENT,
+    customer_id      TEXT      NOT NULL,
+    jama_date        TEXT      NOT NULL,
+    jama_txn_type    TEXT      NOT NULL,
+    jama_amount      REAL      NOT NULL,
+    jama_remark      TEXT,
+    FOREIGN KEY(customer_id) REFERENCES customers(customer_id)
+  )
+`).run();
+
+// 5. Supplier Accounts
+
+// Supplier Maal (purchases) account entries
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS supplier_maal_account (
+    id                 INTEGER   PRIMARY KEY AUTOINCREMENT,
+    supplier_id        TEXT      NOT NULL,
+    maal_date          TEXT      NOT NULL,
+    maal_invoice_no    TEXT,
+    maal_amount        REAL      NOT NULL,
+    maal_remark        TEXT,
+    FOREIGN KEY(supplier_id) REFERENCES suppliers(supplier_id)
+  )
+`).run();
+
+// Supplier Jama (payments) account entries
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS supplier_jama_account (
+    id                 INTEGER   PRIMARY KEY AUTOINCREMENT,
+    supplier_id        TEXT      NOT NULL,
+    jama_date          TEXT      NOT NULL,
+    jama_txn_type      TEXT      NOT NULL,
+    jama_amount        REAL      NOT NULL,
+    jama_remark        TEXT,
+    FOREIGN KEY(supplier_id) REFERENCES suppliers(supplier_id)
+  )
+`).run();
+
+// Export the database connection for use in your API routes
+module.exports = db;
