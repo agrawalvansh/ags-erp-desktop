@@ -7,10 +7,14 @@ import { toast } from 'react-hot-toast';
 
 // Add Item Form Component
 // Improved Add Item Form Component
-const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors }) => {
+const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors, productNameInputRef }) => {
   const [showProdDropdown, setShowProdDropdown] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const prodWrapperRef = useRef(null);
+
+  const capitalizeWords = (str) => {
+    return str.replace(/\b\w/g, (char) => char.toUpperCase());
+  };
 
 
   // Filter products with memoization
@@ -101,6 +105,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors 
           </label>
           <div className="relative">
             <input
+              ref={productNameInputRef}
               // id="product-search"
               type="text"
               value={newItem.productName}
@@ -109,7 +114,8 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors 
                 setHighlightedIndex(0);
               }}
               onChange={(e) => {
-                setNewItem({ ...newItem, productName: e.target.value });
+                const capitalizedValue = capitalizeWords(e.target.value);
+                setNewItem({ ...newItem, productName: capitalizedValue });
                 setShowProdDropdown(true);
                 setHighlightedIndex(0);
               }}
@@ -264,6 +270,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors 
 const Invoice = () => {
   const wrapperRef = useRef(null);  // customer dropdown wrapper
   const printRef = useRef(null);
+  const productNameInputRef = useRef(null);  // product name input field
   const { invoiceNo } = useParams();
 
   // State declarations
@@ -497,9 +504,11 @@ const Invoice = () => {
 
     const amount = quantity * sellingPrice;
 
+    const productCode = newItem.code || newItem.productName;
+
     const newInvoiceItem = {
-      code: newItem.code,
-      product_code: newItem.code,
+      code: productCode,
+      product_code: productCode,
       productName: newItem.productName,
       quantity: quantity.toFixed(3),
       packingType: newItem.packingType,
@@ -526,6 +535,12 @@ const Invoice = () => {
     });
     setFormErrors({});
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    setTimeout(() => {
+      if (productNameInputRef.current) {
+        productNameInputRef.current.focus();
+      }
+    }, 100);
   };
 
   const handleEditItem = (index) => {
@@ -627,13 +642,13 @@ const Invoice = () => {
           <div className="flex flex-col sm:flex-row justify-between mb-4">
             <div className="mb-2 sm:mb-0">
               <p className="font-semibold">
-                <span className="text-gray-600">Invoice No.: </span>
+                <span className="text-gray-600">Estimate No.: </span>
                 {customInvoiceNo || '...'}
               </p>
             </div>
             <div>
               <p className="font-semibold">
-                <span className="text-gray-600">Invoice Date: </span>
+                <span className="text-gray-600">Estimate Date: </span>
                 <input
                   type="date"
                   value={invoiceDate}
@@ -671,20 +686,20 @@ const Invoice = () => {
                     placeholder="Search customer..."
                   />
                   {showCustDropdown && (
-                    <ul className="absolute z-50 w-full mt-1 max-h-60 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg">
+                    <ul className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-y-auto" style={{ maxHeight: '9rem' }}>
                       {customers
                         .filter((c) => c.name.toLowerCase().includes(buyer.toLowerCase()))
                         .map((c) => (
                           <li
                             key={c.customer_id}
-                            className="px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm"
+                            className="px-4 py-3 hover:bg-blue-50 cursor-pointer text-sm transition-colors"
                             onClick={() => handleSelectCustomer(c)}
                           >
                             {c.name}
                           </li>
                         ))}
                       {customers.filter((c) => c.name.toLowerCase().includes(buyer.toLowerCase())).length === 0 && (
-                        <li className="px-4 py-2 text-gray-500 text-sm">No customers found</li>
+                        <li className="px-4 py-3 text-gray-500 text-sm">No customers found</li>
                       )}
                     </ul>
                   )}
@@ -742,6 +757,7 @@ const Invoice = () => {
               handleAddItem={handleAddItem}
               products={products}
               formErrors={formErrors}
+              productNameInputRef={productNameInputRef}
             />
           </div>
 

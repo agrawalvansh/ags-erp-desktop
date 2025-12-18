@@ -1,7 +1,7 @@
 {
   "name": "ags-erp",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.2.0",
   "main": "main.cjs",
   "build": {
     "appId": "software.amitgeneralstore.desktop",
@@ -90,7 +90,7 @@
     "tailwindcss": "^4.1.7",
     "vite": "^6.3.5"
   },
-  "description": "AGS ERP is a lightweight, **100 % offline** Enterprise Resource Planning system designed for Indian SMEs that still rely on pen-and-paper billing.  It bundles an elegant React + Tailwind UI with a blazing-fast Node/Express + SQLite API, giving you everything you need to manage products, invoices, orders and ledgers without internet connectivity or monthly fees.",
+  "description": "AGS ERP Desktop",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/agrawalvansh/ags-erp-desktop.git"
