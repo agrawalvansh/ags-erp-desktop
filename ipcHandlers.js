@@ -219,7 +219,7 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
   // Helper to get next invoice id
   ipcMain.handle('invoices:getNextId', wrap(() => {
     const cnt = db.prepare('SELECT COUNT(*) AS cnt FROM invoices').get().cnt;
-    return { next_id: `AGS-I-${cnt + 1}` };
+    return { next_id: `AGS-E-${cnt + 1}` };
   }));
 
   ipcMain.handle('invoices:get', wrap((invoice_id) => {

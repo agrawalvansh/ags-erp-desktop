@@ -491,7 +491,7 @@ const Invoice = () => {
     return Object.keys(errors).length === 0;
   };
 
-  const handleAddItem = () => {
+  const handleAddItem = async () => {
     if (!validateForm()) return;
 
     const quantity = parseFloat(newItem.quantity);
@@ -505,6 +505,26 @@ const Invoice = () => {
     const amount = quantity * sellingPrice;
 
     const productCode = newItem.code || newItem.productName;
+
+    if (!newItem.code) {
+      try {
+        await window.api.invoke('products:create', {
+          code: productCode,
+          name: newItem.productName,
+          size: '',
+          packing_type: newItem.packingType,
+          cost_price: 0,
+          selling_price: sellingPrice
+        });
+        
+        const updatedProducts = await window.api.getProducts();
+        setProducts(updatedProducts);
+        
+        toast.success('New product created and added to invoice');
+      } catch (err) {
+        console.error('Error creating product:', err);
+      }
+    }
 
     const newInvoiceItem = {
       code: productCode,
@@ -524,7 +544,9 @@ const Invoice = () => {
       toast.success('Item updated successfully');
     } else {
       setInvoiceItems([...invoiceItems, newInvoiceItem]);
-      toast.success('Item added successfully');
+      if (newItem.code) {
+        toast.success('Item added successfully');
+      }
     }
     setNewItem({
       code: '',

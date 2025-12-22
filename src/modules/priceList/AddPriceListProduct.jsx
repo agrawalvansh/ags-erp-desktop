@@ -92,16 +92,30 @@ useEffect(() => {
 
     setSubmitting(true);
 
-    const body = {
-      code: formData.code,
-      name: formData.productName,
-      size: formData.size,
-      packing_type: formData.packingType === 'custom' ? formData.customPackingType : formData.packingType,
-      cost_price: Number(formData.costPrice),
-      selling_price: Number(formData.sellingPrice)
-    };
-
     try {
+      const allProducts = await window.api.getProducts();
+      
+      const codeExists = allProducts.some(p => 
+        p.code.toLowerCase() === formData.code.toLowerCase() && 
+        (!editing || p.code !== paramCode)
+      );
+
+      if (codeExists) {
+        toast.error('Product code already exists. Please use a unique code.');
+        setErrors(prev => ({ ...prev, code: 'This code is already in use' }));
+        setSubmitting(false);
+        return;
+      }
+
+      const body = {
+        code: formData.code,
+        name: formData.productName,
+        size: formData.size,
+        packing_type: formData.packingType === 'custom' ? formData.customPackingType : formData.packingType,
+        cost_price: Number(formData.costPrice),
+        selling_price: Number(formData.sellingPrice)
+      };
+
       if (editing) {
         await window.api.updateProduct({ id: paramCode, ...body });
       } else {
@@ -132,6 +146,10 @@ useEffect(() => {
     }
   };
 
+  const capitalizeWords = (str) => {
+    return str.replace(/\b\w/g, (char) => char.toUpperCase());
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
 
@@ -143,6 +161,9 @@ useEffect(() => {
         // Switching back to predefined option: clear any previous custom value
         setFormData(prev => ({ ...prev, packingType: value, customPackingType: '' }));
       }
+    } else if (name === 'productName') {
+      const capitalizedValue = capitalizeWords(value);
+      setFormData(prev => ({ ...prev, [name]: capitalizedValue }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
@@ -214,8 +235,12 @@ useEffect(() => {
                   name="code"
                   value={formData.code}
                   readOnly
-                  className="w-full p-2 border rounded-lg bg-gray-100"
+                  className={`w-full p-2 border rounded-lg ${errors.code ? 'border-red-500' : 'border-gray-300'}`}
+                  onChange={handleChange}                  
                 />
+                {errors.code && (
+                  <p className="mt-1 text-sm text-red-500">{errors.code}</p>
+                )}
               </div>
 
               <div>

@@ -42,7 +42,7 @@ Your app is now configured with **automatic update checking**:
 ### Manual Backup (Recommended)
 For extra safety, periodically copy your database:
 ```
-From: C:\Users\Vansh Agrawal\AppData\Roaming\AGS‑ERP\erp.db
+From: C:\Users\Vansh Agrawal\AppData\Roaming\ags-erp
 To: Your backup location (e.g., OneDrive, external drive)
 ```
 

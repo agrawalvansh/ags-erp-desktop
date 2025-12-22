@@ -11,7 +11,7 @@ import {
 
 // Navigation items array
 const navItems = [
-  { title: 'Invoice', path: '/invoice', icon: <FileText />, color: '#bb86fc' },
+  { title: 'Estimate', path: '/invoice', icon: <FileText />, color: '#bb86fc' },
   { title: 'Price List', path: '/price-list', icon: <List />, color: '#03dac6' },
   {
     title: 'Accounts',
