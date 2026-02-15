@@ -1,6 +1,9 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronDown, Search, Calendar, Edit, ChevronLeft, ChevronRight, Filter, Plus, Phone, MapPin, Building, Save, X } from 'lucide-react';
+import { ChevronDown, Search, Calendar, Edit, Trash2, ChevronLeft, ChevronRight, Filter, Plus, Phone, MapPin, Building, Save, X } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import Popup from 'reactjs-popup';
+import 'reactjs-popup/dist/index.css';
 
 // Utility to parse various date formats to a Date object
 export const parseDate = (dateStr) => {
@@ -61,7 +64,7 @@ const SupplierAccountDetail = () => {
       try {
         setIsLoading(true);
         const found = await window.api.invoke('suppliers:get', slug);
-        
+
         if (!found) {
           setError('Supplier not found');
         } else {
@@ -83,7 +86,8 @@ const SupplierAccountDetail = () => {
   const accountData = useMemo(() => {
     const maalEntries = invoices.map((inv) => ({
       type: 'maal',
-      id: `M-${inv.id ?? inv.invoice_id}`,
+      id: `M-${inv.id ?? inv.invoice_id}`,        // React key only
+      maalDbId: inv.id,                             // Clean numeric DB id from supplier_maal_account
       maalDate: inv.invoice_date ?? inv.maal_date,
       maalInvoiceNumber: inv.invoice_id ?? inv.maal_invoice_no,
       maalAmount: inv.grand_total ?? inv.maal_amount,
@@ -92,15 +96,17 @@ const SupplierAccountDetail = () => {
 
     const jamaEntries = transactions.map((t) => {
       const txnId = t.transaction_id ?? t.id ?? t.txnId;
+      const remark = t.remark || '';
       return {
         type: 'jama',
-        id: `J-${txnId}`,
-        transactionId: txnId, // keep numeric id handy for edits
+        id: `J-${txnId}`,                           // React key only
+        transactionId: txnId,                        // Clean DB identifier
+        isLinkedToOrder: remark.startsWith('Order '),
         jamaDate: t.date || t.transaction_date,
         jamaTxnType: t.txn_type || t.txnType || '',
         jamaAmount: t.amount || 0,
-        jamaRemark: t.remark || '',
-      }; 
+        jamaRemark: remark,
+      };
     });
 
     const combined = [...maalEntries, ...jamaEntries].map(entry => ({
@@ -112,120 +118,177 @@ const SupplierAccountDetail = () => {
     return combined;
   }, [invoices, transactions]);
 
-    // Filter data based on date range and search query
-    const filteredData = useMemo(() => {
-      let filtered = [...accountData];
-  
-      if (fromDate) {
-        const fromDateObj = new Date(fromDate);
-        filtered = filtered.filter(item => 
-          item.sortDate >= fromDateObj
-        );
-      }
-  
-      if (toDate) {
-        const toDateObj = new Date(toDate);
-        toDateObj.setHours(23, 59, 59);
-        filtered = filtered.filter(item => 
-          item.sortDate <= toDateObj
-        );
-      }
-  
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        filtered = filtered.filter(item => 
-          (item.maalInvoiceNumber && item.maalInvoiceNumber.toLowerCase().includes(query)) ||
-          (item.maalRemark && item.maalRemark.toLowerCase().includes(query)) ||
-          (item.jamaTxnType && item.jamaTxnType.toLowerCase().includes(query)) ||
-          (item.jamaRemark && item.jamaRemark.toLowerCase().includes(query))
-        );
-      }
-  
-      return filtered;
-    }, [accountData, fromDate, toDate, searchQuery]);
-  
-    // Data calculations
-    const maalData = useMemo(() => filteredData.filter(item => item.type === 'maal'), [filteredData]);
-    const jamaData = useMemo(() => filteredData.filter(item => item.type === 'jama'), [filteredData]);
-  
-    const maalTotal = useMemo(() => maalData.reduce((sum, m) => sum + (Number(m.maalAmount) || 0), 0), [maalData]);
-    const jamaTotal = useMemo(() => jamaData.reduce((sum, j) => sum + (Number(j.jamaAmount) || 0), 0), [jamaData]);
-    const grandTotal = maalTotal - jamaTotal;
-  
-    // Utility functions
-    const formatCurrency = (val) =>
-      new Intl.NumberFormat('en-IN', { 
-        style: 'currency', 
-        currency: 'INR', 
-        minimumFractionDigits: 2 
-      }).format(val || 0);
-  
-    const formatDate = (dateStr) => {
-      if (!dateStr) return '';
-      if (dateStr.includes('-')) {
-        const [yyyy, mm, dd] = dateStr.split('-');
-        return `${dd}-${mm}-${yyyy}`;
-      }
-      if (dateStr.includes('/')) {
-        const [dd, mm, yyyy] = dateStr.split('/');
-        return `${dd}-${mm}-${yyyy}`;
-      }
-      return dateStr;
-    };
-  
-    // Row editing functions
-    // Navigate to dedicated edit entry page instead of inline editing
-    const handleEditClick = (row) => {
+  // Filter data based on date range and search query
+  const filteredData = useMemo(() => {
+    let filtered = [...accountData];
+
+    if (fromDate) {
+      const fromDateObj = new Date(fromDate);
+      filtered = filtered.filter(item =>
+        item.sortDate >= fromDateObj
+      );
+    }
+
+    if (toDate) {
+      const toDateObj = new Date(toDate);
+      toDateObj.setHours(23, 59, 59);
+      filtered = filtered.filter(item =>
+        item.sortDate <= toDateObj
+      );
+    }
+
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(item =>
+        (item.maalInvoiceNumber && item.maalInvoiceNumber.toLowerCase().includes(query)) ||
+        (item.maalRemark && item.maalRemark.toLowerCase().includes(query)) ||
+        (item.jamaTxnType && item.jamaTxnType.toLowerCase().includes(query)) ||
+        (item.jamaRemark && item.jamaRemark.toLowerCase().includes(query))
+      );
+    }
+
+    return filtered;
+  }, [accountData, fromDate, toDate, searchQuery]);
+
+  // Data calculations
+  const maalData = useMemo(() => filteredData.filter(item => item.type === 'maal'), [filteredData]);
+  const jamaData = useMemo(() => filteredData.filter(item => item.type === 'jama'), [filteredData]);
+
+  const maalTotal = useMemo(() => maalData.reduce((sum, m) => sum + (Number(m.maalAmount) || 0), 0), [maalData]);
+  const jamaTotal = useMemo(() => jamaData.reduce((sum, j) => sum + (Number(j.jamaAmount) || 0), 0), [jamaData]);
+  const grandTotal = maalTotal - jamaTotal;
+
+  // Utility functions
+  const formatCurrency = (val) =>
+    new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 2
+    }).format(val || 0);
+
+  // For balance display - show rounded amount without decimals
+  const formatBalanceCurrency = (val) =>
+    new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(Math.round(val) || 0);
+
+  // Delete handler for entries
+  const handleDeleteEntry = async (row) => {
+    try {
       const entryType = row.type;
-      const entryId = entryType === 'maal'
-        ? (row.id && row.id.startsWith('M-') ? row.id.slice(2) : row.id)
-        : (row.transactionId ?? (row.id ? row.id.split('-')[1] : ''));
-      navigate(`/accounts/suppliers/${slug}/edit/${entryType}/${entryId}`);
-    };
-  
-    const handleSaveEdit = async (rowId) => {
-      try {
-        if (!editDraft.type) return setEditingRow(null);
-        
-        if (editDraft.type === 'maal') {
-          // Extract numeric maal row id (e.g. "M-12" -> 12)
-          const numericId = rowId.startsWith('M-') ? rowId.slice(2) : rowId;
-          await window.api.invoke('suppliersMaal:update', {
-            id: numericId,
-            invoice_number: editDraft.maalInvoiceNumber,
-            date: editDraft.maalDate,
-            amount: editDraft.maalAmount,
-            remark: editDraft.maalRemark,
-          });
-        } else if (editDraft.type === 'jama') {
-          const txnId = editDraft.transactionId ?? editDraft.transaction_id ?? (editDraft.id ? editDraft.id.split('-')[1] : null);
-          if (txnId) {
-            await window.api.invoke('supplierTransactions:update', {
-              id: txnId,
-              date: editDraft.jamaDate,
-              txn_type: editDraft.jamaTxnType,
-              amount: editDraft.jamaAmount,
-              remark: editDraft.jamaRemark,
-            });
-            setTransactions((prev) => prev.map(tx => 
-              tx.transaction_id === txnId
-                ? {...tx, amount: editDraft.jamaAmount, date: editDraft.jamaDate, remark: editDraft.jamaRemark, txn_type: editDraft.jamaTxnType}
-                : tx
-            ));
-          }
-        }
-        
-        await fetchInvoices();
-        await fetchTransactions();
-      } catch(err) {
-        console.error('Save edit error', err);
+      let result;
+      if (entryType === 'maal') {
+        // Use clean maalDbId (numeric row id)
+        result = await window.api.invoke('suppliersMaal:delete', row.maalDbId || row.maalInvoiceNumber);
+      } else {
+        // Use clean transactionId
+        result = await window.api.invoke('suppliers:txnDelete', row.transactionId);
       }
+      // Respect backend guards
+      if (!result || result.success === false || result.error) {
+        toast.error(result?.error || 'Failed to delete entry.');
+        return;
+      }
+      toast.success('Entry deleted successfully');
+      fetchInvoices();
+      fetchTransactions();
+    } catch (err) {
+      toast.error('Error deleting entry: ' + err.message);
+    }
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    if (dateStr.includes('-')) {
+      const [yyyy, mm, dd] = dateStr.split('-');
+      return `${dd}-${mm}-${yyyy}`;
+    }
+    if (dateStr.includes('/')) {
+      const [dd, mm, yyyy] = dateStr.split('/');
+      return `${dd}-${mm}-${yyyy}`;
+    }
+    return dateStr;
+  };
+
+  // Row editing functions
+  // Navigate to dedicated edit entry page instead of inline editing
+  const handleEditClick = (row) => {
+    if (row.type === 'maal') {
+      // Supplier maal entries are always standalone (no linked invoices)
+      const entryId = row.maalDbId || row.maalInvoiceNumber;
+      navigate(`/accounts/suppliers/${slug}/edit/maal/${entryId}`);
+    } else {
+      if (row.isLinkedToOrder) {
+        toast.error('This payment is linked to an order and cannot be edited directly.');
+        return;
+      }
+      navigate(`/accounts/suppliers/${slug}/edit/jama/${row.transactionId}`);
+    }
+  };
+
+  const handleSaveEdit = async (rowId) => {
+    try {
+      if (!editDraft.type) return setEditingRow(null);
+
+      let result;
+      if (editDraft.type === 'maal') {
+        // Use clean maalDbId stored in editDraft
+        const numericId = editDraft.maalDbId;
+        result = await window.api.invoke('suppliersMaal:update', {
+          id: numericId,
+          invoice_number: editDraft.maalInvoiceNumber,
+          date: editDraft.maalDate,
+          amount: editDraft.maalAmount,
+          remark: editDraft.maalRemark,
+        });
+
+        // Explicit success check
+        if (!result || result.error || result.success === false) {
+          toast.error(result?.error || 'An error occurred while saving. Please try again.');
+          return; // Keep data, do NOT clear
+        }
+      } else if (editDraft.type === 'jama') {
+        const txnId = editDraft.transactionId;
+        if (txnId) {
+          result = await window.api.invoke('supplierTransactions:update', {
+            id: txnId,
+            date: editDraft.jamaDate,
+            txn_type: editDraft.jamaTxnType,
+            amount: editDraft.jamaAmount,
+            remark: editDraft.jamaRemark,
+          });
+
+          // Explicit success check
+          if (!result || result.error || result.success === false) {
+            toast.error(result?.error || 'An error occurred while saving. Please try again.');
+            return; // Keep data, do NOT clear
+          }
+
+          setTransactions((prev) => prev.map(tx =>
+            tx.transaction_id === txnId
+              ? { ...tx, amount: editDraft.jamaAmount, date: editDraft.jamaDate, remark: editDraft.jamaRemark, txn_type: editDraft.jamaTxnType }
+              : tx
+          ));
+        }
+      }
+
+      toast.success('Entry updated successfully');
+      await fetchInvoices();
+      await fetchTransactions();
       setEditingRow(null);
-    };
-  
-    return (
-      <div className="min-h-screen bg-gray-50">
-              {/* Enhanced Header */}
+    } catch (err) {
+      console.error('Save edit error', err);
+      toast.error('An error occurred while saving. Please try again.');
+      // Keep editing state, do NOT clear
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Enhanced Header */}
       <header className="bg-gradient-to-r from-[#05014A] to-[#0077b6] text-white">
         <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0">
@@ -275,7 +338,7 @@ const SupplierAccountDetail = () => {
           <div className="mt-6 bg-white/10 rounded-lg p-4">
             <div className="flex justify-between items-center">
               <span className="text-gray-100">Current Balance</span>
-              <span className="text-2xl font-bold">{formatCurrency(grandTotal)}</span>
+              <span className="text-2xl font-bold">{formatBalanceCurrency(grandTotal)}</span>
             </div>
           </div>
         </div>
@@ -288,16 +351,15 @@ const SupplierAccountDetail = () => {
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => setIsFiltering(!isFiltering)}
-                className={`flex items-center px-4 py-2 rounded-lg transition ${
-                  isFiltering 
-                    ? 'bg-[#05014A] text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 cursor-pointer'
-                }`}
+                className={`flex items-center px-4 py-2 rounded-lg transition ${isFiltering
+                  ? 'bg-[#05014A] text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 cursor-pointer'
+                  }`}
               >
                 <Filter size={18} className="mr-2" />
                 {isFiltering ? 'Hide Filters' : 'Show Filters'}
               </button>
-              
+
               <div className="relative">
                 <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 <input
@@ -358,8 +420,8 @@ const SupplierAccountDetail = () => {
           )}
         </div>
       </div>
-            {/* Enhanced Tables Section */}
-            <div className="max-w-7xl mx-auto px-4 py-6">
+      {/* Enhanced Tables Section */}
+      <div className="max-w-7xl mx-auto px-4 py-6">
         <div className="grid md:grid-cols-2 gap-6">
           {/* Maal Table */}
           <div className="bg-white rounded-xl shadow-sm overflow-hidden">
@@ -445,12 +507,40 @@ const SupplierAccountDetail = () => {
                             </button>
                           </div>
                         ) : (
-                          <button
-                            className="p-1 text-blue-600 hover:bg-blue-50 rounded-full transition cursor-pointer"
-                            onClick={() => handleEditClick(row)}
-                          >
-                            <Edit size={18} />
-                          </button>
+                          <div className="flex items-center justify-center space-x-1">
+                            <button
+                              className="p-1 text-blue-600 hover:bg-blue-50 rounded-full transition cursor-pointer"
+                              onClick={() => handleEditClick(row)}
+                            >
+                              <Edit size={18} />
+                            </button>
+                            <Popup
+                              trigger={
+                                <button className="p-1 text-red-600 hover:bg-red-50 rounded-full transition cursor-pointer">
+                                  <Trash2 size={18} />
+                                </button>
+                              }
+                              modal
+                              nested
+                              overlayStyle={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+                            >
+                              {close => (
+                                <div className="bg-white p-6 rounded-xl shadow-2xl border border-gray-100">
+                                  <div className="mb-4 text-center">
+                                    <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                      <Trash2 className="text-red-600" size={24} />
+                                    </div>
+                                    <h2 className="text-xl font-bold text-gray-800 mb-2">Confirm Delete</h2>
+                                    <p className="text-gray-600">Are you sure you want to delete this entry? This action cannot be undone.</p>
+                                  </div>
+                                  <div className="flex gap-3 justify-end">
+                                    <button onClick={close} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 cursor-pointer">Cancel</button>
+                                    <button onClick={() => { handleDeleteEntry(row); close(); }} className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 cursor-pointer">Delete</button>
+                                  </div>
+                                </div>
+                              )}
+                            </Popup>
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -551,12 +641,40 @@ const SupplierAccountDetail = () => {
                             </button>
                           </div>
                         ) : (
-                          <button
-                            className="p-1 text-blue-600 hover:bg-blue-50 rounded-full transition cursor-pointer"
-                            onClick={() => handleEditClick(row)}
-                          >
-                            <Edit size={18} />
-                          </button>
+                          <div className="flex items-center justify-center space-x-1">
+                            <button
+                              className="p-1 text-blue-600 hover:bg-blue-50 rounded-full transition cursor-pointer"
+                              onClick={() => handleEditClick(row)}
+                            >
+                              <Edit size={18} />
+                            </button>
+                            <Popup
+                              trigger={
+                                <button className="p-1 text-red-600 hover:bg-red-50 rounded-full transition cursor-pointer">
+                                  <Trash2 size={18} />
+                                </button>
+                              }
+                              modal
+                              nested
+                              overlayStyle={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+                            >
+                              {close => (
+                                <div className="bg-white p-6 rounded-xl shadow-2xl border border-gray-100">
+                                  <div className="mb-4 text-center">
+                                    <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                      <Trash2 className="text-red-600" size={24} />
+                                    </div>
+                                    <h2 className="text-xl font-bold text-gray-800 mb-2">Confirm Delete</h2>
+                                    <p className="text-gray-600">Are you sure you want to delete this entry? This action cannot be undone.</p>
+                                  </div>
+                                  <div className="flex gap-3 justify-end">
+                                    <button onClick={close} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 cursor-pointer">Cancel</button>
+                                    <button onClick={() => { handleDeleteEntry(row); close(); }} className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 cursor-pointer">Delete</button>
+                                  </div>
+                                </div>
+                              )}
+                            </Popup>
+                          </div>
                         )}
                       </td>
                     </tr>

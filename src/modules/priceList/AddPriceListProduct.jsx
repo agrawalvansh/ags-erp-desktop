@@ -4,6 +4,12 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import Popup from 'reactjs-popup';
 import 'reactjs-popup/dist/index.css';
+import {
+  generateProductCode,
+  capitalizeWords,
+  ALLOWED_PACKING_TYPES,
+  DEFAULT_PACKING_TYPE
+} from '../../utils/productUtils';
 
 
 const AddPriceListProduct = () => {
@@ -15,8 +21,7 @@ const AddPriceListProduct = () => {
     productName: '',
     size: '',
     code: '',
-    packingType: 'pc', // Default option
-    customPackingType: '',
+    packingType: DEFAULT_PACKING_TYPE,
     costPrice: '',
     sellingPrice: ''
   });
@@ -24,23 +29,17 @@ const AddPriceListProduct = () => {
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [originalCode, setOriginalCode] = useState(''); // Track original code for edit mode
 
-// Generate product code when productName or size changes
-useEffect(() => {
-  if (editing || !formData.productName) return;
+  // Generate product code when productName or size changes
+  useEffect(() => {
+    if (!formData.productName) return;
 
-  const slugify = (str) =>
-    str?.toLowerCase()
-      .trim()
-      .replace(/\s+/g, '-'); // Replace spaces with hyphens
+    // Always regenerate code based on name and size
+    const code = generateProductCode(formData.productName, formData.size);
 
-  const productSlug = slugify(formData.productName);
-  const sizeSlug = formData.size ? slugify(formData.size) : '';
-
-  const code = sizeSlug ? `${productSlug}-${sizeSlug}` : productSlug;
-
-  setFormData(prev => ({ ...prev, code }));
-}, [formData.productName, formData.size, editing]);
+    setFormData(prev => ({ ...prev, code }));
+  }, [formData.productName, formData.size]);
 
 
   // Fetch existing product when in edit mode
@@ -53,11 +52,13 @@ useEffect(() => {
           productName: data.name,
           size: data.size || '',
           code: data.code,
-          packingType: ['pc', 'kg', 'dz', 'kodi'].includes(data.packing_type) ? data.packing_type : 'custom',
-          customPackingType: ['pc', 'kg', 'dz', 'kodi'].includes(data.packing_type) ? '' : data.packing_type,
+          packingType: ALLOWED_PACKING_TYPES.includes(data.packing_type)
+            ? data.packing_type
+            : DEFAULT_PACKING_TYPE,
           costPrice: data.cost_price?.toString() || '',
           sellingPrice: data.selling_price?.toString() || ''
         });
+        setOriginalCode(data.code); // Store original code for comparison
       } catch (err) {
         toast.error(err.message);
         console.error(err);
@@ -78,10 +79,6 @@ useEffect(() => {
       newErrors.sellingPrice = 'Selling price must be greater than cost price';
     }
 
-    if (formData.packingType === 'custom' && !formData.customPackingType) {
-      newErrors.customPackingType = 'Custom packing type is required';
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -94,10 +91,11 @@ useEffect(() => {
 
     try {
       const allProducts = await window.api.getProducts();
-      
-      const codeExists = allProducts.some(p => 
-        p.code.toLowerCase() === formData.code.toLowerCase() && 
-        (!editing || p.code !== paramCode)
+
+      // Check if code already exists (excluding current product in edit mode)
+      const codeExists = allProducts.some(p =>
+        p.code.toLowerCase() === formData.code.toLowerCase() &&
+        (!editing || p.code !== originalCode)
       );
 
       if (codeExists) {
@@ -107,22 +105,59 @@ useEffect(() => {
         return;
       }
 
-      const body = {
-        code: formData.code,
-        name: formData.productName,
-        size: formData.size,
-        packing_type: formData.packingType === 'custom' ? formData.customPackingType : formData.packingType,
-        cost_price: Number(formData.costPrice),
-        selling_price: Number(formData.sellingPrice)
-      };
-
       if (editing) {
-        await window.api.updateProduct({ id: paramCode, ...body });
+        // Check if code changed (name or size was modified)
+        if (originalCode !== formData.code) {
+          // Case 2: Code changed - Create NEW product, soft-delete OLD product
+          // This preserves FK references for historical invoices
+
+          // Step 1: Create new product with updated details
+          const newProductBody = {
+            code: formData.code,
+            name: formData.productName,
+            size: formData.size,
+            packing_type: formData.packingType,
+            cost_price: Number(formData.costPrice),
+            selling_price: Number(formData.sellingPrice)
+          };
+          await window.api.createProduct(newProductBody);
+
+          // Step 2: Soft-delete old product (keep for historical invoice references)
+          await window.api.deleteProduct(originalCode);
+
+          toast.success('Product updated successfully. Old product archived for historical records.');
+        } else {
+          // Case 1: Code didn't change - Simple UPDATE on same row
+          // Only cleaning data (e.g., moving size from name to size column)
+          const body = {
+            code: formData.code,
+            name: formData.productName,
+            size: formData.size,
+            packing_type: formData.packingType,
+            cost_price: Number(formData.costPrice),
+            selling_price: Number(formData.sellingPrice)
+          };
+          await window.api.updateProduct({ id: paramCode, ...body });
+          toast.success('Product saved successfully');
+        }
       } else {
+        // Creating new product
+        const body = {
+          code: formData.code,
+          name: formData.productName,
+          size: formData.size,
+          packing_type: formData.packingType,
+          cost_price: Number(formData.costPrice),
+          selling_price: Number(formData.sellingPrice)
+        };
         await window.api.createProduct(body);
+        toast.success('Product saved successfully');
+        // Navigate without editedProductCode for new products
+        navigate('/price-list', { state: { editedProductCode: formData.code } });
+        return;
       }
-      toast.success('Product saved successfully');
-      navigate('/price-list');
+      // Navigate with the product code for auto-scroll (editing case)
+      navigate('/price-list', { state: { editedProductCode: formData.code } });
     } catch (error) {
       toast.error(error.message);
       console.error('Error saving product:', error);
@@ -146,9 +181,7 @@ useEffect(() => {
     }
   };
 
-  const capitalizeWords = (str) => {
-    return str.replace(/\b\w/g, (char) => char.toUpperCase());
-  };
+  // capitalizeWords now imported from productUtils
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -236,7 +269,7 @@ useEffect(() => {
                   value={formData.code}
                   readOnly
                   className={`w-full p-2 border rounded-lg ${errors.code ? 'border-red-500' : 'border-gray-300'}`}
-                  onChange={handleChange}                  
+                  onChange={handleChange}
                 />
                 {errors.code && (
                   <p className="mt-1 text-sm text-red-500">{errors.code}</p>
@@ -253,28 +286,10 @@ useEffect(() => {
                   onChange={handleChange}
                   className="w-full p-2 border border-gray-300 rounded-lg"
                 >
-                  <option value="pc">Pc</option>
-                  <option value="kg">Kg</option>
-                  <option value="dz">Dz</option>
-                  <option value="box">Box</option>
-                  <option value="kodi">Kodi</option>
-                  <option value="custom">Other</option>
+                  {ALLOWED_PACKING_TYPES.map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
                 </select>
-
-                {formData.packingType === 'custom' && (
-                  <input
-                    type="text"
-                    name="customPackingType"
-                    value={formData.customPackingType}
-                    onChange={handleChange}
-                    placeholder="Enter custom packing type"
-                    className={`mt-2 w-full p-2 border rounded-lg ${errors.customPackingType ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                  />
-                )}
-                {errors.customPackingType && (
-                  <p className="mt-1 text-sm text-red-500">{errors.customPackingType}</p>
-                )}
               </div>
 
               <div>

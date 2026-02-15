@@ -34,8 +34,8 @@ const AddAccountEntry = () => {
     const load = async () => {
       try {
         const data = await (type === 'maal'
-            ? window.api.invoke('maal:get', id)
-            : window.api.invoke('transactions:get', id));
+          ? window.api.invoke('maal:get', id)
+          : window.api.invoke('transactions:get', id));
         setFormData({
           date: data.date || data.invoice_date || '',
           invoiceNumber: data.invoice_number || '',
@@ -89,13 +89,21 @@ const AddAccountEntry = () => {
         channel = isEditing ? 'transactions:update' : 'transactions:create';
         payload.txn_type = formData.txnType;
       }
-      await window.api.invoke(channel, isEditing ? { id, ...payload } : payload );
+      const result = await window.api.invoke(channel, isEditing ? { id, ...payload } : payload);
+
+      // Explicit success check - only proceed if backend confirms success
+      if (!result || result.error || result.success === false) {
+        toast.error(result?.error || 'An error occurred while saving. Please try again.');
+        return; // Keep data, do NOT navigate
+      }
+
+      // Only on confirmed success
       toast.success(isEditing ? 'Entry updated successfully' : 'Entry added successfully');
-      // On success, navigate back to buyer account detail
       navigate(`/accounts/customers/${slug}`);
     } catch (err) {
-      toast.error(err.message);
+      toast.error('An error occurred while saving. Please try again.');
       console.error('Error saving entry:', err);
+      // Keep data, do NOT navigate
     } finally {
       setSubmitting(false);
     }
@@ -108,12 +116,21 @@ const AddAccountEntry = () => {
     setDeleting(true);
     try {
       const channel = type === 'maal' ? 'maal:delete' : 'transactions:delete';
-      await window.api.invoke(channel, id);
+      const result = await window.api.invoke(channel, id);
+
+      // Explicit success check
+      if (!result || result.error || result.success === false) {
+        toast.error(result?.error || 'An error occurred while deleting. Please try again.');
+        return; // Keep UI state, do NOT navigate
+      }
+
+      // Only on confirmed success
       toast.success('Entry deleted successfully');
       navigate(`/accounts/customers/${slug}`);
     } catch (err) {
-      toast.error(err.message);
+      toast.error('An error occurred while deleting. Please try again.');
       console.error('Delete error:', err);
+      // Keep UI state, do NOT navigate
     } finally {
       setDeleting(false);
     }

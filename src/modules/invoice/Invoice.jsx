@@ -1,27 +1,36 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { Printer, Plus, Trash2, Save, Edit } from 'lucide-react';
-import { useParams } from 'react-router-dom';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { Printer, Plus, Trash2, Save, Edit, AlertTriangle } from 'lucide-react';
+import { useParams, useNavigate, useLocation, useBlocker } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
 import { Search } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import {
+  generateProductCode,
+  capitalizeWords,
+  findProductByNameAndSize,
+  findProductByCode,
+  productCodeExists,
+  normalizeProductCode,
+  ALLOWED_PACKING_TYPES,
+  DEFAULT_PACKING_TYPE,
+  sortProducts
+} from '../../utils/productUtils';
 
 // Add Item Form Component
 // Improved Add Item Form Component
-const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors, productNameInputRef }) => {
+const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors, productNameInputRef, onProductSelected }) => {
   const [showProdDropdown, setShowProdDropdown] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const prodWrapperRef = useRef(null);
 
-  const capitalizeWords = (str) => {
-    return str.replace(/\b\w/g, (char) => char.toUpperCase());
-  };
 
-
-  // Filter products with memoization
+  // Filter and sort products with smart sorting (name A-Z, then numeric size)
   const filteredProducts = useMemo(() => {
-    return products.filter(p =>
-      p.name.toLowerCase().includes(newItem.productName.toLowerCase())
+    const filtered = products.filter(p =>
+      (p.name || '').toLowerCase().includes(newItem.productName.toLowerCase())
     );
+    // Use smart sorting: name A-Z, then numeric size value
+    return sortProducts(filtered, 'name', 'size');
   }, [products, newItem.productName]);
 
   // Handle keyboard navigation
@@ -51,28 +60,22 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
     }
   };
 
-  // Utility to normalize different packing type values returned from backend and map them to valid dropdown option values
-  const mapPackingType = (rawType) => {
-    if (!rawType) return 'PCS'; // default fallback
-    const upper = rawType.toString().trim().toUpperCase();
-
-    if (['PC', 'PCS'].includes(upper)) return 'PCS';
-    if (['KG', 'KGS'].includes(upper)) return 'KGS';
-    if (['DZ', 'DOZ', 'DOZEN'].includes(upper)) return 'DOZEN';
-    if (['BOX', 'BOXES'].includes(upper)) return 'BOX';
-    if (['KODI'].includes(upper)) return 'KODI';
-
-    return upper; // unknown types shown as-is
-  };
+  // Use packing type directly from product (no mapping)
 
   const handleProductSelect = (product) => {
-    setNewItem({
+    const productData = {
       ...newItem,
       code: product.code,
-      productName: `${product.name}${product.size ? ' ' + product.size : ''}`.trim(),
+      productName: product.name,
+      size: product.size || '',
       sellingPrice: (product.selling_price ?? product.sellingPrice ?? 0).toString(),
-      packingType: mapPackingType(product.packing_type || product.packingType),
-    });
+      packingType: product.packing_type || product.packingType || DEFAULT_PACKING_TYPE,
+      originalProduct: product, // Track the originally selected product
+    };
+    setNewItem(productData);
+    if (onProductSelected) {
+      onProductSelected(product);
+    }
     setShowProdDropdown(false);
     setHighlightedIndex(-1);
   };
@@ -115,7 +118,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
               }}
               onChange={(e) => {
                 const capitalizedValue = capitalizeWords(e.target.value);
-                setNewItem({ ...newItem, productName: capitalizedValue });
+                setNewItem({ ...newItem, productName: capitalizedValue, code: '' }); // Clear code when name changes
                 setShowProdDropdown(true);
                 setHighlightedIndex(0);
               }}
@@ -160,10 +163,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
                     </button>
                   ))
                 ) : (
-                  <div className="px-4 py-3 text-gray-500 text-sm">
-                    {products.length === 0
-                      ? 'Loading products...'
-                      : 'No matching products found'}
+                  <div className="">
                   </div>
                 )}
               </div>
@@ -177,6 +177,20 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
           )}
         </div>
 
+        {/* Size Field */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Size
+          </label>
+          <input
+            type="text"
+            value={newItem.size || ''}
+            onChange={(e) => setNewItem({ ...newItem, size: e.target.value })}
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="e.g., 1 L, 500g, Large"
+          />
+        </div>
+
         {/* Quantity and Unit Fields */}
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -184,7 +198,6 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
               Quantity
             </label>
             <input
-              // id="item-quantity"
               type="number"
               min="0.001"
               step="0.001"
@@ -211,17 +224,9 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
               onChange={(e) => setNewItem({ ...newItem, packingType: e.target.value })}
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
             >
-              {/* Show custom type if not in defaults */}
-              {(!['PCS', 'KGS', 'BOX', 'DOZEN', 'KODI', 'OTHER'].includes(newItem.packingType?.toUpperCase())) && (
-                <option value={newItem.packingType}>{newItem.packingType}</option>
-              )}
-
-              <option value="PCS">PCS</option>
-              <option value="KGS">KGS</option>
-              <option value="BOX">Box</option>
-              <option value="DOZEN">Dozen</option>
-              <option value="KODI">Kodi</option>
-              <option value="OTHER">Other</option>
+              {ALLOWED_PACKING_TYPES.map(type => (
+                <option key={type} value={type}>{type}</option>
+              ))}
             </select>
           </div>
         </div>
@@ -278,9 +283,11 @@ const Invoice = () => {
   const [newItem, setNewItem] = useState({
     code: '',
     productName: '',
+    size: '',
     quantity: '',
-    packingType: 'PCS',
+    packingType: DEFAULT_PACKING_TYPE,
     sellingPrice: '',
+    originalProduct: null, // Track the originally selected product
   });
   const [total, setTotal] = useState(0);
   const [products, setProducts] = useState([]);
@@ -301,10 +308,114 @@ const Invoice = () => {
   const [isSaved, setIsSaved] = useState(true); // Start with true to show Print by default
   const [currentInvoiceId, setCurrentInvoiceId] = useState(invoiceNo || '');
   const [editIndex, setEditIndex] = useState(-1);
+  const [showNavigationWarning, setShowNavigationWarning] = useState(false);
+
+  // Payment/Advance state
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentType, setPaymentType] = useState('Cash');
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+  const PAYMENT_TYPES = ['Cash', 'UPI', 'Bank', 'Cheque'];
+
+  // Original invoice data for dirty state detection (when editing existing invoice)
+  const [originalInvoiceData, setOriginalInvoiceData] = useState(null);
+  const [isNewInvoice, setIsNewInvoice] = useState(true);
+
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Check if there are unsaved changes by comparing current state with original
+  const isDirty = useMemo(() => {
+    // New invoice with items is always dirty until saved
+    if (isNewInvoice) {
+      return customerId && invoiceItems.length > 0;
+    }
+
+    // Existing invoice - compare with original data
+    if (!originalInvoiceData) return false;
+
+    // Compare key fields
+    if (remark !== (originalInvoiceData.remark || '')) return true;
+    if (invoiceDate !== originalInvoiceData.invoice_date) return true;
+    if (parseFloat(packing || 0) !== parseFloat(originalInvoiceData.packing || 0)) return true;
+    if (parseFloat(freight || 0) !== parseFloat(originalInvoiceData.freight || 0)) return true;
+    if (parseFloat(riksha || 0) !== parseFloat(originalInvoiceData.riksha || 0)) return true;
+    if (parseFloat(paymentAmount || 0) !== parseFloat(originalInvoiceData.payment_amount || 0)) return true;
+    if (paymentType !== (originalInvoiceData.payment_type || 'Cash')) return true;
+    if (paymentDate !== (originalInvoiceData.payment_date || originalInvoiceData.invoice_date)) return true;
+
+    // Compare items (simplified - check count and basic values)
+    if (invoiceItems.length !== originalInvoiceData.items.length) return true;
+    for (let i = 0; i < invoiceItems.length; i++) {
+      const curr = invoiceItems[i];
+      const orig = originalInvoiceData.items[i];
+      if (!orig) return true;
+      if (curr.code !== orig.product_code) return true;
+      if (parseFloat(curr.quantity) !== parseFloat(orig.quantity)) return true;
+      if (parseFloat(curr.sellingPrice) !== parseFloat(orig.selling_price)) return true;
+    }
+
+    return false;
+  }, [isNewInvoice, customerId, invoiceItems, originalInvoiceData, remark, invoiceDate, packing, freight, riksha, paymentAmount, paymentType, paymentDate]);
+
+  // Backward compatibility - keep hasUnsavedChanges for navigation blocker
+  const hasUnsavedChanges = useCallback(() => {
+    return isDirty;
+  }, [isDirty]);
+
+  // Navigation blocker for unsaved invoices
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      hasUnsavedChanges() && currentLocation.pathname !== nextLocation.pathname
+  );
+
+  // Reset invoice state to blank
+  const resetInvoiceState = useCallback(async () => {
+    setInvoiceItems([]);
+    setNewItem({
+      code: '',
+      productName: '',
+      size: '',
+      quantity: '',
+      packingType: DEFAULT_PACKING_TYPE,
+      sellingPrice: '',
+      originalProduct: null,
+    });
+    setTotal(0);
+    setPacking('');
+    setFreight('');
+    setRiksha('');
+    setBuyer('');
+    setCustomerId('');
+    setMobileNo('');
+    setAddress('');
+    setRemark('');
+    setInvoiceDate(new Date().toISOString().split('T')[0]);
+    setFormErrors({});
+    setIsEditing(false);
+    setIsSaved(true);
+    setCurrentInvoiceId('');
+    setEditIndex(-1);
+    // Reset payment fields
+    setPaymentAmount('');
+    setPaymentType('Cash');
+    setPaymentDate(new Date().toISOString().split('T')[0]);
+    // Reset dirty state tracking
+    setOriginalInvoiceData(null);
+    setIsNewInvoice(true);
+
+    // Fetch new invoice ID
+    try {
+      const data = await window.api.getNextInvoiceId();
+      const nextId = typeof data === 'object' && data !== null ? data.next_id : data;
+      setCustomInvoiceNo(nextId);
+    } catch (err) {
+      console.error('Error fetching next invoice id', err);
+    }
+  }, []);
 
   // Helper Functions
   const formatNumber = (value) => {
-    return (parseFloat(value) || 0).toFixed(2);
+    return (parseFloat(value) || 0).toFixed(3);
   };
 
   const calculateGrandTotal = () => {
@@ -318,6 +429,13 @@ const Invoice = () => {
       grandTotal: roundedTotal
     };
   };
+
+  // Reset state when navigating to /invoice without an invoiceNo (new invoice)
+  useEffect(() => {
+    if (!invoiceNo && location.pathname === '/invoice') {
+      resetInvoiceState();
+    }
+  }, [invoiceNo, location.pathname, resetInvoiceState]);
 
   // Sync local state when route param changes
   useEffect(() => {
@@ -384,8 +502,8 @@ const Invoice = () => {
             const sizeText = prod.size || item.size ? ` ${prod.size || item.size}` : '';
             const productName = `${nameWithSpaces}${sizeText}`.trim();
 
-            // Quantity (numeric, 2 dp)
-            const quantity = parseFloat(item.quantity).toFixed(2);
+            // Quantity (numeric, 3 dp)
+            const quantity = parseFloat(item.quantity).toFixed(3);
 
             return {
               ...item,
@@ -393,8 +511,8 @@ const Invoice = () => {
               code: item.product_code,
               quantity,               // keep numeric text only
               packingType: prod.packing_type || item.packing_type || '',
-              sellingPrice: parseFloat(item.selling_price).toFixed(2),
-              amount: (item.quantity * item.selling_price).toFixed(2),
+              sellingPrice: parseFloat(item.selling_price).toFixed(3),
+              amount: (item.quantity * item.selling_price).toFixed(3),
             };
           });
 
@@ -406,6 +524,21 @@ const Invoice = () => {
           setPacking(inv.packing || '');
           setFreight(inv.freight || '');
           setRiksha(inv.riksha || '');
+
+          // Load payment info if exists
+          if (inv.payment_amount && inv.payment_amount > 0) {
+            setPaymentAmount(inv.payment_amount.toString());
+            setPaymentType(inv.payment_type || 'Cash');
+            setPaymentDate(inv.payment_date || inv.invoice_date);
+          } else {
+            setPaymentAmount('');
+            setPaymentType('Cash');
+            setPaymentDate(inv.invoice_date);
+          }
+
+          // Store original data for dirty state detection
+          setOriginalInvoiceData(inv);
+          setIsNewInvoice(false);
 
           // Try to fetch full customer details
           let cust = customers.find(c => c.customer_id === inv.customer_id);
@@ -504,25 +637,104 @@ const Invoice = () => {
 
     const amount = quantity * sellingPrice;
 
-    const productCode = newItem.code || newItem.productName;
+    // Check if user selected an existing product and then modified the name/size
+    const originalProduct = newItem.originalProduct;
+    const nameChanged = originalProduct && originalProduct.name !== newItem.productName;
+    const sizeChanged = originalProduct && (originalProduct.size || '') !== (newItem.size || '');
 
-    if (!newItem.code) {
+    let productCode = newItem.code;
+    let isNewProduct = !newItem.code;
+
+    // If name or size was changed, treat as new product
+    if (nameChanged || sizeChanged) {
+      // Check if a product with this new name+size combination exists
+      const existingProduct = findProductByNameAndSize(newItem.productName, newItem.size, products);
+
+      if (existingProduct) {
+        // Use existing product's code
+        productCode = existingProduct.code;
+        isNewProduct = false;
+
+        // Check if price is different - sync if needed
+        const existingPrice = existingProduct.selling_price ?? existingProduct.sellingPrice ?? 0;
+        if (existingPrice !== sellingPrice) {
+          try {
+            await window.api.invoke('products:update', {
+              code: productCode,
+              name: existingProduct.name,
+              size: existingProduct.size || '',
+              packing_type: existingProduct.packing_type || newItem.packingType,
+              cost_price: existingProduct.cost_price || 0,
+              selling_price: sellingPrice
+            });
+            toast.success('Price updated in Price List');
+
+            // Refresh products list
+            const updatedProducts = await window.api.getProducts();
+            setProducts(updatedProducts);
+          } catch (err) {
+            console.error('Error updating product price:', err);
+          }
+        }
+      } else {
+        // New product - generate code
+        productCode = generateProductCode(newItem.productName, newItem.size);
+        isNewProduct = true;
+      }
+    } else if (newItem.code && originalProduct) {
+      // Using existing product without name change - check if price changed
+      const originalPrice = originalProduct.selling_price ?? originalProduct.sellingPrice ?? 0;
+      if (originalPrice !== sellingPrice) {
+        try {
+          await window.api.invoke('products:update', {
+            code: newItem.code,
+            name: originalProduct.name,
+            size: originalProduct.size || '',
+            packing_type: originalProduct.packing_type || newItem.packingType,
+            cost_price: originalProduct.cost_price || 0,
+            selling_price: sellingPrice
+          });
+          toast.success('Price updated in Price List');
+
+          // Refresh products list
+          const updatedProducts = await window.api.getProducts();
+          setProducts(updatedProducts);
+        } catch (err) {
+          console.error('Error updating product price:', err);
+        }
+      }
+    } else if (!newItem.code) {
+      // Completely new product typed in
+      productCode = generateProductCode(newItem.productName, newItem.size);
+      isNewProduct = true;
+    }
+
+    // Create new product if needed
+    if (isNewProduct) {
       try {
+        // Check if code already exists
+        if (productCodeExists(productCode, products)) {
+          toast.error('A product with this name and size already exists. Please use a different name or size.');
+          return;
+        }
+
         await window.api.invoke('products:create', {
           code: productCode,
           name: newItem.productName,
-          size: '',
+          size: newItem.size || '',
           packing_type: newItem.packingType,
           cost_price: 0,
           selling_price: sellingPrice
         });
-        
+
         const updatedProducts = await window.api.getProducts();
         setProducts(updatedProducts);
-        
+
         toast.success('New product created and added to invoice');
       } catch (err) {
         console.error('Error creating product:', err);
+        toast.error('Error creating product');
+        return;
       }
     }
 
@@ -530,10 +742,11 @@ const Invoice = () => {
       code: productCode,
       product_code: productCode,
       productName: newItem.productName,
+      size: newItem.size || '',
       quantity: quantity.toFixed(3),
       packingType: newItem.packingType,
-      sellingPrice: sellingPrice.toFixed(2),
-      amount: amount.toFixed(2)
+      sellingPrice: sellingPrice.toFixed(3),
+      amount: amount.toFixed(3)
     };
 
     if (editIndex > -1) {
@@ -544,20 +757,22 @@ const Invoice = () => {
       toast.success('Item updated successfully');
     } else {
       setInvoiceItems([...invoiceItems, newInvoiceItem]);
-      if (newItem.code) {
+      if (!isNewProduct) {
         toast.success('Item added successfully');
       }
     }
     setNewItem({
       code: '',
       productName: '',
+      size: '',
       quantity: '',
-      packingType: 'PCS',
-      sellingPrice: ''
+      packingType: DEFAULT_PACKING_TYPE,
+      sellingPrice: '',
+      originalProduct: null,
     });
     setFormErrors({});
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    
+
     setTimeout(() => {
       if (productNameInputRef.current) {
         productNameInputRef.current.focus();
@@ -567,12 +782,16 @@ const Invoice = () => {
 
   const handleEditItem = (index) => {
     const item = invoiceItems[index];
+    // Find the original product in the products list to track changes
+    const originalProduct = products.find(p => p.code === item.code) || null;
     setNewItem({
       code: item.code,
       productName: item.productName,
+      size: item.size || '',
       quantity: item.quantity,
       packingType: item.packingType,
       sellingPrice: item.sellingPrice,
+      originalProduct: originalProduct,
     });
     setEditIndex(index);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -617,7 +836,11 @@ const Invoice = () => {
         product_code: i.code || i.product_code,
         quantity: parseFloat(i.quantity),
         selling_price: parseFloat(i.sellingPrice)
-      }))
+      })),
+      // Payment/Advance fields
+      payment_amount: parseFloat(paymentAmount || 0),
+      payment_type: paymentType,
+      payment_date: paymentDate || invoiceDate
     };
 
     try {
@@ -625,24 +848,49 @@ const Invoice = () => {
         currentInvoiceId ? 'invoices:update' : 'invoices:create',
         currentInvoiceId ? { id: currentInvoiceId, ...payload } : payload
       );
+
+      // Explicit success check - only proceed if backend confirms success
+      if (!data || data.error || data.success === false) {
+        toast.error(data?.error || 'An error occurred while saving. Please try again.');
+        return; // Keep data, do NOT clear or navigate
+      }
+
+      // Only on confirmed success
       toast.success(`Invoice saved successfully (ID: ${data.invoice_id || currentInvoiceId})`);
+
+      const savedInvoiceId = data.invoice_id || currentInvoiceId;
+
       // if it was a create request, persist the returned id for future updates
       if (!currentInvoiceId && data.invoice_id) {
         setCurrentInvoiceId(data.invoice_id);
         setCustomInvoiceNo(data.invoice_id);
       }
+
+      // Update original data to reflect saved state (makes isDirty = false)
+      setOriginalInvoiceData({
+        ...payload,
+        invoice_id: savedInvoiceId,
+        items: invoiceItems.map(i => ({
+          product_code: i.code || i.product_code,
+          quantity: parseFloat(i.quantity),
+          selling_price: parseFloat(i.sellingPrice)
+        }))
+      });
+      setIsNewInvoice(false);
       setIsSaved(true);
       setIsEditing(false);
     } catch (err) {
       console.error('Error saving invoice:', err);
-      toast.error('Error saving invoice');
+      toast.error('An error occurred while saving. Please try again.');
+      // Keep data, do NOT clear or navigate
     }
   };
 
   const handlePrint = () => {
     const originalTitle = document.title;
-    if (customerId && customInvoiceNo) {
-      document.title = `${customerId} ${customInvoiceNo}`;
+    // Set PDF file name to: CustomerName InvoiceNumber
+    if (buyer && customInvoiceNo) {
+      document.title = `${buyer} ${customInvoiceNo}`;
     }
     window.print();
     document.title = originalTitle;
@@ -651,6 +899,39 @@ const Invoice = () => {
   const { roundOff, grandTotal } = calculateGrandTotal();
   return (
     <div className="p-2 sm:p-6 min-h-screen bg-gray-50 print:bg-white print:p-0 print:text-black">
+      {/* Navigation Warning Modal */}
+      {blocker.state === 'blocked' && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] print:hidden">
+          <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md mx-4 transform transition-all">
+            <div className="flex items-center justify-center mb-4">
+              <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
+                <AlertTriangle className="text-yellow-600" size={24} />
+              </div>
+            </div>
+            <h2 className="text-xl font-bold text-gray-800 text-center mb-2">
+              Unsaved Changes
+            </h2>
+            <p className="text-gray-600 text-center mb-6">
+              This invoice is not saved. Do you want to leave this page?
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={() => blocker.reset()}
+                className="flex-1 px-4 py-2.5 rounded-lg bg-[#05014A] text-white font-medium hover:bg-[#0A0A47] transition-colors cursor-pointer"
+              >
+                Stay on Page
+              </button>
+              <button
+                onClick={() => blocker.proceed()}
+                className="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors cursor-pointer"
+              >
+                Leave Without Saving
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div
         ref={printRef}
         className="max-w-[1040px] mx-auto bg-white shadow-lg rounded-lg overflow-hidden print:shadow-none print:rounded-none print:w-[210mm] print:min-h-[297mm]"
@@ -790,6 +1071,7 @@ const Invoice = () => {
                 <tr className="bg-gray-50">
                   <th className="border p-3 text-left text-sm font-semibold text-gray-700">S.No.</th>
                   <th className="border p-3 text-left text-sm font-semibold text-gray-700">Item Name</th>
+                  <th className="border p-3 text-center text-sm font-semibold text-gray-700">Size</th>
                   <th className="border p-3 text-center text-sm font-semibold text-gray-700">Qty</th>
                   <th className="border p-3 text-center text-sm font-semibold text-gray-700">Rate</th>
                   <th className="border p-3 text-center text-sm font-semibold text-gray-700">Amount</th>
@@ -801,6 +1083,7 @@ const Invoice = () => {
                   <tr key={index} className="hover:bg-gray-50">
                     <td className="border p-3 text-sm text-gray-600">{index + 1}</td>
                     <td className="border p-3 text-sm text-gray-800 font-medium">{item.productName}</td>
+                    <td className="border p-3 text-sm text-gray-600 text-center">{item.size || '-'}</td>
                     <td className="border p-3 text-sm text-gray-600 text-center">
                       {item.quantity} {item.packingType}
                     </td>
@@ -889,10 +1172,61 @@ const Invoice = () => {
                   <span>Grand Total:</span>
                   <span className="text-[#05014A]">₹{grandTotal.toFixed(2)}</span>
                 </div>
+
+                {/* Payment/Advance Section */}
+                <div className="mt-4 pt-4 border-t border-gray-200 print:hidden">
+                  <h4 className="font-semibold text-gray-700 mb-3 flex items-center">
+                    Payment / Advance Received
+                  </h4>
+
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Amount:</span>
+                      <input
+                        type="number"
+                        value={paymentAmount}
+                        onChange={(e) => setPaymentAmount(e.target.value)}
+                        className="w-28 text-right border-b border-gray-300 focus:outline-none focus:border-blue-500 px-1"
+                        placeholder="0.00"
+                        min="0"
+                      />
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Type:</span>
+                      <select
+                        value={paymentType}
+                        onChange={(e) => setPaymentType(e.target.value)}
+                        className="w-28 text-right border-b border-gray-300 focus:outline-none focus:border-blue-500 bg-transparent"
+                      >
+                        {PAYMENT_TYPES.map(type => (
+                          <option key={type} value={type}>{type}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Date:</span>
+                      <input
+                        type="date"
+                        value={paymentDate}
+                        onChange={(e) => setPaymentDate(e.target.value)}
+                        className="w-32 text-right border-b border-gray-300 focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  {parseFloat(paymentAmount || 0) > 0 && (
+                    <div className="flex justify-between pt-3 mt-3 border-t border-dashed border-gray-300 font-semibold text-green-700">
+                      <span>Balance Due:</span>
+                      <span>₹{(grandTotal - parseFloat(paymentAmount || 0)).toFixed(2)}</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="print:hidden">
-                {(isEditing && !isSaved && customerId) ? (
+                {isDirty ? (
                   <button
                     onClick={handleSave}
                     className="cursor-pointer mt-6 w-full bg-[#05014A] hover:bg-[#0A0A47] text-white py-3 rounded-lg font-medium flex items-center justify-center transition-colors"

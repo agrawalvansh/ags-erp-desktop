@@ -1,9 +1,12 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { Printer, Plus, Trash2, Save, Edit } from 'lucide-react';
-import { useParams } from 'react-router-dom';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { Printer, Plus, Trash2, Save, Edit, AlertTriangle } from 'lucide-react';
+import { useParams, useNavigate, useBlocker } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
 import { Search } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import Popup from 'reactjs-popup';
+import 'reactjs-popup/dist/index.css';
+import { sortProducts, capitalizeWords, DEFAULT_PACKING_TYPE, ALLOWED_PACKING_TYPES } from '../../utils/productUtils';
 
 // Add Item Form Component
 // Improved Add Item Form Component
@@ -13,37 +16,46 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors 
   const prodWrapperRef = useRef(null);
 
 
-  // Filter products with memoization
+  // Filter and sort products with smart sorting (name A-Z, then numeric size)
   const filteredProducts = useMemo(() => {
-    return products.filter(p =>
-      p.name.toLowerCase().includes(newItem.productName.toLowerCase())
+    const filtered = products.filter(p =>
+      (p.name || '').toLowerCase().includes(newItem.productName.toLowerCase())
     );
+    return sortProducts(filtered, 'name', 'size');
   }, [products, newItem.productName]);
 
   // Utility to normalize different packing type values returned from backend and map them to valid dropdown option values
   const mapPackingType = (rawType) => {
-    if (!rawType) return 'PCS'; // default fallback
-    const upper = rawType.toString().trim().toUpperCase();
-    if (['PC', 'PCS'].includes(upper)) return 'PCS';
-    if (['KG', 'KGS'].includes(upper)) return 'KGS';
-    if (['DZ', 'DOZ', 'DOZEN'].includes(upper)) return 'DOZEN';
-    if (['BOX', 'BOXES'].includes(upper)) return 'BOX';
-    if (['KODI'].includes(upper)) return 'KODI';
-    return upper; // unknown types shown as-is
+    if (!rawType) return DEFAULT_PACKING_TYPE; // default fallback
+    const trimmed = rawType.toString().trim();
+    // Check if already a valid packing type
+    if (ALLOWED_PACKING_TYPES.includes(trimmed)) return trimmed;
+    // Case-insensitive match
+    const upper = trimmed.toUpperCase();
+    if (['PC', 'PCS'].includes(upper)) return 'Pc';
+    if (['KG', 'KGS'].includes(upper)) return 'Kg';
+    if (['DZ', 'DOZ', 'DOZEN'].includes(upper)) return 'Dz';
+    if (['BOX', 'BOXES'].includes(upper)) return 'Box';
+    if (['KODI'].includes(upper)) return 'Kodi';
+    if (['THELI'].includes(upper)) return 'Theli';
+    if (['PACKET'].includes(upper)) return 'Packet';
+    if (['SET'].includes(upper)) return 'Set';
+    return DEFAULT_PACKING_TYPE; // fallback to default for unknown types
   };
 
   const handleProductSelect = (product) => {
     setNewItem({
       ...newItem,
       code: product.code,
-      productName: `${product.name}${product.size ? ' ' + product.size : ''}`.trim(),
+      productName: product.name,
+      size: product.size || '',
       sellingPrice: (product.selling_price ?? product.sellingPrice ?? 0).toString(),
       packingType: mapPackingType(product.packing_type || product.packingType),
     });
     setShowProdDropdown(false);
     setHighlightedIndex(-1);
   };
-  
+
 
   // Handle keyboard navigation
   const handleKeyDown = (e) => {
@@ -134,8 +146,8 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors 
                       role="option"
                       aria-selected={highlightedIndex === index}
                       className={`cursor-pointer w-full text-left px-4 py-3 transition-colors flex items-center justify-between ${highlightedIndex === index
-                          ? 'bg-blue-50'
-                          : 'hover:bg-gray-50'
+                        ? 'bg-blue-50'
+                        : 'hover:bg-gray-50'
                         } ${index === 0 ? 'rounded-t-lg' : ''} ${index === filteredProducts.length - 1 ? 'rounded-b-lg' : ''
                         }`}
                       onClick={() => handleProductSelect(p)}
@@ -166,6 +178,20 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors 
               {formErrors.productName}
             </p>
           )}
+        </div>
+
+        {/* Size Field */}
+        <div className="col-span-2">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Size
+          </label>
+          <input
+            type="text"
+            value={newItem.size || ''}
+            onChange={(e) => setNewItem({ ...newItem, size: e.target.value })}
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="e.g., 1 L, 500g"
+          />
         </div>
 
         {/* Quantity Field */}
@@ -202,17 +228,10 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors 
               onChange={(e) => setNewItem({ ...newItem, packingType: e.target.value })}
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
             >
-              {/* Show custom type if not in defaults */}
-              {(!['PCS', 'KGS', 'BOX', 'KODI', 'OTHER'].includes(newItem.packingType?.toUpperCase())) && (
-                <option value={newItem.packingType}>{newItem.packingType}</option>
-              )}
-
-              <option value="PCS">PCS</option>
-              <option value="KGS">KGS</option>
-              <option value="BOX">Box</option>
-              <option value="DOZEN">Dozen</option>
-              <option value="KODI">Kodi</option>
-              <option value="OTHER">Other</option>
+              {/* Packing type options from centralized ALLOWED_PACKING_TYPES */}
+              {ALLOWED_PACKING_TYPES.map((type) => (
+                <option key={type} value={type}>{type}</option>
+              ))}
             </select>
           </div>
 
@@ -242,6 +261,7 @@ const order = () => {
   const [newItem, setNewItem] = useState({
     code: '',
     productName: '',
+    size: '',
     quantity: '',
     packingType: 'PCS',
   });
@@ -273,6 +293,54 @@ const order = () => {
   const [currentorderId, setCurrentorderId] = useState(orderNo || '');
   const [editIndex, setEditIndex] = useState(-1);
 
+  // Payment/Advance state
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentType, setPaymentType] = useState('Cash');
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+  const PAYMENT_TYPES = ['Cash', 'UPI', 'Bank', 'Cheque'];
+
+  // Unsaved changes tracking (like Invoice)
+  const [originalOrderData, setOriginalOrderData] = useState(null);
+  const [isNewOrder, setIsNewOrder] = useState(true);
+  const navigate = useNavigate();
+
+  // Check if there are unsaved changes by comparing current state with original
+  const isDirty = useMemo(() => {
+    // New order with items is always dirty until saved
+    if (isNewOrder) {
+      return customerId && orderItems.length > 0;
+    }
+    // Existing order - compare with original data
+    if (!originalOrderData) return false;
+
+    if (remark !== (originalOrderData.remark || '')) return true;
+    if (orderDate !== originalOrderData.order_date) return true;
+    if (status !== (originalOrderData.status || 'Received')) return true;
+    if (parseFloat(paymentAmount || 0) !== parseFloat(originalOrderData.payment_amount || 0)) return true;
+    if (paymentType !== (originalOrderData.payment_type || 'Cash')) return true;
+    if (paymentDate !== (originalOrderData.payment_date || originalOrderData.order_date)) return true;
+
+    // Compare items
+    if (orderItems.length !== originalOrderData.items.length) return true;
+    for (let i = 0; i < orderItems.length; i++) {
+      const curr = orderItems[i];
+      const orig = originalOrderData.items[i];
+      if (!orig) return true;
+      if (curr.code !== orig.product_code) return true;
+      if (parseFloat(curr.quantity) !== parseFloat(orig.quantity)) return true;
+    }
+    return false;
+  }, [isNewOrder, customerId, orderItems, originalOrderData, remark, orderDate, status, paymentAmount, paymentType, paymentDate]);
+
+  // Backward compatibility for navigation blocker
+  const hasUnsavedChanges = useCallback(() => isDirty, [isDirty]);
+
+  // Navigation blocker for unsaved orders
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      hasUnsavedChanges() && currentLocation.pathname !== nextLocation.pathname
+  );
+
   // Helper Functions
   const formatNumber = (value) => {
     return (parseFloat(value) || 0).toFixed(2);
@@ -280,14 +348,19 @@ const order = () => {
 
   // Normalize packing type values to standard set
   const mapPackingType = (rawType) => {
-    if (!rawType) return 'PCS';
-    const upper = rawType.toString().trim().toUpperCase();
-    if (['PC', 'PCS'].includes(upper)) return 'PCS';
-    if (['KG', 'KGS'].includes(upper)) return 'KGS';
-    if (['DZ', 'DOZ', 'DOZEN'].includes(upper)) return 'DOZEN';
-    if (['BOX', 'BOXES'].includes(upper)) return 'BOX';
-    if (['KODI'].includes(upper)) return 'KODI';
-    return upper;
+    if (!rawType) return DEFAULT_PACKING_TYPE;
+    const trimmed = rawType.toString().trim();
+    if (ALLOWED_PACKING_TYPES.includes(trimmed)) return trimmed;
+    const upper = trimmed.toUpperCase();
+    if (['PC', 'PCS'].includes(upper)) return 'Pc';
+    if (['KG', 'KGS'].includes(upper)) return 'Kg';
+    if (['DZ', 'DOZ', 'DOZEN'].includes(upper)) return 'Dz';
+    if (['BOX', 'BOXES'].includes(upper)) return 'Box';
+    if (['KODI'].includes(upper)) return 'Kodi';
+    if (['THELI'].includes(upper)) return 'Theli';
+    if (['PACKET'].includes(upper)) return 'Packet';
+    if (['SET'].includes(upper)) return 'Set';
+    return DEFAULT_PACKING_TYPE;
   };
 
 
@@ -362,12 +435,11 @@ const order = () => {
               const prod = products.find((p) => p.code === item.product_code) || {};
               const baseName = prod.name || item.product_name || item.product_code;
               const nameWithSpaces = formatName(baseName);
-              const sizeText = prod.size || item.size ? ` ${prod.size || item.size}` : '';
-              const productName = `${nameWithSpaces}${sizeText}`.trim();
               const quantity = parseFloat(item.quantity).toFixed(2);
               return {
                 ...item,
-                productName,
+                productName: nameWithSpaces,
+                size: prod.size || item.size || '',
                 code: item.product_code,
                 quantity,
                 packingType: mapPackingType(prod.packing_type || item.packing_type || ''),
@@ -376,14 +448,39 @@ const order = () => {
 
             setorderItems(processedItems);
             setCurrentorderId(inv.order_id || orderNo);
-            setBuyer(inv.customer_id);
             setCustomerId(inv.customer_id);
+
+            // Look up customer details from customers list
+            const customer = customers.find(c => c.customer_id === inv.customer_id);
+            if (customer) {
+              setBuyer(customer.name || inv.customer_id); // Use name, fallback to ID
+              setMobileNo(customer.mobile || '');
+              setAddress(customer.address || '');
+            } else {
+              setBuyer(inv.customer_id); // Fallback if customer not found
+            }
+
             setRemark(inv.remark || '');
             setorderDate(inv.order_date);
             setPacking(inv.packing || '');
             setFreight(inv.freight || '');
             setRiksha(inv.riksha || '');
             setStatus(inv.status || 'Received');
+
+            // Load payment info if exists
+            if (inv.payment_amount && inv.payment_amount > 0) {
+              setPaymentAmount(inv.payment_amount.toString());
+              setPaymentType(inv.payment_type || 'Cash');
+              setPaymentDate(inv.payment_date || inv.order_date);
+            } else {
+              setPaymentAmount('');
+              setPaymentType('Cash');
+              setPaymentDate(inv.order_date);
+            }
+
+            // Store original data for unsaved changes detection
+            setOriginalOrderData(inv);
+            setIsNewOrder(false);
           }
         } catch (err) {
           console.error('Error loading order:', err);
@@ -469,10 +566,9 @@ const order = () => {
       code: newItem.code,
       product_code: newItem.code,
       productName: newItem.productName,
+      size: newItem.size || '',
       quantity: quantity.toFixed(3),
       packingType: newItem.packingType,
-
-
     };
 
     if (editIndex > -1) {
@@ -488,9 +584,9 @@ const order = () => {
     setNewItem({
       code: '',
       productName: '',
+      size: '',
       quantity: '',
       packingType: 'PCS',
-
     });
     setFormErrors({});
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -501,9 +597,9 @@ const order = () => {
     setNewItem({
       code: item.code,
       productName: item.productName,
+      size: item.size || '',
       quantity: item.quantity,
       packingType: item.packingType,
-      sellingPrice: item.sellingPrice,
     });
     setEditIndex(index);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -547,8 +643,11 @@ const order = () => {
       items: orderItems.map(i => ({
         product_code: i.code || i.product_code,
         quantity: parseFloat(i.quantity)
-
-      }))
+      })),
+      // Payment/Advance fields
+      payment_amount: parseFloat(paymentAmount || 0),
+      payment_type: paymentType,
+      payment_date: paymentDate || orderDate
     };
 
     try {
@@ -558,17 +657,64 @@ const order = () => {
       } else {
         data = await window.api.invoke('cusOrders:create', payload);
       }
+
+      // Explicit success check - only proceed if backend confirms success
+      if (!data || data.error || data.success === false) {
+        toast.error(data?.error || 'An error occurred while saving. Please try again.');
+        return; // Keep data, do NOT clear or navigate
+      }
+
+      // Only on confirmed success
       toast.success(`Order saved successfully (ID: ${data.order_id || currentorderId})`);
+      const savedOrderId = data.order_id || currentorderId;
       // if it was a create request, persist the returned id for future updates
       if (!currentorderId && data.order_id) {
         setCurrentorderId(data.order_id);
         setCustomorderNo(data.order_id);
       }
+
+      // Update original data to reflect saved state (makes isDirty = false)
+      setOriginalOrderData({
+        ...payload,
+        order_id: savedOrderId,
+        items: orderItems.map(i => ({
+          product_code: i.code || i.product_code,
+          quantity: parseFloat(i.quantity)
+        }))
+      });
+      setIsNewOrder(false);
+
       setIsSaved(true);
       setIsEditing(false);
     } catch (err) {
       console.error('Error saving order:', err);
-      toast.error('Error saving order');
+      toast.error('An error occurred while saving. Please try again.');
+      // Keep data, do NOT clear or navigate
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!currentorderId) {
+      toast.error('No order to delete');
+      return;
+    }
+
+    try {
+      const result = await window.api.invoke('cusOrders:delete', currentorderId);
+
+      // Explicit success check
+      if (!result || result.error || result.success === false) {
+        toast.error(result?.error || 'An error occurred while deleting. Please try again.');
+        return; // Keep UI state, do NOT navigate
+      }
+
+      // Only on confirmed success
+      toast.success('Order deleted successfully');
+      navigate('/orders/customers');
+    } catch (err) {
+      console.error('Error deleting order:', err);
+      toast.error('An error occurred while deleting. Please try again.');
+      // Keep UI state, do NOT navigate
     }
   };
 
@@ -585,6 +731,38 @@ const order = () => {
   const { roundOff, grandTotal } = calculateGrandTotal();
   return (
     <div className="p-2 sm:p-6 min-h-screen bg-gray-50 print:bg-white print:p-0 print:text-black">
+      {/* Navigation Warning Modal */}
+      {blocker.state === 'blocked' && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] print:hidden">
+          <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md mx-4 transform transition-all">
+            <div className="flex items-center justify-center mb-4">
+              <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
+                <AlertTriangle className="text-yellow-600" size={24} />
+              </div>
+            </div>
+            <h2 className="text-xl font-bold text-gray-800 text-center mb-2">
+              Unsaved Changes
+            </h2>
+            <p className="text-gray-600 text-center mb-6">
+              This order is not saved. Do you want to leave this page?
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={() => blocker.reset()}
+                className="flex-1 px-4 py-2.5 rounded-lg bg-[#05014A] text-white font-medium hover:bg-[#0A0A47] transition-colors cursor-pointer"
+              >
+                Stay on Page
+              </button>
+              <button
+                onClick={() => blocker.proceed()}
+                className="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors cursor-pointer"
+              >
+                Leave Without Saving
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div
         ref={printRef}
         className="max-w-[1040px] mx-auto bg-white shadow-lg rounded-lg overflow-hidden print:shadow-none print:rounded-none print:w-[210mm] print:min-h-[297mm]"
@@ -690,6 +868,7 @@ const order = () => {
                   <option>Completed</option>
                   <option>Shipped</option>
                   <option>Delivered</option>
+                  <option>Cancelled</option>
                 </select>
               </div>
 
@@ -740,9 +919,8 @@ const order = () => {
                 <tr className="bg-gray-50">
                   <th className="border p-3 text-left text-sm font-semibold text-gray-700">S.No.</th>
                   <th className="border p-3 text-left text-sm font-semibold text-gray-700">Item Name</th>
+                  <th className="border p-3 text-center text-sm font-semibold text-gray-700">Size</th>
                   <th className="border p-3 text-center text-sm font-semibold text-gray-700">Qty</th>
-
-
                   <th className="border p-3 text-center text-sm font-semibold text-gray-700 print:hidden">Action</th>
                 </tr>
               </thead>
@@ -751,16 +929,10 @@ const order = () => {
                   <tr key={index} className="hover:bg-gray-50">
                     <td className="border p-3 text-sm text-gray-600">{index + 1}</td>
                     <td className="border p-3 text-sm text-gray-800 font-medium">{item.productName}</td>
+                    <td className="border p-3 text-sm text-gray-600 text-center">{item.size || '-'}</td>
                     <td className="border p-3 text-sm text-gray-600 text-center">
                       {item.quantity} {item.packingType}
                     </td>
-                    {isEditing ? (
-                      <>
-
-                      </>
-                    ) : (
-                      <></>
-                    )}
                     <td className="border p-3 text-center print:hidden">
                       <div className="flex items-center justify-center space-x-3">
                         <button
@@ -789,15 +961,59 @@ const order = () => {
         {/* Summary Section */}
         <div className="px-6 pb-6">
           <div className="max-w-md ml-auto">
-            <div className="bg-gray-50 rounded-xl p-5 border border-gray-200 print:border-none print:bg-transparent print:p-0 print:m-0 print:outline-none print:appearance-none">
+            <div className="bg-gray-50 rounded-xl p-5 border border-gray-200 print:border-none print:bg-transparent">
+              {/* Payment/Advance Section */}
+              <div className="mb-4 print:hidden">
+                <h4 className="font-semibold text-gray-700 mb-3">
+                  Payment / Advance Received
+                </h4>
+
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Amount:</span>
+                    <input
+                      type="number"
+                      value={paymentAmount}
+                      onChange={(e) => setPaymentAmount(e.target.value)}
+                      className="w-28 text-right border-b border-gray-300 focus:outline-none focus:border-blue-500 px-1"
+                      placeholder="0.00"
+                      min="0"
+                    />
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Type:</span>
+                    <select
+                      value={paymentType}
+                      onChange={(e) => setPaymentType(e.target.value)}
+                      className="w-28 text-right border-b border-gray-300 focus:outline-none focus:border-blue-500 bg-transparent"
+                    >
+                      {PAYMENT_TYPES.map(type => (
+                        <option key={type} value={type}>{type}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Date:</span>
+                    <input
+                      type="date"
+                      value={paymentDate}
+                      onChange={(e) => setPaymentDate(e.target.value)}
+                      className="w-32 text-right border-b border-gray-300 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div className="print:hidden">
-                {(isEditing && !isSaved && customerId) ? (
+                {isDirty ? (
                   <button
                     onClick={handleSave}
                     className="cursor-pointer mt-6 w-full bg-[#05014A] hover:bg-[#0A0A47] text-white py-3 rounded-lg font-medium flex items-center justify-center transition-colors"
                   >
                     <Save className="mr-2" size={20} />
-                    Save order
+                    Save Order
                   </button>
                 ) : (
                   <button
@@ -807,6 +1023,60 @@ const order = () => {
                     <Printer className="mr-2" size={20} />
                     Print Order
                   </button>
+                )}
+
+                {/* Delete Order Button with Popup Confirmation */}
+                {currentorderId && (
+                  <Popup
+                    trigger={
+                      <button
+                        type="button"
+                        className="cursor-pointer mt-3 w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-medium flex items-center justify-center transition-colors"
+                      >
+                        <Trash2 className="mr-2" size={20} />
+                        Delete Order
+                      </button>
+                    }
+                    modal
+                    nested
+                    overlayStyle={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+                  >
+                    {close => (
+                      <div className="relative transform transition-all duration-300 scale-100">
+                        <div className="bg-white p-8 rounded-xl shadow-2xl mx-auto border border-gray-100">
+                          <div className="mb-6">
+                            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                              <Trash2 className="text-red-600" size={24} />
+                            </div>
+                            <h2 className="text-2xl font-bold text-gray-800 text-center mb-2">
+                              Confirm Delete
+                            </h2>
+                            <p className="text-gray-600 text-center">
+                              Are you sure you want to delete this order? This action cannot be undone.
+                            </p>
+                          </div>
+
+                          <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                            <button
+                              onClick={close}
+                              className="w-full sm:w-auto px-6 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-gray-300 cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={() => {
+                                handleDelete();
+                                close();
+                              }}
+                              className="w-full sm:w-auto px-6 py-2.5 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transform hover:scale-105 active:scale-95 cursor-pointer"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </Popup>
                 )}
               </div>
             </div>
