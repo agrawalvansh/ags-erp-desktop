@@ -1,7 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getProducts } from '../../../erpApi';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ChevronDown, Plus, Search, Eye, EyeOff, Edit, Trash2, AlertTriangle, Settings } from 'lucide-react';
+import { ChevronDown, Plus, Search, Eye, EyeOff, Edit, Trash2, AlertTriangle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { sortProducts, extractNumericFromSize } from '../../utils/productUtils';
 import Popup from 'reactjs-popup';
@@ -17,8 +17,6 @@ const PriceList = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [highlightedCode, setHighlightedCode] = useState(null);
-  const [showCleanupPopup, setShowCleanupPopup] = useState(false);
-  const [isCleaningUp, setIsCleaningUp] = useState(false);
   const rowRefs = useRef({});
 
   // Load products from backend on first render (IPC)
@@ -136,42 +134,6 @@ const PriceList = () => {
       toast.error('Failed to delete product');
     } finally {
       setIsDeleting(false);
-    }
-  };
-
-  // Admin cleanup handler - manually triggered
-  const handleAdminCleanup = async () => {
-    setIsCleaningUp(true);
-    try {
-      const result = await window.api.invoke('admin:cleanupSoftDeletedProducts');
-
-      if (!result || result.success === false) {
-        toast.error(result?.error || 'Cleanup failed');
-        return;
-      }
-
-      toast.success(
-        `Cleanup completed. Deleted: ${result.data.deleted}, Skipped: ${result.data.skipped}`
-      );
-
-      // Refresh product list
-      const data = await getProducts();
-      const normalized = data.map(p => ({
-        id: p.code,
-        productName: p.name,
-        code: p.code,
-        size: p.size,
-        costPrice: p.cost_price,
-        packingType: p.packing_type,
-        sellingPrice: p.selling_price,
-      }));
-      setProducts(normalized);
-    } catch (err) {
-      console.error('Admin cleanup error:', err);
-      toast.error('Cleanup failed');
-    } finally {
-      setIsCleaningUp(false);
-      setShowCleanupPopup(false);
     }
   };
 

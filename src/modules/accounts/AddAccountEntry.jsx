@@ -34,8 +34,8 @@ const AddAccountEntry = () => {
     const load = async () => {
       try {
         const data = await (type === 'maal'
-          ? window.api.invoke('maal:get', id)
-          : window.api.invoke('transactions:get', id));
+          ? window.api.invoke('customers:maalGet', id)
+          : window.api.invoke('customers:txnGet', id));
         setFormData({
           date: data.date || data.invoice_date || '',
           invoiceNumber: data.invoice_number || '',
@@ -83,13 +83,17 @@ const AddAccountEntry = () => {
       };
       let channel;
       if (type === 'maal') {
-        channel = isEditing ? 'maal:update' : 'maal:create';
+        channel = isEditing ? 'customers:maalUpdate' : 'customers:maalCreate';
         payload.invoice_number = formData.invoiceNumber;
       } else {
-        channel = isEditing ? 'transactions:update' : 'transactions:create';
+        channel = isEditing ? 'customers:txnUpdate' : 'customers:txnCreate';
         payload.txn_type = formData.txnType;
       }
-      const result = await window.api.invoke(channel, isEditing ? { id, ...payload } : payload);
+      // For maalUpdate, backend expects invoice_id (the maal_invoice_no), not generic id
+      const editPayload = isEditing
+        ? (type === 'maal' ? { invoice_id: id, ...payload } : { id, ...payload })
+        : payload;
+      const result = await window.api.invoke(channel, editPayload);
 
       // Explicit success check - only proceed if backend confirms success
       if (!result || result.error || result.success === false) {
@@ -115,7 +119,7 @@ const AddAccountEntry = () => {
 
     setDeleting(true);
     try {
-      const channel = type === 'maal' ? 'maal:delete' : 'transactions:delete';
+      const channel = type === 'maal' ? 'customers:maalDelete' : 'customers:txnDelete';
       const result = await window.api.invoke(channel, id);
 
       // Explicit success check

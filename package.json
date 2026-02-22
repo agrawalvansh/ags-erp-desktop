@@ -1,7 +1,7 @@
 {
   "name": "ags-erp",
   "private": true,
-  "version": "1.4.0",
+  "version": "1.4.1",
   "main": "main.cjs",
   "build": {
     "appId": "software.amitgeneralstore.desktop",
@@ -21,7 +21,7 @@
     "extraResources": [
       {
         "from": "erp.db",
-        "to": "erp.db"
+        "to": "erp.db"  
       },
       {
         "from": "icons/icon.ico",
