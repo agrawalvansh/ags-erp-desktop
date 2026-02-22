@@ -21,7 +21,7 @@
     "extraResources": [
       {
         "from": "erp.db",
-        "to": "erp.db"  
+        "to": "erp.db"
       },
       {
         "from": "icons/icon.ico",
@@ -40,6 +40,29 @@
       ],
       "icon": "icons/icon.ico"
     },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "icon": "icons/icon.icns",
+      "category": "public.app-category.business"
+    },
+    "dmg": {
+      "title": "AGS-ERP",
+      "icon": "icons/icon.icns",
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
     "nsis": {
       "oneClick": false,
       "perMachine": false,
@@ -54,6 +77,8 @@
   "scripts": {
     "dev": "vite build && electron .",
     "build": "npm run build-react && electron-builder",
+    "build:mac": "npm run build-react && electron-builder --mac",
+    "build:win": "npm run build-react && electron-builder --win",
     "build-react": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
