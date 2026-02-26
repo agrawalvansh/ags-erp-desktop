@@ -180,15 +180,6 @@ const PriceList = () => {
               <Plus className="mr-2" size={20} />
               Add New Product
             </button>
-
-            <button
-              className="flex items-center justify-center bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors duration-200 shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 whitespace-nowrap cursor-pointer"
-              onClick={() => setShowCleanupPopup(true)}
-              title="Admin: Hard delete soft-deleted products"
-            >
-              <Settings className="mr-2" size={20} />
-              Admin Cleanup
-            </button>
           </div>
         </div>
       </header>
@@ -351,51 +342,6 @@ const PriceList = () => {
                 className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors cursor-pointer disabled:opacity-50"
               >
                 {isDeleting ? 'Deleting...' : 'Delete'}
-              </button>
-            </div>
-          </div>
-        )}
-      </Popup>
-
-      {/* Admin Cleanup Confirmation Popup */}
-      <Popup
-        open={showCleanupPopup}
-        onClose={() => setShowCleanupPopup(false)}
-        modal
-        nested
-        closeOnDocumentClick={!isCleaningUp}
-        closeOnEscape={!isCleaningUp}
-      >
-        {(close) => (
-          <div className="p-6 bg-white rounded-xl shadow-2xl max-w-md mx-auto">
-            <div className="flex items-center justify-center mb-4">
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                <AlertTriangle className="text-red-600" size={24} />
-              </div>
-            </div>
-            <h2 className="text-xl font-bold text-gray-800 text-center mb-2">
-              Hard Delete Soft-Deleted Products
-            </h2>
-            <p className="text-gray-600 text-center mb-6">
-              This will permanently delete all soft-deleted products. Products still referenced in invoices or orders will be skipped. This action cannot be undone.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                onClick={() => {
-                  setShowCleanupPopup(false);
-                  close();
-                }}
-                disabled={isCleaningUp}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors cursor-pointer disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAdminCleanup}
-                disabled={isCleaningUp}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors cursor-pointer disabled:opacity-50"
-              >
-                {isCleaningUp ? 'Cleaning up...' : 'Delete Permanently'}
               </button>
             </div>
           </div>
