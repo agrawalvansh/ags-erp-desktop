@@ -6,13 +6,22 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FileText, List, 
   User, 
-  LogOut, Menu, X, Store, Package 
+  LogOut, Menu, X, Store, Package , ReceiptIndianRupee
 } from 'lucide-react';
 
 // Navigation items array
 const navItems = [
   { title: 'Estimate', path: '/invoice', icon: <FileText />, color: '#bb86fc' },
   { title: 'Price List', path: '/price-list', icon: <List />, color: '#03dac6' },
+  {
+    title: 'Quick Sales',
+    icon: <ReceiptIndianRupee />,
+    color: '#cf6679',
+    dropdown: [
+      { title: 'New Quick Sale', path: '/quick-sales/create' },
+      { title: 'View Quick Sales', path: '/quick-sales/list' }
+    ]
+  },
   {
     title: 'Accounts',
     icon: <User />,
@@ -24,13 +33,13 @@ const navItems = [
   },
   {
     title: 'Orders',
-    icon: <Package  />,
+    icon: <Package />,
     color: '#cf6679',
     dropdown: [
       { title: 'Customers', path: '/orders/customers' },
       { title: 'Suppliers', path: '/orders/suppliers' },
     ]
-  },
+  }
 ];
 
 const Layout = ({ children }) => {

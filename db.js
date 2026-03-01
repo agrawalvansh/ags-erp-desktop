@@ -252,6 +252,44 @@ db.prepare(`
   )
 `).run();
 
+// 6. Quick Sales
+
+// Quick Sales header (simpler than invoices - no customer, no extras)
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS quick_sales (
+    qs_id      TEXT    PRIMARY KEY,
+    qs_date    TEXT    NOT NULL,
+    total      REAL    DEFAULT 0.0,
+    remark     TEXT
+  )
+`).run();
+
+// Quick Sale line items
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS quick_sale_items (
+    id            INTEGER   PRIMARY KEY AUTOINCREMENT,
+    qs_id         TEXT      NOT NULL,
+    product_code  TEXT      NOT NULL,
+    quantity      INTEGER   NOT NULL,
+    selling_price REAL      NOT NULL,
+    FOREIGN KEY(qs_id)        REFERENCES quick_sales(qs_id),
+    FOREIGN KEY(product_code) REFERENCES products(code)
+  )
+`).run();
+
+// Init sequence for quick sales
+db.prepare(`
+  INSERT OR IGNORE INTO document_sequences (doc_type, last_number)
+  VALUES ('quick_sale', 0)
+`).run();
+
+// Reusable quick sale numbers pool
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS reusable_quick_sale_numbers (
+    qs_number INTEGER PRIMARY KEY
+  )
+`).run();
+
 // Export only the database connection
 // Cleanup is now handled via admin:cleanupSoftDeletedProducts IPC handler (manual only)
 module.exports = db;

@@ -208,7 +208,7 @@ const AddAccountEntry = () => {
               >
                 <option value="">Select Transaction Type</option>
                 <option value="Cash">Cash</option>
-                <option value="Online">Online</option>
+                <option value="UPI">UPI</option>
                 <option value="Transfer">Transfer</option>
                 <option value="RTGS">RTGS</option>
               </select>

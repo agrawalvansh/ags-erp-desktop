@@ -809,6 +809,123 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
   }));
 
   // -----------------------
+  // Quick Sales
+  // -----------------------
+
+  // Preview next quick sale id (does not consume)
+  ipcMain.handle('quickSales:getNextId', wrap(() => {
+    const reusable = db.prepare('SELECT qs_number FROM reusable_quick_sale_numbers ORDER BY qs_number ASC LIMIT 1').get();
+    if (reusable) return { next_id: `QS-${reusable.qs_number}` };
+    const seq = db.prepare("SELECT last_number FROM document_sequences WHERE doc_type = 'quick_sale'").get();
+    return { next_id: `QS-${(seq.last_number || 0) + 1}` };
+  }));
+
+  // Create quick sale (consumes sequence or reusable)
+  ipcMain.handle('quickSales:create', wrap((data) => {
+    const { qs_date, remark = '', items } = data;
+    if (!qs_date || !Array.isArray(items) || items.length === 0) return { error: 'Missing required fields' };
+
+    const ensureProductStmt = db.prepare('INSERT OR IGNORE INTO products (code, name) VALUES (?, ?)');
+    const insertItemStmt = db.prepare('INSERT INTO quick_sale_items (qs_id, product_code, quantity, selling_price) VALUES (?, ?, ?, ?)');
+
+    const createTxn = db.transaction(() => {
+      // consume reusable number or increment sequence
+      const reusable = db.prepare('SELECT qs_number FROM reusable_quick_sale_numbers ORDER BY qs_number ASC LIMIT 1').get();
+      let num;
+      if (reusable) {
+        db.prepare('DELETE FROM reusable_quick_sale_numbers WHERE qs_number = ?').run(reusable.qs_number);
+        num = reusable.qs_number;
+      } else {
+        db.prepare("UPDATE document_sequences SET last_number = last_number + 1 WHERE doc_type = 'quick_sale'").run();
+        const seq = db.prepare("SELECT last_number FROM document_sequences WHERE doc_type = 'quick_sale'").get();
+        num = seq.last_number;
+      }
+      const qs_id = `QS-${num}`;
+
+      const itemsTotal = items.reduce((s, it) => s + (it.quantity * it.selling_price), 0);
+      const roundedTotal = Math.round(itemsTotal);
+      db.prepare('INSERT INTO quick_sales (qs_id, qs_date, total, remark) VALUES (?, ?, ?, ?)').run(qs_id, qs_date, roundedTotal, remark);
+
+      for (const it of items) {
+        ensureProductStmt.run(it.product_code, it.product_code);
+        insertItemStmt.run(qs_id, it.product_code, it.quantity, it.selling_price);
+      }
+
+      return qs_id;
+    });
+
+    const qs_id = createTxn();
+    return { success: true, qs_id };
+  }));
+
+  // List quick sales with basic totals
+  ipcMain.handle('quickSales:getAll', wrap(() => {
+    const rows = db.prepare(`
+      SELECT qs_id, qs_date, total, remark
+      FROM quick_sales
+      ORDER BY qs_date DESC, qs_id DESC
+    `).all();
+    return rows;
+  }));
+
+  // Get single quick sale (header + items)
+  ipcMain.handle('quickSales:get', wrap((qs_id) => {
+    const header = db.prepare('SELECT * FROM quick_sales WHERE qs_id = ?').get(qs_id);
+    if (!header) return { success: false, error: 'Quick sale not found' };
+    const items = db.prepare('SELECT * FROM quick_sale_items WHERE qs_id = ?').all(qs_id);
+    return { ...header, items };
+  }));
+
+  // Update quick sale (header + items)
+  ipcMain.handle('quickSales:update', wrap((data) => {
+    const { qs_id, qs_date, remark = '', items } = data;
+    if (!qs_id || !qs_date || !Array.isArray(items) || items.length === 0) return { error: 'Missing required fields' };
+
+    const updateTxn = db.transaction(() => {
+      const itemsTotal = items.reduce((s, it) => s + (it.quantity * it.selling_price), 0);
+      const roundedTotal = Math.round(itemsTotal);
+      const res = db.prepare('UPDATE quick_sales SET qs_date = ?, total = ?, remark = ? WHERE qs_id = ?')
+        .run(qs_date, roundedTotal, remark, qs_id);
+
+      if (!res.changes) return 0;
+
+      db.prepare('DELETE FROM quick_sale_items WHERE qs_id = ?').run(qs_id);
+      const insertItemStmt = db.prepare('INSERT INTO quick_sale_items (qs_id, product_code, quantity, selling_price) VALUES (?, ?, ?, ?)');
+      const ensureProductStmt = db.prepare('INSERT OR IGNORE INTO products (code, name) VALUES (?, ?)');
+      for (const it of items) {
+        ensureProductStmt.run(it.product_code, it.product_code);
+        insertItemStmt.run(qs_id, it.product_code, it.quantity, it.selling_price);
+      }
+      return 1;
+    });
+
+    const changed = updateTxn();
+    return changed ? { success: true } : { error: 'Quick sale not found' };
+  }));
+
+  // Delete quick sale (hard delete items + header), add number to reusable pool
+  ipcMain.handle('quickSales:delete', wrap((qs_id) => {
+    if (!qs_id) return { error: 'QS id required' };
+    const deleteTxn = db.transaction(() => {
+      db.prepare('DELETE FROM quick_sale_items WHERE qs_id = ?').run(qs_id);
+      const res = db.prepare('DELETE FROM quick_sales WHERE qs_id = ?').run(qs_id);
+
+      // extract numeric part and add to reusable pool
+      let num = null;
+      if (qs_id && qs_id.startsWith('QS-')) {
+        num = parseInt(qs_id.substring(3), 10);
+      }
+      if (num && !isNaN(num)) {
+        db.prepare('INSERT OR IGNORE INTO reusable_quick_sale_numbers (qs_number) VALUES (?)').run(num);
+      }
+      return res.changes;
+    });
+
+    const changes = deleteTxn();
+    return changes ? { success: true } : { error: 'Quick sale not found' };
+  }));
+
+  // -----------------------
   // Customer Maal (simple invoice entries)
   // -----------------------
   ipcMain.handle('customers:maalGet', wrap((invoice_id) => {

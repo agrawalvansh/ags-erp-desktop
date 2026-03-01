@@ -19,6 +19,8 @@ import AddSupplierAccount from './accounts/AddSupplierAccount';
 import AddSupplierAccountEntry from './accounts/AddSupplierAccountEntry';
 import SupplierOrder from './orders/SupplierOrder';
 import AddSupplierOrder from './orders/AddSupplierOrder';
+import CreateQuickSale from './quick-sales/CreateQuickSales';
+import ListQuickSales from './quick-sales/ListQuickSales';
 
 const ModulesRouter = () => (
   <div className="ml-0 md:ml-[280px] w-[100vw] md:w-[calc(100vw-280px)]">
@@ -30,6 +32,10 @@ const ModulesRouter = () => (
       <Route path="price-list" element={<PriceList />} />
       <Route path="price-list/add" element={<AddPriceListProduct />} />
       <Route path="price-list/edit/:code" element={<AddPriceListProduct />} />
+      {/* Quick Sales */}
+      <Route path="quick-sales/create" element={<CreateQuickSale />} />
+      <Route path="quick-sales/:qsId" element={<CreateQuickSale />} />
+      <Route path="quick-sales/list" element={<ListQuickSales />} />
       {/* Accounts / Buyers */}
       <Route path="accounts/customers" element={<BuyerAccount />} />
       <Route path="accounts/customers/:slug" element={<BuyerAccountDetail />} />

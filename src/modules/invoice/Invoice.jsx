@@ -314,7 +314,7 @@ const Invoice = () => {
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentType, setPaymentType] = useState('Cash');
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
-  const PAYMENT_TYPES = ['Cash', 'UPI', 'Bank', 'Cheque'];
+  const PAYMENT_TYPES = ['Cash', 'UPI', 'Transfer', 'RTGS'];
 
   // Original invoice data for dirty state detection (when editing existing invoice)
   const [originalInvoiceData, setOriginalInvoiceData] = useState(null);
@@ -415,7 +415,7 @@ const Invoice = () => {
 
   // Helper Functions
   const formatNumber = (value) => {
-    return (parseFloat(value) || 0).toFixed(3);
+    return (parseFloat(value) || 0).toFixed(2);
   };
 
   const calculateGrandTotal = () => {
@@ -1168,12 +1168,7 @@ const Invoice = () => {
                   <span>₹{roundOff.toFixed(2)}</span>
                 </div>
 
-                <div className="flex justify-between pt-3 border-t border-gray-300 font-bold text-lg">
-                  <span>Grand Total:</span>
-                  <span className="text-[#05014A]">₹{grandTotal.toFixed(2)}</span>
-                </div>
-
-                {/* Payment/Advance Section */}
+                {/* Payment/Advance Section - Interactive (hidden in print) */}
                 <div className="mt-4 pt-4 border-t border-gray-200 print:hidden">
                   <h4 className="font-semibold text-gray-700 mb-3 flex items-center">
                     Payment / Advance Received
@@ -1186,7 +1181,7 @@ const Invoice = () => {
                         type="number"
                         value={paymentAmount}
                         onChange={(e) => setPaymentAmount(e.target.value)}
-                        className="w-28 text-right border-b border-gray-300 focus:outline-none focus:border-blue-500 px-1"
+                        className="w-24 text-right border-b border-gray-300 focus:outline-none focus:border-blue-500 px-1"
                         placeholder="0.00"
                         min="0"
                       />
@@ -1197,7 +1192,7 @@ const Invoice = () => {
                       <select
                         value={paymentType}
                         onChange={(e) => setPaymentType(e.target.value)}
-                        className="w-28 text-right border-b border-gray-300 focus:outline-none focus:border-blue-500 bg-transparent"
+                        className="w-20 text-left border-b border-gray-300 focus:outline-none focus:border-blue-500 bg-transparent"
                       >
                         {PAYMENT_TYPES.map(type => (
                           <option key={type} value={type}>{type}</option>
@@ -1223,6 +1218,26 @@ const Invoice = () => {
                     </div>
                   )}
                 </div>
+
+                {/* Grand Total - visible on screen and print */}
+                <div className="flex justify-between pt-3 border-t border-gray-300 font-bold text-lg">
+                  <span>Grand Total:</span>
+                  <span className="text-[#05014A]">₹{grandTotal.toFixed(2)}</span>
+                </div>
+
+                {/* Print-only: Payment & Balance Due (read-only text for print) */}
+                {parseFloat(paymentAmount || 0) > 0 && (
+                  <div className="hidden print:block mt-3 pt-3 border-t border-gray-200">
+                    <div className="flex justify-between mb-2">
+                      <span className="text-gray-600">Payment / Advance Received ({paymentType}):</span>
+                      <span className="font-medium">₹{parseFloat(paymentAmount || 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between font-semibold text-green-700">
+                      <span>Balance Due:</span>
+                      <span>₹{(grandTotal - parseFloat(paymentAmount || 0)).toFixed(2)}</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="print:hidden">
