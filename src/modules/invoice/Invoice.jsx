@@ -1135,7 +1135,7 @@ const Invoice = () => {
                 {invoiceItems.map((item, index) => (
                   <tr key={index} className="hover:bg-gray-50">
                     <td className="border p-3 text-sm text-gray-600">{index + 1}</td>
-                    <td className="border p-3 text-sm text-gray-800 font-medium">
+                    <td className="border p-3 text-sm text-gray-800 font-medium" style={{ maxWidth: '200px', wordWrap: 'break-word', whiteSpace: 'normal' }}>
                       <span className="print:hidden">{item.productName}</span>
                       <span className="hidden print:inline">
                         {printMarathi && marathiNames[item.code || item.product_code]

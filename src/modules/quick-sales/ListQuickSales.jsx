@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, ChevronDown, Plus, Edit, Trash2 } from 'lucide-react';
+import { Search, ChevronDown, Plus, Edit, Trash2, AlertTriangle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import Popup from 'reactjs-popup';
+import 'reactjs-popup/dist/index.css';
 
 const ListQuickSales = () => {
     const navigate = useNavigate();
@@ -10,6 +12,8 @@ const ListQuickSales = () => {
     const [sales, setSales] = useState([]);
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
     const [currentPage, setCurrentPage] = useState(1);
+    const [deleteTarget, setDeleteTarget] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
     const itemsPerPage = 10;
 
     // Fetch quick sales on mount
@@ -64,12 +68,13 @@ const ListQuickSales = () => {
         navigate(`/quick-sales/${qsId}`);
     };
 
-    const handleDelete = async (qsId) => {
-        if (!window.confirm(`Are you sure you want to delete ${qsId}?`)) return;
+    const confirmDelete = async () => {
+        if (!deleteTarget) return;
+        setIsDeleting(true);
         try {
-            const res = await window.api.invoke('quickSales:delete', qsId);
+            const res = await window.api.invoke('quickSales:delete', deleteTarget);
             if (res.success) {
-                toast.success(`${qsId} deleted`);
+                toast.success(`${deleteTarget} deleted`);
                 fetchSales();
             } else {
                 toast.error(res.error || 'Failed to delete');
@@ -77,6 +82,9 @@ const ListQuickSales = () => {
         } catch (err) {
             console.error(err);
             toast.error('Failed to delete quick sale');
+        } finally {
+            setIsDeleting(false);
+            setDeleteTarget(null);
         }
     };
 
@@ -178,7 +186,7 @@ const ListQuickSales = () => {
                                                         <Edit size={18} />
                                                     </button>
                                                     <button
-                                                        onClick={() => handleDelete(sale.qs_id)}
+                                                        onClick={() => setDeleteTarget(sale.qs_id)}
                                                         className="cursor-pointer text-red-500 hover:text-red-700 transition-colors"
                                                         title="Delete"
                                                     >
@@ -229,6 +237,54 @@ const ListQuickSales = () => {
                     )}
                 </div>
             </main>
+
+            {/* Delete Confirmation Popup */}
+            <Popup
+                open={deleteTarget !== null}
+                onClose={() => setDeleteTarget(null)}
+                modal
+                nested
+                closeOnDocumentClick={!isDeleting}
+                closeOnEscape={!isDeleting}
+            >
+                {(close) => (
+                    <div className="p-6 bg-white rounded-xl shadow-2xl max-w-md mx-auto">
+                        <div className="flex items-center justify-center mb-4">
+                            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                                <AlertTriangle className="text-red-600" size={24} />
+                            </div>
+                        </div>
+                        <h2 className="text-xl font-bold text-gray-800 text-center mb-2">
+                            Delete Quick Sale
+                        </h2>
+                        <p className="text-gray-600 text-center mb-6">
+                            {`Are you sure you want to delete "${deleteTarget}"?`}
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-3">
+                            <button
+                                onClick={() => {
+                                    setDeleteTarget(null);
+                                    close();
+                                }}
+                                disabled={isDeleting}
+                                className="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors cursor-pointer disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    await confirmDelete();
+                                    close();
+                                }}
+                                disabled={isDeleting}
+                                className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors cursor-pointer disabled:opacity-50"
+                            >
+                                {isDeleting ? 'Deleting...' : 'Delete'}
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </Popup>
         </div>
     );
 };

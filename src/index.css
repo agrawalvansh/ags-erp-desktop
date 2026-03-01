@@ -43,6 +43,19 @@ body {
   .print-hide, .print\:hidden {
     display: none !important;
   }
+
+  /* Hide react-hot-toast during print */
+  [data-sonner-toaster],
+  .go2072408551,
+  [role="status"],
+  div[style*="position: fixed"][style*="z-index"] {
+    display: none !important;
+  }
+
+  /* Hide reactjs-popup overlays */
+  .popup-overlay {
+    display: none !important;
+  }
 }
 
 input, textarea {
