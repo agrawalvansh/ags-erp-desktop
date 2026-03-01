@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Printer, Plus, Trash2, Save, Edit, AlertTriangle } from 'lucide-react';
+import { Printer, Plus, Trash2, Save, Edit, AlertTriangle, Languages } from 'lucide-react';
 import { useParams, useNavigate, useLocation, useBlocker } from 'react-router-dom';
 import { AlertCircle, Search } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -530,11 +530,55 @@ const CreateQuickSale = () => {
         }
     };
 
-    const handlePrint = () => {
-        const originalTitle = document.title;
-        if (customQsId) document.title = `Quick Sale ${customQsId}`;
-        window.print();
-        document.title = originalTitle;
+    // Marathi print state
+    const [printMarathi, setPrintMarathi] = useState(false);
+    const [marathiNames, setMarathiNames] = useState({});
+    const [isTranslating, setIsTranslating] = useState(false);
+
+    const handlePrint = async () => {
+        if (printMarathi) {
+            const codes = invoiceItems.map(i => i.code || i.product_code);
+            try {
+                const { missing } = await window.api.invoke('translate:checkMissing', codes);
+                if (missing.length > 0) {
+                    setIsTranslating(true);
+                    try {
+                        let allTranslated = true;
+                        for (const code of missing) {
+                            const res = await window.api.invoke('translate:toMarathi', code);
+                            if (!res.success) { allTranslated = false; break; }
+                        }
+                        if (!allTranslated) {
+                            toast.error('Marathi names missing. Please connect to internet for translation.');
+                            setIsTranslating(false);
+                            return;
+                        }
+                        toast.success('Ready to print in Marathi');
+                        setIsTranslating(false);
+                        return;
+                    } catch (err) {
+                        toast.error('Marathi names missing. Please connect to internet for translation.');
+                        setIsTranslating(false);
+                        return;
+                    }
+                }
+                const { names } = await window.api.invoke('translate:getMarathiNames', codes);
+                setMarathiNames(names);
+                setTimeout(() => {
+                    const originalTitle = document.title;
+                    if (customQsId) document.title = `Quick Sale ${customQsId}`;
+                    window.print();
+                    document.title = originalTitle;
+                }, 100);
+            } catch (err) {
+                toast.error('Error checking Marathi translations');
+            }
+        } else {
+            const originalTitle = document.title;
+            if (customQsId) document.title = `Quick Sale ${customQsId}`;
+            window.print();
+            document.title = originalTitle;
+        }
     };
 
     const { roundOff, grandTotal } = calculateGrandTotal();
@@ -614,7 +658,14 @@ const CreateQuickSale = () => {
                                 {invoiceItems.map((item, index) => (
                                     <tr key={index} className="hover:bg-gray-50">
                                         <td className="border p-3 text-sm text-gray-600">{index + 1}</td>
-                                        <td className="border p-3 text-sm text-gray-800 font-medium">{item.productName}</td>
+                                        <td className="border p-3 text-sm text-gray-800 font-medium">
+                                            <span className="print:hidden">{item.productName}</span>
+                                            <span className="hidden print:inline">
+                                                {printMarathi && marathiNames[item.code || item.product_code]
+                                                    ? marathiNames[item.code || item.product_code]
+                                                    : item.productName}
+                                            </span>
+                                        </td>
                                         <td className="border p-3 text-sm text-gray-600 text-center">{item.size || '-'}</td>
                                         <td className="border p-3 text-sm text-gray-600 text-center">{item.quantity} {item.packingType}</td>
                                         <td className="border p-3 text-sm text-gray-600 text-center">₹{formatNumber(item.sellingPrice)}</td>
@@ -658,9 +709,26 @@ const CreateQuickSale = () => {
                                         <Save className="mr-2" size={20} />Save Quick Sale
                                     </button>
                                 ) : (
-                                    <button onClick={handlePrint} className="cursor-pointer mt-6 w-full bg-[#05014A] hover:bg-[#0A0A47] text-white py-3 rounded-lg font-medium flex items-center justify-center transition-colors">
-                                        <Printer className="mr-2" size={20} />Print Quick Sale
-                                    </button>
+                                    <>
+                                        <label className="mt-4 flex items-center gap-2 cursor-pointer select-none">
+                                            <input
+                                                type="checkbox"
+                                                checked={printMarathi}
+                                                onChange={(e) => setPrintMarathi(e.target.checked)}
+                                                className="w-4 h-4 rounded border-gray-300 text-[#05014A] focus:ring-[#05014A] cursor-pointer"
+                                            />
+                                            <Languages size={16} className="text-gray-600" />
+                                            <span className="text-sm text-gray-700">Print Product Names in Marathi</span>
+                                        </label>
+                                        <button
+                                            onClick={handlePrint}
+                                            disabled={isTranslating}
+                                            className={`cursor-pointer mt-3 w-full ${isTranslating ? 'bg-gray-400' : 'bg-[#05014A] hover:bg-[#0A0A47]'} text-white py-3 rounded-lg font-medium flex items-center justify-center transition-colors`}
+                                        >
+                                            <Printer className="mr-2" size={20} />
+                                            {isTranslating ? 'Translating...' : 'Print Quick Sale'}
+                                        </button>
+                                    </>
                                 )}
                             </div>
                         </div>

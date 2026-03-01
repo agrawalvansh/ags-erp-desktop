@@ -31,13 +31,54 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     return rows.map(r => ({ ...r }));
   }));
 
-  ipcMain.handle('products:create', wrap((prod) => {
+  // Google Input Tools transliteration helper (English script → Devanagari script)
+  // NOT translation — "Sugar" → "शुगर" (not "साखर")
+  async function transliterateToMarathi(text) {
+    try {
+      if (!text || !text.trim()) return null;
+      // Split into words, transliterate alphabetic words, keep numbers/special chars
+      const words = text.split(/\s+/);
+      const result = [];
+      for (const word of words) {
+        // If the word is purely numeric or special chars, keep as-is
+        if (/^[^a-zA-Z]+$/.test(word)) {
+          result.push(word);
+          continue;
+        }
+        const url = `https://inputtools.google.com/request?text=${encodeURIComponent(word)}&itc=mr-t-i0-und&num=1`;
+        const res = await fetch(url);
+        if (!res.ok) { result.push(word); continue; }
+        const data = await res.json();
+        // Response: ["SUCCESS",[["word",["transliterated",...]]]]
+        if (data[0] === 'SUCCESS' && data[1] && data[1][0] && data[1][0][1] && data[1][0][1][0]) {
+          result.push(data[1][0][1][0]);
+        } else {
+          result.push(word); // fallback to original
+        }
+      }
+      return result.join(' ');
+    } catch (err) {
+      console.error('Transliteration error:', err.message);
+      return null;
+    }
+  }
+
+  ipcMain.handle('products:create', wrap(async (prod) => {
     const { code, name, size, packing_type, cost_price, selling_price } = prod;
     if (!code || !name) return { error: 'Missing required fields' };
     db.prepare(`
         INSERT INTO products (code, name, size, packing_type, cost_price, selling_price, is_deleted)
         VALUES (?, ?, ?, ?, ?, ?, 0)
       `).run(code, name, size, packing_type, cost_price, selling_price);
+
+    // Auto-transliterate to Marathi (non-blocking, never fails product creation)
+    try {
+      const marathiName = await transliterateToMarathi(name);
+      if (marathiName) {
+        db.prepare("UPDATE products SET marathi_name = ?, marathi_status = 'transliterated' WHERE code = ?").run(marathiName, code);
+      }
+    } catch (e) { console.error('Marathi auto-transliterate failed (non-critical):', e.message); }
+
     return { success: true };
   }));
 
@@ -1408,5 +1449,64 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
         total: deletedProducts.length
       }
     };
+  }));
+
+  // -----------------------
+  // Marathi Transliteration
+  // -----------------------
+
+  // Transliterate a single product by code
+  ipcMain.handle('translate:toMarathi', wrap(async (code) => {
+    if (!code) return { error: 'Product code required' };
+    const prod = db.prepare('SELECT code, name, marathi_name FROM products WHERE code = ?').get(code);
+    if (!prod) return { error: 'Product not found' };
+    if (prod.marathi_name) return { success: true, marathi_name: prod.marathi_name };
+    const marathiName = await transliterateToMarathi(prod.name);
+    if (!marathiName) return { error: 'Transliteration failed — check internet connection' };
+    db.prepare("UPDATE products SET marathi_name = ?, marathi_status = 'transliterated' WHERE code = ?").run(marathiName, code);
+    return { success: true, marathi_name: marathiName };
+  }));
+
+  // Batch transliterate all products with missing Marathi names
+  ipcMain.handle('translate:batchMissing', wrap(async () => {
+    const missing = db.prepare(
+      "SELECT code, name FROM products WHERE (marathi_name IS NULL OR marathi_name = '') AND (is_deleted = 0 OR is_deleted IS NULL)"
+    ).all();
+    if (missing.length === 0) return { success: true, translated: 0, total: 0 };
+    let translated = 0;
+    for (const prod of missing) {
+      try {
+        const marathiName = await transliterateToMarathi(prod.name);
+        if (marathiName) {
+          db.prepare("UPDATE products SET marathi_name = ?, marathi_status = 'transliterated' WHERE code = ?").run(marathiName, prod.code);
+          translated++;
+        }
+        // Small delay to avoid rate limiting
+        await new Promise(r => setTimeout(r, 100));
+      } catch (e) { console.error(`Batch transliterate failed for ${prod.code}:`, e.message); }
+    }
+    return { success: true, translated, total: missing.length };
+  }));
+
+  // Check which product codes are missing Marathi names
+  ipcMain.handle('translate:checkMissing', wrap((codes) => {
+    if (!Array.isArray(codes) || codes.length === 0) return { missing: [] };
+    const placeholders = codes.map(() => '?').join(',');
+    const rows = db.prepare(
+      `SELECT code FROM products WHERE code IN (${placeholders}) AND (marathi_name IS NULL OR marathi_name = '')`
+    ).all(...codes);
+    return { missing: rows.map(r => r.code) };
+  }));
+
+  // Get Marathi names for a list of product codes
+  ipcMain.handle('translate:getMarathiNames', wrap((codes) => {
+    if (!Array.isArray(codes) || codes.length === 0) return { names: {} };
+    const placeholders = codes.map(() => '?').join(',');
+    const rows = db.prepare(
+      `SELECT code, marathi_name FROM products WHERE code IN (${placeholders}) AND marathi_name IS NOT NULL AND marathi_name != ''`
+    ).all(...codes);
+    const names = {};
+    for (const r of rows) names[r.code] = r.marathi_name;
+    return { names };
   }));
 };

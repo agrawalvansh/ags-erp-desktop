@@ -29,6 +29,10 @@ db.prepare(`
   )
 `).run();
 
+// Migration: add Marathi translation columns to products (safe to re-run)
+try { db.prepare('ALTER TABLE products ADD COLUMN marathi_name TEXT DEFAULT NULL').run(); } catch (e) { /* column already exists */ }
+try { db.prepare("ALTER TABLE products ADD COLUMN marathi_status TEXT DEFAULT 'missing'").run(); } catch (e) { /* column already exists */ }
+
 // Migration: Add is_deleted column if it doesn't exist
 try {
   db.prepare('SELECT is_deleted FROM products LIMIT 1').get();

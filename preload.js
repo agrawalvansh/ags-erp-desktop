@@ -48,6 +48,14 @@ const exposed = buildApiMap([
 // Add a true generic invoke helper
 exposed.invoke = (...args) => ipcRenderer.invoke(...args);
 
+// Listen for batch Marathi translation events from main process
+exposed.onMarathiBatchStart = (callback) => {
+  ipcRenderer.on('marathi:batchStart', (_event, data) => callback(data));
+};
+exposed.onMarathiBatchComplete = (callback) => {
+  ipcRenderer.on('marathi:batchComplete', (_event, data) => callback(data));
+};
+
 if (!('api' in globalThis)) {
   contextBridge.exposeInMainWorld('api', exposed);
 }
