@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Printer, Plus, Trash2, Save, Edit, AlertTriangle, Languages } from 'lucide-react';
+import { Printer, Plus, Trash2, Save, Edit, AlertTriangle, Languages, CircleX } from 'lucide-react';
 import { useParams, useNavigate, useLocation, useBlocker } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
 import { Search } from 'lucide-react';
@@ -22,6 +22,9 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
   const [showProdDropdown, setShowProdDropdown] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const prodWrapperRef = useRef(null);
+  const sizeInputRef = useRef(null);
+  const quantityInputRef = useRef(null);
+  const rateInputRef = useRef(null);
 
 
   // Filter and sort products with smart sorting (name A-Z, then numeric size)
@@ -35,28 +38,39 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
 
   // Handle keyboard navigation
   const handleKeyDown = (e) => {
-    if (!showProdDropdown) return;
-
-    switch (e.key) {
-      case 'ArrowDown':
+    if (showProdDropdown) {
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          setHighlightedIndex(prev =>
+            Math.min(prev + 1, filteredProducts.length - 1)
+          );
+          return;
+        case 'ArrowUp':
+          e.preventDefault();
+          setHighlightedIndex(prev => Math.max(prev - 1, 0));
+          return;
+        case 'Enter':
+          e.preventDefault();
+          if (highlightedIndex >= 0 && filteredProducts[highlightedIndex]) {
+            handleProductSelect(filteredProducts[highlightedIndex]);
+          }
+          return;
+        case 'Escape':
+          setShowProdDropdown(false);
+          return;
+      }
+    }
+    // Tab from Product Name: DB product → Qty, ad-hoc → Size
+    if (e.key === 'Tab' && !e.shiftKey) {
+      const isAdHoc = !newItem.code;
+      if (isAdHoc) {
         e.preventDefault();
-        setHighlightedIndex(prev =>
-          Math.min(prev + 1, filteredProducts.length - 1)
-        );
-        break;
-      case 'ArrowUp':
+        sizeInputRef.current?.focus();
+      } else {
         e.preventDefault();
-        setHighlightedIndex(prev => Math.max(prev - 1, 0));
-        break;
-      case 'Enter':
-        e.preventDefault();
-        if (highlightedIndex >= 0 && filteredProducts[highlightedIndex]) {
-          handleProductSelect(filteredProducts[highlightedIndex]);
-        }
-        break;
-      case 'Escape':
-        setShowProdDropdown(false);
-        break;
+        quantityInputRef.current?.focus();
+      }
     }
   };
 
@@ -130,7 +144,23 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
               aria-expanded={showProdDropdown}
               aria-controls="product-options"
             />
-            <Search className="absolute right-3 top-3 text-gray-400" size={18} />
+            {newItem.productName && (
+              <button
+                type="button"
+                tabIndex={-1}
+                onClick={() => {
+                  setNewItem({ ...newItem, productName: '', code: '', size: '', sellingPrice: '', packingType: newItem.packingType, originalProduct: null });
+                  productNameInputRef.current?.focus();
+                }}
+                className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 cursor-pointer"
+                aria-label="Clear product"
+              >
+                <CircleX size={18} />
+              </button>
+            )}
+            {!newItem.productName && (
+              <Search className="absolute right-3 top-3 text-gray-400" size={18} />
+            )}
 
             {/* Product Dropdown */}
             {showProdDropdown && (
@@ -183,6 +213,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
             Size
           </label>
           <input
+            ref={sizeInputRef}
             type="text"
             value={newItem.size || ''}
             onChange={(e) => setNewItem({ ...newItem, size: e.target.value })}
@@ -198,11 +229,13 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
               Quantity
             </label>
             <input
+              ref={quantityInputRef}
               type="number"
               min="0.001"
               step="0.001"
               value={newItem.quantity}
               onChange={(e) => setNewItem({ ...newItem, quantity: e.target.value })}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddItem(); } }}
               className={`w-full px-4 py-2.5 border ${formErrors.quantity ? 'border-red-500' : 'border-gray-300'
                 } rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
               placeholder="0.000"
@@ -239,12 +272,13 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
           <div className="relative">
             <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
             <input
-              // id="item-rate"
+              ref={rateInputRef}
               type="number"
               min="0.01"
               step="0.01"
               value={newItem.sellingPrice}
               onChange={(e) => setNewItem({ ...newItem, sellingPrice: e.target.value })}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddItem(); } }}
               className={`w-full pl-8 pr-4 py-2.5 border ${formErrors.sellingPrice ? 'border-red-500' : 'border-gray-300'
                 } rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
               placeholder="0.00"

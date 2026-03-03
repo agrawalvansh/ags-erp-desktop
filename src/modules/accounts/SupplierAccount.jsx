@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, Search, ChevronDown, Edit } from 'lucide-react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
+import { Plus, Search, ChevronDown, Edit, CircleX } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 // List of suppliers (copy of BuyerAccount but using suppliers endpoints)
@@ -9,6 +9,7 @@ const SupplierAccount = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const navigate = useNavigate();
+  const searchInputRef = useRef(null);
 
   const [suppliers, setSuppliers] = useState([]);
   const [loadingSuppliers, setLoadingSuppliers] = useState(true);
@@ -78,33 +79,44 @@ const SupplierAccount = () => {
     <div className="flex flex-col min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-[#caf0f8] p-4 md:p-6">
-              <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-                <h1 className="text-2xl md:text-3xl font-bold text-[#05014A]">Supplier's Accounts</h1>
-      
-                <div className="flex flex-col sm:flex-row w-full md:w-auto gap-3">
-                  <div className="relative w-full">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                    <input
-                      type="text"
-                      placeholder="Search Suppliers..."
-                      className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#05014A] focus:border-transparent"
-                      value={searchTerm}
-                      onChange={(e) => {
-                        setSearchTerm(e.target.value);
-                        setCurrentPage(1);
-                      }}
-                    />
-                  </div>
-                  <button
-                    className="flex items-center justify-center bg-[#05014A] text-white px-4 py-2 rounded-lg hover:bg-[#03012e] transition-colors duration-200 shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#05014A] whitespace-nowrap cursor-pointer"
-                    onClick={() => navigate('/accounts/suppliers/add')}
-                  >
-                    <Plus className="mr-2" size={20} />
-                    Add New Supplier
-                  </button>
-                </div>
-              </div>
-            </header>
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+          <h1 className="text-2xl md:text-3xl font-bold text-[#05014A]">Supplier's Accounts</h1>
+
+          <div className="flex flex-col sm:flex-row w-full md:w-auto gap-3">
+            <div className="relative w-full">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Search Suppliers..."
+                className="w-full pl-10 pr-10 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#05014A] focus:border-transparent"
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => { setSearchTerm(''); setCurrentPage(1); searchInputRef.current?.focus(); }}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                  aria-label="Clear search"
+                >
+                  <CircleX size={18} />
+                </button>
+              )}
+            </div>
+            <button
+              className="flex items-center justify-center bg-[#05014A] text-white px-4 py-2 rounded-lg hover:bg-[#03012e] transition-colors duration-200 shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#05014A] whitespace-nowrap cursor-pointer"
+              onClick={() => navigate('/accounts/suppliers/add')}
+            >
+              <Plus className="mr-2" size={20} />
+              Add New Supplier
+            </button>
+          </div>
+        </div>
+      </header>
 
       {/* Table */}
       <main className="flex-grow p-4 md:p-6">

@@ -30,10 +30,14 @@ body {
     background: white !important;
   }
 
-  input, textarea {
+  input, textarea, select {
     border: none !important;
     background: transparent !important;
     -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: none !important;
+    box-shadow: none !important;
   }
 
   button {

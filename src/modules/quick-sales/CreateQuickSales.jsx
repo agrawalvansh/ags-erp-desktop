@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Printer, Plus, Trash2, Save, Edit, AlertTriangle, Languages } from 'lucide-react';
+import { Printer, Plus, Trash2, Save, Edit, AlertTriangle, Languages, CircleX } from 'lucide-react';
 import { useParams, useNavigate, useLocation, useBlocker } from 'react-router-dom';
 import { AlertCircle, Search } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -20,6 +20,8 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
     const [showProdDropdown, setShowProdDropdown] = useState(false);
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
     const prodWrapperRef = useRef(null);
+    const sizeInputRef = useRef(null);
+    const quantityInputRef = useRef(null);
 
     const filteredProducts = useMemo(() => {
         const filtered = products.filter(p =>
@@ -28,7 +30,30 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
         return sortProducts(filtered, 'name', 'size');
     }, [products, newItem.productName]);
 
+    const clearProductSearch = () => {
+        setNewItem({ ...newItem, productName: '', code: '', size: '', sellingPrice: '', originalProduct: null });
+        setShowProdDropdown(false);
+        setHighlightedIndex(-1);
+        if (productNameInputRef?.current) productNameInputRef.current.focus();
+    };
+
     const handleKeyDown = (e) => {
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            clearProductSearch();
+            return;
+        }
+        if (e.key === 'Tab' && !e.shiftKey) {
+            // Tab from product name: go to Qty if DB product, Size if ad-hoc
+            e.preventDefault();
+            setShowProdDropdown(false);
+            if (newItem.code) {
+                quantityInputRef.current?.focus();
+            } else {
+                sizeInputRef.current?.focus();
+            }
+            return;
+        }
         if (!showProdDropdown) return;
         switch (e.key) {
             case 'ArrowDown':
@@ -44,9 +69,6 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
                 if (highlightedIndex >= 0 && filteredProducts[highlightedIndex]) {
                     handleProductSelect(filteredProducts[highlightedIndex]);
                 }
-                break;
-            case 'Escape':
-                setShowProdDropdown(false);
                 break;
         }
     };
@@ -103,7 +125,19 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
                             className={`w-full px-4 py-2.5 border ${formErrors.productName ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all pr-10`}
                             placeholder="Search for a product..."
                         />
-                        <Search className="absolute right-3 top-3 text-gray-400" size={18} />
+                        {newItem.productName ? (
+                            <button
+                                type="button"
+                                onClick={clearProductSearch}
+                                className="absolute right-3 top-3 text-gray-400 hover:text-red-500 cursor-pointer transition-colors"
+                                aria-label="Clear product search"
+                                tabIndex={-1}
+                            >
+                                <CircleX size={18} />
+                            </button>
+                        ) : (
+                            <Search className="absolute right-3 top-3 text-gray-400" size={18} />
+                        )}
                         {showProdDropdown && (
                             <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                                 {filteredProducts.length > 0 ? (
@@ -138,6 +172,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Size</label>
                     <input
+                        ref={sizeInputRef}
                         type="text"
                         value={newItem.size || ''}
                         onChange={(e) => setNewItem({ ...newItem, size: e.target.value })}
@@ -151,6 +186,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
                         <input
+                            ref={quantityInputRef}
                             type="number" min="0.001" step="0.001"
                             value={newItem.quantity}
                             onChange={(e) => setNewItem({ ...newItem, quantity: e.target.value })}
@@ -186,6 +222,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
                             type="number" min="0.01" step="0.01"
                             value={newItem.sellingPrice}
                             onChange={(e) => setNewItem({ ...newItem, sellingPrice: e.target.value })}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddItem(); } }}
                             className={`w-full pl-8 pr-4 py-2.5 border ${formErrors.sellingPrice ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                             placeholder="0.00"
                         />
@@ -334,17 +371,19 @@ const CreateQuickSale = () => {
 
                 const processedItems = qs.items.map(item => {
                     const prod = products.find(p => p.code === item.product_code) || {};
-                    const baseName = prod.name || item.product_code;
+                    // Use stored product_name for ad-hoc, resolved_name from JOIN, or fall back to product_code
+                    const baseName = item.product_name || item.resolved_name || prod.name || item.product_code || '';
                     const productName = formatName(baseName);
                     return {
                         ...item,
                         productName,
-                        code: item.product_code,
-                        size: prod.size || '',
+                        code: item.product_code || null,
+                        size: item.product_size || item.resolved_size || prod.size || '',
                         quantity: parseFloat(item.quantity).toFixed(3),
-                        packingType: prod.packing_type || '',
+                        packingType: item.packing_type || item.resolved_packing_type || prod.packing_type || '',
                         sellingPrice: parseFloat(item.selling_price).toFixed(3),
                         amount: (item.quantity * item.selling_price).toFixed(3),
+                        isTemporary: item.is_temporary === 1,
                     };
                 });
 
@@ -374,7 +413,7 @@ const CreateQuickSale = () => {
         return Object.keys(errors).length === 0;
     };
 
-    // Add / edit item (same product-creation logic as Invoice)
+    // Add / edit item — Quick Sale does NOT create/update products (ad-hoc items supported)
     const handleAddItem = async () => {
         if (!validateForm()) return;
         const quantity = parseFloat(newItem.quantity);
@@ -384,70 +423,24 @@ const CreateQuickSale = () => {
             return;
         }
         const amount = quantity * sellingPrice;
-        const originalProduct = newItem.originalProduct;
-        const nameChanged = originalProduct && originalProduct.name !== newItem.productName;
-        const sizeChanged = originalProduct && (originalProduct.size || '') !== (newItem.size || '');
-        let productCode = newItem.code;
-        let isNewProduct = !newItem.code;
 
-        if (nameChanged || sizeChanged) {
-            const existingProduct = findProductByNameAndSize(newItem.productName, newItem.size, products);
-            if (existingProduct) {
-                productCode = existingProduct.code;
-                isNewProduct = false;
-                const existingPrice = existingProduct.selling_price ?? existingProduct.sellingPrice ?? 0;
-                if (existingPrice !== sellingPrice) {
-                    try {
-                        await window.api.invoke('products:update', {
-                            code: productCode, name: existingProduct.name, size: existingProduct.size || '',
-                            packing_type: existingProduct.packing_type || newItem.packingType, cost_price: existingProduct.cost_price || 0,
-                            selling_price: sellingPrice
-                        });
-                        toast.success('Price updated in Price List');
-                        setProducts(await window.api.getProducts());
-                    } catch (err) { console.error('Error updating product price:', err); }
-                }
-            } else {
-                productCode = generateProductCode(newItem.productName, newItem.size);
-                isNewProduct = true;
-            }
-        } else if (newItem.code && originalProduct) {
-            const originalPrice = originalProduct.selling_price ?? originalProduct.sellingPrice ?? 0;
-            if (originalPrice !== sellingPrice) {
-                try {
-                    await window.api.invoke('products:update', {
-                        code: newItem.code, name: originalProduct.name, size: originalProduct.size || '',
-                        packing_type: originalProduct.packing_type || newItem.packingType, cost_price: originalProduct.cost_price || 0,
-                        selling_price: sellingPrice
-                    });
-                    toast.success('Price updated in Price List');
-                    setProducts(await window.api.getProducts());
-                } catch (err) { console.error('Error updating product price:', err); }
-            }
-        } else if (!newItem.code) {
-            productCode = generateProductCode(newItem.productName, newItem.size);
-            isNewProduct = true;
-        }
-
-        if (isNewProduct) {
-            try {
-                if (productCodeExists(productCode, products)) {
-                    toast.error('A product with this name and size already exists.');
-                    return;
-                }
-                await window.api.invoke('products:create', {
-                    code: productCode, name: newItem.productName, size: newItem.size || '',
-                    packing_type: newItem.packingType, cost_price: 0, selling_price: sellingPrice
-                });
-                setProducts(await window.api.getProducts());
-                toast.success('New product created');
-            } catch (err) { console.error('Error creating product:', err); toast.error('Error creating product'); return; }
-        }
+        // Determine if this is a known product or an ad-hoc item
+        const isAdHoc = !newItem.code; // no product code means ad-hoc
+        // Generate a product_code for ad-hoc items using the same pattern as Price List
+        const productCode = isAdHoc
+            ? generateProductCode(newItem.productName, newItem.size)
+            : newItem.code;
 
         const newInvoiceItem = {
-            code: productCode, product_code: productCode, productName: newItem.productName,
-            size: newItem.size || '', quantity: quantity.toFixed(3), packingType: newItem.packingType,
-            sellingPrice: sellingPrice.toFixed(3), amount: amount.toFixed(3)
+            code: productCode || null,
+            product_code: productCode || null,
+            productName: newItem.productName,
+            size: newItem.size || '',
+            quantity: quantity.toFixed(3),
+            packingType: newItem.packingType,
+            sellingPrice: sellingPrice.toFixed(3),
+            amount: amount.toFixed(3),
+            isTemporary: isAdHoc,
         };
 
         if (editIndex > -1) {
@@ -455,7 +448,7 @@ const CreateQuickSale = () => {
             setInvoiceItems(updated); setEditIndex(-1); toast.success('Item updated');
         } else {
             setInvoiceItems([...invoiceItems, newInvoiceItem]);
-            if (!isNewProduct) toast.success('Item added');
+            toast.success(isAdHoc ? 'Ad-hoc item added' : 'Item added');
         }
         setNewItem({ code: '', productName: '', size: '', quantity: '', packingType: DEFAULT_PACKING_TYPE, sellingPrice: '', originalProduct: null });
         setFormErrors({});
@@ -465,9 +458,9 @@ const CreateQuickSale = () => {
 
     const handleEditItem = (index) => {
         const item = invoiceItems[index];
-        const originalProduct = products.find(p => p.code === item.code) || null;
+        const originalProduct = item.code ? (products.find(p => p.code === item.code) || null) : null;
         setNewItem({
-            code: item.code, productName: item.productName, size: item.size || '',
+            code: item.code || '', productName: item.productName, size: item.size || '',
             quantity: item.quantity, packingType: item.packingType, sellingPrice: item.sellingPrice,
             originalProduct,
         });
@@ -488,9 +481,13 @@ const CreateQuickSale = () => {
         const payload = {
             qs_date: saleDate,
             items: invoiceItems.map(i => ({
-                product_code: i.code || i.product_code,
+                product_code: i.code || i.product_code || null,
+                product_name: i.productName || '',
+                product_size: i.size || '',
+                packing_type: i.packingType || '',
                 quantity: parseFloat(i.quantity),
-                selling_price: parseFloat(i.sellingPrice)
+                selling_price: parseFloat(i.sellingPrice),
+                is_temporary: i.isTemporary ? 1 : 0
             })),
         };
 
@@ -659,7 +656,9 @@ const CreateQuickSale = () => {
                                     <tr key={index} className="hover:bg-gray-50">
                                         <td className="border p-3 text-sm text-gray-600">{index + 1}</td>
                                         <td className="border p-3 text-sm text-gray-800 font-medium" style={{ maxWidth: '200px', wordWrap: 'break-word', whiteSpace: 'normal' }}>
-                                            <span className="print:hidden">{item.productName}</span>
+                                            <span className="print:hidden">
+                                                {item.productName}
+                                            </span>
                                             <span className="hidden print:inline">
                                                 {printMarathi && marathiNames[item.code || item.product_code]
                                                     ? marathiNames[item.code || item.product_code]

@@ -100,7 +100,7 @@ const ListQuickSales = () => {
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                             <input
                                 type="text"
-                                placeholder="Search by ID or remark..."
+                                placeholder="Search Quick Sales..."
                                 className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#05014A] focus:border-transparent"
                                 value={searchTerm}
                                 onChange={(e) => {
@@ -134,7 +134,7 @@ const ListQuickSales = () => {
                                         onClick={() => handleSort('qs_id')}
                                     >
                                         <div className="flex items-center">
-                                            Quick Sale No
+                                            Quick Sale No.
                                             <ChevronDown
                                                 className={`ml-1 transition-transform ${sortConfig.key === 'qs_id' && sortConfig.direction === 'desc' ? 'rotate-180' : ''}`}
                                                 size={16}

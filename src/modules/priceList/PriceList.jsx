@@ -1,7 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getProducts } from '../../../erpApi';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ChevronDown, Plus, Search, Eye, EyeOff, Edit, Trash2, AlertTriangle } from 'lucide-react';
+import { ChevronDown, Plus, Search, Eye, EyeOff, Edit, Trash2, AlertTriangle, CircleX } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { sortProducts, extractNumericFromSize } from '../../utils/productUtils';
 import Popup from 'reactjs-popup';
@@ -11,6 +11,7 @@ const PriceList = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchTerm, setSearchTerm] = useState('');
+  const searchInputRef = useRef(null);
   const [products, setProducts] = useState([]);
   const [sortConfig, setSortConfig] = useState({ key: 'productName', direction: 'asc' });
   const [showCostPrice, setShowCostPrice] = useState(false);
@@ -157,12 +158,23 @@ const PriceList = () => {
             <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
               <input
+                ref={searchInputRef}
                 type="text"
                 placeholder="Search products or codes..."
-                className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#05014A] focus:border-transparent"
+                className="w-full pl-10 pr-10 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#05014A] focus:border-transparent"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => { setSearchTerm(''); searchInputRef.current?.focus(); }}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                  aria-label="Clear search"
+                >
+                  <CircleX size={18} />
+                </button>
+              )}
             </div>
 
             <button

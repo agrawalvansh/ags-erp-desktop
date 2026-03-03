@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Search, ChevronDown, Plus, Edit } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Search, ChevronDown, Plus, Edit, CircleX } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 
@@ -9,6 +9,7 @@ const BuyerAccount = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const navigate = useNavigate();
+  const searchInputRef = useRef(null);
 
   const [buyers, setBuyers] = useState([]);
   const [loadingBuyers, setLoadingBuyers] = useState(true);
@@ -100,15 +101,26 @@ const BuyerAccount = () => {
             <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
               <input
+                ref={searchInputRef}
                 type="text"
-                placeholder="Search buyers..."
-                className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#05014A] focus:border-transparent"
+                placeholder="Search Customers..."
+                className="w-full pl-10 pr-10 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#05014A] focus:border-transparent"
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
                   setCurrentPage(1);
                 }}
               />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => { setSearchTerm(''); setCurrentPage(1); searchInputRef.current?.focus(); }}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                  aria-label="Clear search"
+                >
+                  <CircleX size={18} />
+                </button>
+              )}
             </div>
             <button
               className="flex items-center justify-center bg-[#05014A] text-white px-4 py-2 rounded-lg hover:bg-[#03012e] transition-colors duration-200 shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#05014A] whitespace-nowrap cursor-pointer"
@@ -138,9 +150,8 @@ const BuyerAccount = () => {
                       <div className="flex items-center capitalize">
                         {col}
                         <ChevronDown
-                          className={`ml-1 transition-transform ${
-                            sortConfig.key === col && sortConfig.direction === 'desc' ? 'rotate-180' : ''
-                          }`}
+                          className={`ml-1 transition-transform ${sortConfig.key === col && sortConfig.direction === 'desc' ? 'rotate-180' : ''
+                            }`}
                           size={16}
                         />
                       </div>
@@ -200,18 +211,16 @@ const BuyerAccount = () => {
                 <button
                   onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                   disabled={currentPage === 1}
-                  className={`px-3 py-1 rounded-md ${
-                    currentPage === 1 ? 'bg-gray-100 cursor-not-allowed' : 'bg-[#05014A] text-white hover:bg-[#03012e]'
-                  }`}
+                  className={`px-3 py-1 rounded-md ${currentPage === 1 ? 'bg-gray-100 cursor-not-allowed' : 'bg-[#05014A] text-white hover:bg-[#03012e]'
+                    }`}
                 >
                   Previous
                 </button>
                 <button
                   onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
                   disabled={currentPage === totalPages}
-                  className={`px-3 py-1 rounded-md ${
-                    currentPage === totalPages ? 'bg-gray-100 cursor-not-allowed' : 'bg-[#05014A] text-white hover:bg-[#03012e]'
-                  }`}
+                  className={`px-3 py-1 rounded-md ${currentPage === totalPages ? 'bg-gray-100 cursor-not-allowed' : 'bg-[#05014A] text-white hover:bg-[#03012e]'
+                    }`}
                 >
                   Next
                 </button>

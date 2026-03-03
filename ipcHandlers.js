@@ -589,6 +589,7 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
               c.name     AS customer_name,
               o.order_date,
               o.remark,
+              COUNT(oi.id) AS item_count,
               IFNULL(SUM(oi.quantity), 0) AS total_quantity
           FROM customer_orders o
           LEFT JOIN customers c ON c.customer_id = o.customer_id
@@ -600,8 +601,11 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
   }));
 
   ipcMain.handle('cusOrders:getNextId', wrap(() => {
-    const cnt = db.prepare('SELECT COUNT(*) AS cnt FROM customer_orders').get().cnt;
-    return { next_id: `O-C-${cnt + 1}` };
+    // Preview next ID (reusable pool first, then sequence)
+    const reusable = db.prepare('SELECT order_number FROM reusable_customer_order_numbers ORDER BY order_number ASC LIMIT 1').get();
+    if (reusable) return { next_id: `O-C-${reusable.order_number}` };
+    const seq = db.prepare("SELECT last_number FROM document_sequences WHERE doc_type = 'customer_order'").get();
+    return { next_id: `O-C-${(seq ? seq.last_number : 0) + 1}` };
   }));
 
   ipcMain.handle('cusOrders:create', wrap((data) => {
@@ -610,16 +614,43 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     if (!customer_id || !order_date || !Array.isArray(items) || items.length === 0) {
       return { error: 'Missing required fields' };
     }
-    const newOrderId = `O-C-${db.prepare('SELECT COUNT(*) AS cnt FROM customer_orders').get().cnt + 1}`;
-    const insertHeader = db.prepare(`INSERT INTO customer_orders (order_id, customer_id, order_date, remark, status) VALUES (?, ?, ?, ?, ?)`);
-    const insertItem = db.prepare(`INSERT INTO customer_order_items (order_id, product_code, quantity) VALUES (?, ?, ?)`);
+
     const ensureProduct = db.prepare('INSERT OR IGNORE INTO products (code, name) VALUES (?, ?)');
-    const txn = db.transaction(() => {
-      insertHeader.run(newOrderId, customer_id, order_date, remark, status);
-      for (const it of items) {
-        ensureProduct.run(it.product_code, it.product_code);
-        insertItem.run(newOrderId, it.product_code, it.quantity);
+    const createTxn = db.transaction(() => {
+      // Generate order ID using reusable pool + sequence (same as invoices)
+      const reusable = db.prepare('SELECT order_number FROM reusable_customer_order_numbers ORDER BY order_number ASC LIMIT 1').get();
+      let orderNum;
+      if (reusable) {
+        db.prepare('DELETE FROM reusable_customer_order_numbers WHERE order_number = ?').run(reusable.order_number);
+        orderNum = reusable.order_number;
+      } else {
+        db.prepare("UPDATE document_sequences SET last_number = last_number + 1 WHERE doc_type = 'customer_order'").run();
+        const seq = db.prepare("SELECT last_number FROM document_sequences WHERE doc_type = 'customer_order'").get();
+        orderNum = seq.last_number;
       }
+      const newOrderId = `O-C-${orderNum}`;
+
+      db.prepare('INSERT INTO customer_orders (order_id, customer_id, order_date, remark, status) VALUES (?, ?, ?, ?, ?)')
+        .run(newOrderId, customer_id, order_date, remark, status);
+
+      const insertItem = db.prepare('INSERT INTO customer_order_items (order_id, product_code, product_name, product_size, packing_type, quantity, item_remark, is_temporary) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+      for (const it of items) {
+        // Only ensureProduct for non-temporary (DB) products
+        if (it.product_code && !it.is_temporary) {
+          ensureProduct.run(it.product_code, it.product_code);
+        }
+        insertItem.run(
+          newOrderId,
+          it.product_code || null,
+          it.product_name || '',
+          it.product_size || '',
+          it.packing_type || '',
+          it.quantity,
+          it.item_remark || '',
+          it.is_temporary ? 1 : 0
+        );
+      }
+
       // Create Jama entry if payment amount > 0
       const paymentAmt = parseFloat(payment_amount) || 0;
       if (paymentAmt > 0) {
@@ -629,15 +660,22 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
                       VALUES (?, ?, ?, ?, ?)`)
           .run(customer_id, payDate, payment_type, paymentAmt, paymentRemark);
       }
+
+      return newOrderId;
     });
-    txn();
+    const newOrderId = createTxn();
     return { success: true, order_id: newOrderId };
   }));
 
   ipcMain.handle('cusOrders:get', wrap((order_id) => {
     const header = db.prepare('SELECT * FROM customer_orders WHERE order_id = ?').get(order_id);
     if (!header) return { error: 'Order not found' };
-    const items = db.prepare('SELECT * FROM customer_order_items WHERE order_id = ?').all(order_id);
+    const items = db.prepare(`
+      SELECT oi.*, p.name AS resolved_name, p.size AS resolved_size, p.packing_type AS resolved_packing_type
+      FROM customer_order_items oi
+      LEFT JOIN products p ON p.code = oi.product_code AND oi.is_temporary = 0
+      WHERE oi.order_id = ?
+    `).all(order_id);
 
     // Check for linked payment (Jama entry with remark "Order {order_id}")
     const paymentRemark = `Order ${order_id}`;
@@ -660,7 +698,7 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
   ipcMain.handle('cusOrders:update', wrap((data) => {
     const { id, order_id, customer_id, order_date, remark = '', status = 'Received', items,
       payment_amount = 0, payment_type = 'Cash', payment_date = null } = data;
-    const orderId = id || order_id; // Accept both 'id' and 'order_id'
+    const orderId = id || order_id;
     if (!orderId || !customer_id || !order_date || !Array.isArray(items) || items.length === 0) {
       return { error: 'Missing required fields' };
     }
@@ -668,11 +706,22 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
       db.prepare('UPDATE customer_orders SET customer_id = ?, order_date = ?, remark = ?, status = ? WHERE order_id = ?')
         .run(customer_id, order_date, remark, status, orderId);
       db.prepare('DELETE FROM customer_order_items WHERE order_id = ?').run(orderId);
-      const insertItem = db.prepare(`INSERT INTO customer_order_items (order_id, product_code, quantity) VALUES (?, ?, ?)`);
+      const insertItem = db.prepare('INSERT INTO customer_order_items (order_id, product_code, product_name, product_size, packing_type, quantity, item_remark, is_temporary) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
       const ensureProduct = db.prepare('INSERT OR IGNORE INTO products (code, name) VALUES (?, ?)');
       for (const it of items) {
-        ensureProduct.run(it.product_code, it.product_code);
-        insertItem.run(orderId, it.product_code, it.quantity);
+        if (it.product_code && !it.is_temporary) {
+          ensureProduct.run(it.product_code, it.product_code);
+        }
+        insertItem.run(
+          orderId,
+          it.product_code || null,
+          it.product_name || '',
+          it.product_size || '',
+          it.packing_type || '',
+          it.quantity,
+          it.item_remark || '',
+          it.is_temporary ? 1 : 0
+        );
       }
 
       // Handle payment/advance (Jama entry management)
@@ -686,22 +735,19 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
       if (paymentAmt > 0) {
         const payDate = payment_date || order_date;
         if (existingPayment) {
-          // Update existing Jama entry
           db.prepare(`UPDATE customer_jama_account SET jama_date = ?, jama_txn_type = ?, jama_amount = ? WHERE id = ?`)
             .run(payDate, payment_type, paymentAmt, existingPayment.id);
         } else {
-          // Create new Jama entry
           db.prepare(`INSERT INTO customer_jama_account (customer_id, jama_date, jama_txn_type, jama_amount, jama_remark)
                         VALUES (?, ?, ?, ?, ?)`)
             .run(customer_id, payDate, payment_type, paymentAmt, paymentRemark);
         }
       } else if (existingPayment) {
-        // Payment amount is 0/empty - delete existing Jama entry
         db.prepare('DELETE FROM customer_jama_account WHERE id = ?').run(existingPayment.id);
       }
     });
     updateTxn();
-    return { success: true };
+    return { success: true, order_id: orderId };
   }));
 
   ipcMain.handle('cusOrders:delete', wrap((order_id) => {
@@ -709,6 +755,15 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
       db.prepare('DELETE FROM customer_order_items WHERE order_id = ?').run(order_id);
       // NOTE: Do NOT delete Jama entry - advance payment must remain in books per accounting rules
       const res = db.prepare('DELETE FROM customer_orders WHERE order_id = ?').run(order_id);
+
+      // Add order number to reusable pool
+      if (order_id && order_id.startsWith('O-C-')) {
+        const orderNum = parseInt(order_id.substring(4), 10);
+        if (orderNum && !isNaN(orderNum)) {
+          db.prepare('INSERT OR IGNORE INTO reusable_customer_order_numbers (order_number) VALUES (?)').run(orderNum);
+        }
+      }
+
       return res.changes;
     });
     const changes = txn();
@@ -866,8 +921,7 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     const { qs_date, remark = '', items } = data;
     if (!qs_date || !Array.isArray(items) || items.length === 0) return { error: 'Missing required fields' };
 
-    const ensureProductStmt = db.prepare('INSERT OR IGNORE INTO products (code, name) VALUES (?, ?)');
-    const insertItemStmt = db.prepare('INSERT INTO quick_sale_items (qs_id, product_code, quantity, selling_price) VALUES (?, ?, ?, ?)');
+    const insertItemStmt = db.prepare('INSERT INTO quick_sale_items (qs_id, product_code, product_name, product_size, packing_type, quantity, selling_price, is_temporary) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
 
     const createTxn = db.transaction(() => {
       // consume reusable number or increment sequence
@@ -888,8 +942,16 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
       db.prepare('INSERT INTO quick_sales (qs_id, qs_date, total, remark) VALUES (?, ?, ?, ?)').run(qs_id, qs_date, roundedTotal, remark);
 
       for (const it of items) {
-        ensureProductStmt.run(it.product_code, it.product_code);
-        insertItemStmt.run(qs_id, it.product_code, it.quantity, it.selling_price);
+        insertItemStmt.run(
+          qs_id,
+          it.product_code || null,
+          it.product_name || '',
+          it.product_size || '',
+          it.packing_type || '',
+          it.quantity,
+          it.selling_price,
+          it.is_temporary ? 1 : 0
+        );
       }
 
       return qs_id;
@@ -913,7 +975,12 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
   ipcMain.handle('quickSales:get', wrap((qs_id) => {
     const header = db.prepare('SELECT * FROM quick_sales WHERE qs_id = ?').get(qs_id);
     if (!header) return { success: false, error: 'Quick sale not found' };
-    const items = db.prepare('SELECT * FROM quick_sale_items WHERE qs_id = ?').all(qs_id);
+    const items = db.prepare(`
+      SELECT qi.*, p.name AS resolved_name, p.size AS resolved_size, p.packing_type AS resolved_packing_type
+      FROM quick_sale_items qi
+      LEFT JOIN products p ON p.code = qi.product_code AND qi.is_temporary = 0
+      WHERE qi.qs_id = ?
+    `).all(qs_id);
     return { ...header, items };
   }));
 
@@ -931,11 +998,18 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
       if (!res.changes) return 0;
 
       db.prepare('DELETE FROM quick_sale_items WHERE qs_id = ?').run(qs_id);
-      const insertItemStmt = db.prepare('INSERT INTO quick_sale_items (qs_id, product_code, quantity, selling_price) VALUES (?, ?, ?, ?)');
-      const ensureProductStmt = db.prepare('INSERT OR IGNORE INTO products (code, name) VALUES (?, ?)');
+      const insertItemStmt = db.prepare('INSERT INTO quick_sale_items (qs_id, product_code, product_name, product_size, packing_type, quantity, selling_price, is_temporary) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
       for (const it of items) {
-        ensureProductStmt.run(it.product_code, it.product_code);
-        insertItemStmt.run(qs_id, it.product_code, it.quantity, it.selling_price);
+        insertItemStmt.run(
+          qs_id,
+          it.product_code || null,
+          it.product_name || '',
+          it.product_size || '',
+          it.packing_type || '',
+          it.quantity,
+          it.selling_price,
+          it.is_temporary ? 1 : 0
+        );
       }
       return 1;
     });
@@ -1112,8 +1186,10 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
   // Supplier Orders
   // -----------------------
   ipcMain.handle('supOrders:getNextId', wrap(() => {
-    const cnt = db.prepare('SELECT COUNT(*) AS cnt FROM supplier_orders').get().cnt;
-    return { next_id: `O-S-${cnt + 1}` };
+    const reusable = db.prepare('SELECT order_number FROM reusable_supplier_order_numbers ORDER BY order_number ASC LIMIT 1').get();
+    if (reusable) return { next_id: `O-S-${reusable.order_number}` };
+    const seq = db.prepare("SELECT last_number FROM document_sequences WHERE doc_type = 'supplier_order'").get();
+    return { next_id: `O-S-${(seq ? seq.last_number : 0) + 1}` };
   }));
 
   ipcMain.handle('supOrders:getAll', wrap(() => {
@@ -1124,6 +1200,7 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
               s.name        AS supplier_name,
               o.order_date,
               o.remark,
+              COUNT(oi.id) AS item_count,
               IFNULL(SUM(oi.quantity), 0) AS total_quantity
           FROM supplier_orders o
           LEFT JOIN suppliers s ON s.supplier_id = o.supplier_id
@@ -1140,17 +1217,41 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     if (!supplier_id || !order_date || !Array.isArray(items) || items.length === 0) {
       return { error: 'Missing required fields' };
     }
-    const newOrderId = `O-S-${db.prepare('SELECT COUNT(*) AS cnt FROM supplier_orders').get().cnt + 1}`;
-    const insertHeader = db.prepare('INSERT INTO supplier_orders (order_id, supplier_id, order_date, remark, status) VALUES (?, ?, ?, ?, ?)');
-    const insertItem = db.prepare('INSERT INTO supplier_order_items (order_id, product_code, quantity) VALUES (?, ?, ?)');
+
     const ensureProduct = db.prepare('INSERT OR IGNORE INTO products (code, name) VALUES (?, ?)');
-    const txn = db.transaction(() => {
-      insertHeader.run(newOrderId, supplier_id, order_date, remark, status);
-      for (const it of items) {
-        ensureProduct.run(it.product_code, it.product_code);
-        insertItem.run(newOrderId, it.product_code, it.quantity);
+    const createTxn = db.transaction(() => {
+      const reusable = db.prepare('SELECT order_number FROM reusable_supplier_order_numbers ORDER BY order_number ASC LIMIT 1').get();
+      let orderNum;
+      if (reusable) {
+        db.prepare('DELETE FROM reusable_supplier_order_numbers WHERE order_number = ?').run(reusable.order_number);
+        orderNum = reusable.order_number;
+      } else {
+        db.prepare("UPDATE document_sequences SET last_number = last_number + 1 WHERE doc_type = 'supplier_order'").run();
+        const seq = db.prepare("SELECT last_number FROM document_sequences WHERE doc_type = 'supplier_order'").get();
+        orderNum = seq.last_number;
       }
-      // Create Jama entry if payment amount > 0
+      const newOrderId = `O-S-${orderNum}`;
+
+      db.prepare('INSERT INTO supplier_orders (order_id, supplier_id, order_date, remark, status) VALUES (?, ?, ?, ?, ?)')
+        .run(newOrderId, supplier_id, order_date, remark, status);
+
+      const insertItem = db.prepare('INSERT INTO supplier_order_items (order_id, product_code, product_name, product_size, packing_type, quantity, item_remark, is_temporary) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+      for (const it of items) {
+        if (it.product_code && !it.is_temporary) {
+          ensureProduct.run(it.product_code, it.product_code);
+        }
+        insertItem.run(
+          newOrderId,
+          it.product_code || null,
+          it.product_name || '',
+          it.product_size || '',
+          it.packing_type || '',
+          it.quantity,
+          it.item_remark || '',
+          it.is_temporary ? 1 : 0
+        );
+      }
+
       const paymentAmt = parseFloat(payment_amount) || 0;
       if (paymentAmt > 0) {
         const payDate = payment_date || order_date;
@@ -1159,17 +1260,23 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
                       VALUES (?, ?, ?, ?, ?)`)
           .run(supplier_id, payDate, payment_type, paymentAmt, paymentRemark);
       }
+
+      return newOrderId;
     });
-    txn();
+    const newOrderId = createTxn();
     return { success: true, order_id: newOrderId };
   }));
 
   ipcMain.handle('supOrders:get', wrap((order_id) => {
     const header = db.prepare('SELECT * FROM supplier_orders WHERE order_id = ?').get(order_id);
     if (!header) return { error: 'Order not found' };
-    const items = db.prepare('SELECT * FROM supplier_order_items WHERE order_id = ?').all(order_id);
+    const items = db.prepare(`
+      SELECT oi.*, p.name AS resolved_name, p.size AS resolved_size, p.packing_type AS resolved_packing_type
+      FROM supplier_order_items oi
+      LEFT JOIN products p ON p.code = oi.product_code AND oi.is_temporary = 0
+      WHERE oi.order_id = ?
+    `).all(order_id);
 
-    // Check for linked payment (Jama entry with remark "Order {order_id}")
     const paymentRemark = `Order ${order_id}`;
     const linkedPayment = db.prepare(
       `SELECT id, jama_date AS payment_date, jama_txn_type AS payment_type, jama_amount AS payment_amount
@@ -1188,50 +1295,56 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
   }));
 
   ipcMain.handle('supOrders:update', wrap((data) => {
-    const { id, order_id, supplier_id, order_date, remark = '', status = 'Received', items,
+    const { id, order_id, supplier_id, order_date, remark = '', status = 'Placed', items,
       payment_amount = 0, payment_type = 'Cash', payment_date = null } = data;
     const orderId = id || order_id;
     if (!orderId || !supplier_id || !order_date || !Array.isArray(items) || items.length === 0) {
       return { error: 'Missing required fields' };
     }
-    const ensureProduct = db.prepare('INSERT OR IGNORE INTO products (code, name) VALUES (?, ?)');
     const updateTxn = db.transaction(() => {
       db.prepare('UPDATE supplier_orders SET supplier_id = ?, order_date = ?, remark = ?, status = ? WHERE order_id = ?')
         .run(supplier_id, order_date, remark, status, orderId);
       db.prepare('DELETE FROM supplier_order_items WHERE order_id = ?').run(orderId);
-      const insertItem = db.prepare('INSERT INTO supplier_order_items (order_id, product_code, quantity) VALUES (?, ?, ?)');
+      const insertItem = db.prepare('INSERT INTO supplier_order_items (order_id, product_code, product_name, product_size, packing_type, quantity, item_remark, is_temporary) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+      const ensureProduct = db.prepare('INSERT OR IGNORE INTO products (code, name) VALUES (?, ?)');
       for (const it of items) {
-        ensureProduct.run(it.product_code, it.product_code);
-        insertItem.run(orderId, it.product_code, it.quantity);
+        if (it.product_code && !it.is_temporary) {
+          ensureProduct.run(it.product_code, it.product_code);
+        }
+        insertItem.run(
+          orderId,
+          it.product_code || null,
+          it.product_name || '',
+          it.product_size || '',
+          it.packing_type || '',
+          it.quantity,
+          it.item_remark || '',
+          it.is_temporary ? 1 : 0
+        );
       }
 
-      // Handle payment/advance (Jama entry management)
       const paymentRemark = `Order ${orderId}`;
       const existingPayment = db.prepare(
         `SELECT id FROM supplier_jama_account WHERE jama_remark = ? OR jama_remark LIKE ?`
       ).get(paymentRemark, `${paymentRemark}%`);
 
       const paymentAmt = parseFloat(payment_amount) || 0;
-
       if (paymentAmt > 0) {
         const payDate = payment_date || order_date;
         if (existingPayment) {
-          // Update existing Jama entry
           db.prepare(`UPDATE supplier_jama_account SET jama_date = ?, jama_txn_type = ?, jama_amount = ? WHERE id = ?`)
             .run(payDate, payment_type, paymentAmt, existingPayment.id);
         } else {
-          // Create new Jama entry
           db.prepare(`INSERT INTO supplier_jama_account (supplier_id, jama_date, jama_txn_type, jama_amount, jama_remark)
                         VALUES (?, ?, ?, ?, ?)`)
             .run(supplier_id, payDate, payment_type, paymentAmt, paymentRemark);
         }
       } else if (existingPayment) {
-        // Payment amount is 0/empty - delete existing Jama entry
         db.prepare('DELETE FROM supplier_jama_account WHERE id = ?').run(existingPayment.id);
       }
     });
     updateTxn();
-    return { success: true };
+    return { success: true, order_id: orderId };
   }));
 
   ipcMain.handle('supOrders:delete', wrap((order_id) => {
@@ -1239,6 +1352,15 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
       db.prepare('DELETE FROM supplier_order_items WHERE order_id = ?').run(order_id);
       // NOTE: Do NOT delete Jama entry - advance payment must remain in books per accounting rules
       const res = db.prepare('DELETE FROM supplier_orders WHERE order_id = ?').run(order_id);
+
+      // Add order number to reusable pool
+      if (order_id && order_id.startsWith('O-S-')) {
+        const orderNum = parseInt(order_id.substring(4), 10);
+        if (orderNum && !isNaN(orderNum)) {
+          db.prepare('INSERT OR IGNORE INTO reusable_supplier_order_numbers (order_number) VALUES (?)').run(orderNum);
+        }
+      }
+
       return res.changes;
     });
     const changes = txn();

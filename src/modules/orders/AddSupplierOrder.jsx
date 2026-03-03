@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Printer, Plus, Trash2, Save, Edit, AlertTriangle } from 'lucide-react';
+import { Printer, Plus, Trash2, Save, Edit, AlertTriangle, CircleX } from 'lucide-react';
 import { useParams, useNavigate, useBlocker } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
 import { Search } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import Popup from 'reactjs-popup';
 import 'reactjs-popup/dist/index.css';
-import { sortProducts, capitalizeWords, DEFAULT_PACKING_TYPE, ALLOWED_PACKING_TYPES } from '../../utils/productUtils';
+import { sortProducts, capitalizeWords, generateProductCode, DEFAULT_PACKING_TYPE, ALLOWED_PACKING_TYPES } from '../../utils/productUtils';
 
 // Add Item Form Component
 // Improved Add Item Form Component
@@ -14,6 +14,8 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors 
   const [showProdDropdown, setShowProdDropdown] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const prodWrapperRef = useRef(null);
+  const sizeInputRef = useRef(null);
+  const quantityInputRef = useRef(null);
 
 
   // Filter and sort products with smart sorting (name A-Z, then numeric size)
@@ -65,8 +67,28 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors 
     setHighlightedIndex(-1);
   };
 
-  // Handle keyboard navigation
+  const clearProductSearch = () => {
+    setNewItem({ ...newItem, productName: '', code: '', size: '' });
+    setShowProdDropdown(false);
+    setHighlightedIndex(-1);
+  };
+
   const handleKeyDown = (e) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      clearProductSearch();
+      return;
+    }
+    if (e.key === 'Tab' && !e.shiftKey) {
+      e.preventDefault();
+      setShowProdDropdown(false);
+      if (newItem.code) {
+        quantityInputRef.current?.focus();
+      } else {
+        sizeInputRef.current?.focus();
+      }
+      return;
+    }
     if (!showProdDropdown) return;
 
     switch (e.key) {
@@ -85,9 +107,6 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors 
         if (highlightedIndex >= 0 && filteredProducts[highlightedIndex]) {
           handleProductSelect(filteredProducts[highlightedIndex]);
         }
-        break;
-      case 'Escape':
-        setShowProdDropdown(false);
         break;
     }
   };
@@ -113,9 +132,9 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors 
         Add New Item
       </h3>
 
-      <div className="grid grid-cols-12 gap-4 items-end">
+      <div className="flex flex-wrap gap-4 items-end">
         {/* Product Search Field */}
-        <div className="col-span-4 relative" ref={prodWrapperRef}>
+        <div className="flex-1 min-w-[200px] relative" ref={prodWrapperRef}>
           <label htmlFor="product-search" className="block text-sm font-medium text-gray-700 mb-1">
             Product Name
           </label>
@@ -140,9 +159,20 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors 
               aria-expanded={showProdDropdown}
               aria-controls="product-options"
             />
-            <Search className="absolute right-3 top-3 text-gray-400" size={18} />
+            {newItem.productName ? (
+              <button
+                type="button"
+                onClick={clearProductSearch}
+                className="absolute right-3 top-3 text-gray-400 hover:text-red-500 cursor-pointer transition-colors"
+                aria-label="Clear product search"
+                tabIndex={-1}
+              >
+                <CircleX size={18} />
+              </button>
+            ) : (
+              <Search className="absolute right-3 top-3 text-gray-400" size={18} />
+            )}
 
-            {/* Product Dropdown */}
             {showProdDropdown && (
               <div
                 className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto"
@@ -172,10 +202,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors 
                     </button>
                   ))
                 ) : (
-                  <div className="px-4 py-3 text-gray-500 text-sm">
-                    {products.length === 0
-                      ? 'Loading products...'
-                      : 'No matching products found'}
+                  <div className="">
                   </div>
                 )}
               </div>
@@ -190,30 +217,33 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors 
         </div>
 
         {/* Size Field */}
-        <div className="col-span-2">
+        <div className="w-24">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Size
           </label>
           <input
+            ref={sizeInputRef}
             type="text"
             value={newItem.size || ''}
             onChange={(e) => setNewItem({ ...newItem, size: e.target.value })}
             className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="e.g., 1 L, 500g"
+            placeholder="e.g., 1 L"
           />
         </div>
 
         {/* Quantity Field */}
-        <div className="col-span-2">
+        <div className="w-28">
           <label htmlFor="item-quantity" className="block text-sm font-medium text-gray-700 mb-1">
             Quantity
           </label>
           <input
+            ref={quantityInputRef}
             type="number"
             min="0.001"
             step="0.001"
             value={newItem.quantity}
             onChange={(e) => setNewItem({ ...newItem, quantity: e.target.value })}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddItem(); } }}
             className={`w-full px-4 py-2.5 border ${formErrors.quantity ? 'border-red-500' : 'border-gray-300'
               } rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
             placeholder="0.000"
@@ -227,27 +257,38 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors 
         </div>
 
         {/* Unit Field */}
-        <div className="col-span-2">
-          <div>
-            <label htmlFor="item-unit" className="block text-sm font-medium text-gray-700 mb-1">
-              Unit
-            </label>
-            <select
-              value={newItem.packingType}
-              onChange={(e) => setNewItem({ ...newItem, packingType: e.target.value })}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
-            >
-              {/* Packing type options from centralized ALLOWED_PACKING_TYPES */}
-              {ALLOWED_PACKING_TYPES.map((type) => (
-                <option key={type} value={type}>{type}</option>
-              ))}
-            </select>
-          </div>
+        <div className="w-24">
+          <label htmlFor="item-unit" className="block text-sm font-medium text-gray-700 mb-1">
+            Unit
+          </label>
+          <select
+            value={newItem.packingType}
+            onChange={(e) => setNewItem({ ...newItem, packingType: e.target.value })}
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
+          >
+            {ALLOWED_PACKING_TYPES.map((type) => (
+              <option key={type} value={type}>{type}</option>
+            ))}
+          </select>
+        </div>
 
+        {/* Item Remark Field */}
+        <div className="flex-1 min-w-[150px]">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Item Remark
+          </label>
+          <input
+            type="text"
+            value={newItem.itemRemark || ''}
+            onChange={(e) => setNewItem({ ...newItem, itemRemark: e.target.value })}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddItem(); } }}
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="Optional note for this item"
+          />
         </div>
 
         {/* Add Button */}
-        <div className="col-span-3">
+        <div className="w-36">
           <button
             onClick={handleAddItem}
             className="cursor-pointer w-full bg-[#05014A] hover:bg-[#0A0A47] text-white px-6 py-2.5 rounded-lg transition-colors flex items-center justify-center space-x-2 font-medium shadow-md hover:shadow-lg"
@@ -272,13 +313,10 @@ const order = () => {
     productName: '',
     size: '',
     quantity: '',
-    packingType: 'PCS',
+    packingType: DEFAULT_PACKING_TYPE,
+    itemRemark: '',
   });
-  const [total, setTotal] = useState(0);
   const [products, setProducts] = useState([]);
-  const [packing, setPacking] = useState('');
-  const [freight, setFreight] = useState('');
-  const [riksha, setRiksha] = useState('');
   const [buyer, setBuyer] = useState('');
   const [supplierId, setsupplierId] = useState('');
   const [suppliers, setsuppliers] = useState([]);
@@ -324,7 +362,7 @@ const order = () => {
 
     if (remark !== (originalOrderData.remark || '')) return true;
     if (orderDate !== originalOrderData.order_date) return true;
-    if (status !== (originalOrderData.status || 'Received')) return true;
+    if (status !== (originalOrderData.status || 'Placed')) return true;
     if (parseFloat(paymentAmount || 0) !== parseFloat(originalOrderData.payment_amount || 0)) return true;
     if (paymentType !== (originalOrderData.payment_type || 'Cash')) return true;
     if (paymentDate !== (originalOrderData.payment_date || originalOrderData.order_date)) return true;
@@ -337,6 +375,8 @@ const order = () => {
       if (!orig) return true;
       if (curr.code !== orig.product_code) return true;
       if (parseFloat(curr.quantity) !== parseFloat(orig.quantity)) return true;
+      if ((curr.itemRemark || '') !== (orig.item_remark || '')) return true;
+      if ((curr.packingType || '') !== (orig.packing_type || '')) return true;
     }
     return false;
   }, [isNewOrder, supplierId, orderItems, originalOrderData, remark, orderDate, status, paymentAmount, paymentType, paymentDate]);
@@ -382,17 +422,7 @@ const order = () => {
     return DEFAULT_PACKING_TYPE;
   };
 
-  const calculateGrandTotal = () => {
-    const subtotal = total + parseFloat(packing || 0) + parseFloat(freight || 0) + parseFloat(riksha || 0);
-    const roundedTotal = Math.round(subtotal);
-    const roundOff = roundedTotal - subtotal;
 
-    return {
-      subtotal,
-      roundOff,
-      grandTotal: roundedTotal
-    };
-  };
 
   // Sync local state when route param changes
   useEffect(() => {
@@ -438,57 +468,56 @@ const order = () => {
     if (orderNo) {
       const fetchorder = async () => {
         try {
-          const inv = await window.api.invoke('supOrders:get', orderNo);
-          if (inv && !inv.error) {
-            const processedItems = inv.items.map((item) => {
-              const prod = products.find((p) => p.code === item.product_code) || {};
-              const baseName = prod.name || item.product_name || item.product_code;
+          const orderData = await window.api.invoke('supOrders:get', orderNo);
+          if (orderData && !orderData.error) {
+            const processedItems = orderData.items.map((item) => {
+              const prod = !item.is_temporary ? (products.find((p) => p.code === item.product_code) || {}) : {};
+              const baseName = item.product_name || item.resolved_name || prod.name || item.product_code;
               const nameWithSpaces = formatName(baseName);
               const quantity = parseFloat(item.quantity).toFixed(2);
               return {
                 ...item,
                 productName: nameWithSpaces,
-                size: prod.size || item.size || '',
+                size: item.product_size || item.resolved_size || prod.size || '',
                 code: item.product_code,
                 quantity,
-                packingType: mapPackingType(prod.packing_type || item.packing_type || '')
+                packingType: mapPackingType(item.packing_type || item.resolved_packing_type || prod.packing_type || ''),
+                itemRemark: item.item_remark || '',
+                isTemporary: item.is_temporary === 1,
               };
             });
 
             setorderItems(processedItems);
-            setCurrentorderId(inv.order_id || orderNo);
-            setsupplierId(inv.supplier_id);
+            setCurrentorderId(orderData.order_id || orderNo);
+            setsupplierId(orderData.supplier_id);
 
             // Look up supplier details from suppliers list
-            const supplier = suppliers.find(s => s.supplier_id === inv.supplier_id);
+            const supplier = suppliers.find(s => s.supplier_id === orderData.supplier_id);
             if (supplier) {
-              setBuyer(supplier.name || inv.supplier_id); // Use name, fallback to ID
+              setBuyer(supplier.name || orderData.supplier_id);
               setMobileNo(supplier.mobile || '');
               setAddress(supplier.address || '');
             } else {
-              setBuyer(inv.supplier_id); // Fallback if supplier not found
+              setBuyer(orderData.supplier_id);
             }
 
-            setRemark(inv.remark || '');
-            setorderDate(inv.order_date);
-            setPacking(inv.packing || '');
-            setFreight(inv.freight || '');
-            setRiksha(inv.riksha || '');
-            setStatus(inv.status || 'Received');
+            setRemark(orderData.remark || '');
+            setorderDate(orderData.order_date);
+            setStatus(orderData.status || 'Placed');
 
             // Load payment info if exists
-            if (inv.payment_amount && inv.payment_amount > 0) {
-              setPaymentAmount(inv.payment_amount.toString());
-              setPaymentType(inv.payment_type || 'Cash');
-              setPaymentDate(inv.payment_date || inv.order_date);
+            if (orderData.payment_amount && orderData.payment_amount > 0) {
+              setPaymentAmount(orderData.payment_amount.toString());
+              setPaymentType(orderData.payment_type || 'Cash');
+              setPaymentDate(orderData.payment_date || orderData.order_date);
             } else {
               setPaymentAmount('');
               setPaymentType('Cash');
-              setPaymentDate(inv.order_date);
+              setPaymentDate(orderData.order_date);
             }
 
             // Store original data for unsaved changes detection
-            setOriginalOrderData(inv);
+            setOriginalOrderData(orderData);
             setIsNewOrder(false);
           }
         } catch (err) {
@@ -499,13 +528,7 @@ const order = () => {
     }
   }, [orderNo, products]);
 
-  // Calculate total whenever items change
-  useEffect(() => {
-    const sum = orderItems.reduce((acc, item) => {
-      return acc + (parseFloat(item.amount) || 0);
-    }, 0);
-    setTotal(sum);
-  }, [orderItems]);
+
 
   // Click outside handler for dropdowns
   useEffect(() => {
@@ -571,13 +594,20 @@ const order = () => {
 
     const amount = quantity * sellingPrice;
 
+    const isAdHoc = !newItem.code;
+    const productCode = isAdHoc
+      ? generateProductCode(newItem.productName, newItem.size)
+      : newItem.code;
+
     const neworderItem = {
-      code: newItem.code,
-      product_code: newItem.code,
+      code: productCode || null,
+      product_code: productCode || null,
       productName: newItem.productName,
       size: newItem.size || '',
       quantity: quantity.toFixed(2),
       packingType: newItem.packingType,
+      itemRemark: newItem.itemRemark || '',
+      isTemporary: isAdHoc,
     };
 
     if (editIndex > -1) {
@@ -595,7 +625,8 @@ const order = () => {
       productName: '',
       size: '',
       quantity: '',
-      packingType: 'PCS',
+      packingType: DEFAULT_PACKING_TYPE,
+      itemRemark: '',
     });
     setFormErrors({});
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -609,6 +640,7 @@ const order = () => {
       size: item.size || '',
       quantity: item.quantity,
       packingType: item.packingType,
+      itemRemark: item.itemRemark || '',
     });
     setEditIndex(index);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -647,8 +679,13 @@ const order = () => {
       remark,
       status,
       items: orderItems.map(i => ({
-        product_code: i.code || i.product_code,
-        quantity: parseFloat(i.quantity)
+        product_code: i.code || i.product_code || null,
+        product_name: i.productName || '',
+        product_size: i.size || '',
+        packing_type: i.packingType || '',
+        quantity: parseFloat(i.quantity),
+        item_remark: i.itemRemark || '',
+        is_temporary: i.isTemporary ? 1 : 0
       })),
       // Payment/Advance fields
       payment_amount: parseFloat(paymentAmount || 0),
@@ -685,7 +722,9 @@ const order = () => {
         order_id: savedOrderId,
         items: orderItems.map(i => ({
           product_code: i.code || i.product_code,
-          quantity: parseFloat(i.quantity)
+          quantity: parseFloat(i.quantity),
+          item_remark: i.itemRemark || '',
+          packing_type: i.packingType || ''
         }))
       });
       setIsNewOrder(false);
@@ -716,7 +755,10 @@ const order = () => {
 
       // Only on confirmed success
       toast.success('Order deleted successfully');
-      navigate('/orders/suppliers');
+      //Add delay for 0.5 seconds
+      setTimeout(() => {
+        navigate('/orders/suppliers');
+      }, 500);
     } catch (err) {
       console.error('Error deleting order:', err);
       toast.error('An error occurred while deleting. Please try again.');
@@ -734,7 +776,6 @@ const order = () => {
     document.title = originalTitle;
   };
 
-  const { roundOff, grandTotal } = calculateGrandTotal();
   return (
     <div className="p-2 sm:p-6 min-h-screen bg-gray-50 print:bg-white print:p-0 print:text-black">
       {/* Navigation Warning Modal */}
@@ -872,7 +913,6 @@ const order = () => {
                   <option>Confirmed</option>
                   <option>In Progress</option>
                   <option>Dispatched</option>
-                  <option>Received</option>
                   <option>Payment Pending</option>
                   <option>Paid</option>
                   <option>Cancelled</option>
@@ -928,6 +968,7 @@ const order = () => {
                   <th className="border p-3 text-left text-sm font-semibold text-gray-700">Item Name</th>
                   <th className="border p-3 text-center text-sm font-semibold text-gray-700">Size</th>
                   <th className="border p-3 text-center text-sm font-semibold text-gray-700">Qty</th>
+                  <th className="border p-3 text-left text-sm font-semibold text-gray-700">Remark</th>
                   <th className="border p-3 text-center text-sm font-semibold text-gray-700 print:hidden">Action</th>
                 </tr>
               </thead>
@@ -935,11 +976,12 @@ const order = () => {
                 {orderItems.map((item, index) => (
                   <tr key={index} className="hover:bg-gray-50">
                     <td className="border p-3 text-sm text-gray-600">{index + 1}</td>
-                    <td className="border p-3 text-sm text-gray-800 font-medium">{item.productName}</td>
+                    <td className="border p-3 text-sm text-gray-800 font-medium" style={{ maxWidth: '200px', wordWrap: 'break-word', whiteSpace: 'normal' }}>{item.productName}</td>
                     <td className="border p-3 text-sm text-gray-600 text-center">{item.size || '-'}</td>
                     <td className="border p-3 text-sm text-gray-600 text-center">
                       {item.quantity} {item.packingType}
                     </td>
+                    <td className="border p-3 text-sm text-gray-600" style={{ maxWidth: '150px', wordWrap: 'break-word', whiteSpace: 'normal' }}>{item.itemRemark || '-'}</td>
                     <td className="border p-3 text-center print:hidden">
                       <div className="flex items-center justify-center space-x-3">
                         <button
@@ -970,7 +1012,7 @@ const order = () => {
           <div className="max-w-md ml-auto">
             <div className="bg-gray-50 rounded-xl p-5 border border-gray-200 print:border-none print:bg-transparent">
               {/* Payment/Advance Section */}
-              <div className="mb-4 print:hidden">
+              <div className="mb-4">
                 <h4 className="font-semibold text-gray-700 mb-3">
                   Payment / Advance Made
                 </h4>
@@ -982,7 +1024,7 @@ const order = () => {
                       type="number"
                       value={paymentAmount}
                       onChange={(e) => setPaymentAmount(e.target.value)}
-                      className="w-28 text-right border-b border-gray-300 focus:outline-none focus:border-blue-500 px-1"
+                      className="w-24 text-right border-b border-gray-300 focus:outline-none focus:border-blue-500 px-1"
                       placeholder="0.00"
                       min="0"
                     />
@@ -993,7 +1035,7 @@ const order = () => {
                     <select
                       value={paymentType}
                       onChange={(e) => setPaymentType(e.target.value)}
-                      className="w-28 text-right border-b border-gray-300 focus:outline-none focus:border-blue-500 bg-transparent"
+                      className="w-20 text-right border-b border-gray-300 focus:outline-none focus:border-blue-500 bg-transparent"
                     >
                       {PAYMENT_TYPES.map(type => (
                         <option key={type} value={type}>{type}</option>
