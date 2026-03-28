@@ -1,20 +1,45 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
-body {
-  @apply overflow-x-hidden bg-slate-100;
+/* === Design System Tokens === */
+:root {
+  --color-primary: #2563EB;
+  --color-primary-dark: #1D4ED8;
+  --color-primary-light: #EFF6FF;
+  --color-surface: #F8FAFC;
+  --color-bg: #F7F9FB;
+  --color-border: #E2E8F0;
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #64748B;
+  --color-success: #16A34A;
+  --color-warning: #F59E0B;
+  --color-danger: #DC2626;
+
+  --sidebar-width: 240px;
+  --font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
-/* Custom scrollbar styles */
+body {
+  @apply overflow-x-hidden;
+  background-color: var(--color-bg);
+  font-family: var(--font-family);
+}
+
+/* Custom scrollbar styles — light theme */
 .scrollbar-thin::-webkit-scrollbar {
   width: 6px;
 }
 
 .scrollbar-thin::-webkit-scrollbar-track {
-  @apply bg-slate-800;
+  @apply bg-gray-100;
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  @apply bg-slate-600 rounded-full;
+  @apply bg-gray-300 rounded-full;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400;
 }
 
 /* Print specific styles */

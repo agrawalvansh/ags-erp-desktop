@@ -23,7 +23,7 @@ import CreateQuickSale from './quick-sales/CreateQuickSales';
 import ListQuickSales from './quick-sales/ListQuickSales';
 
 const ModulesRouter = () => (
-  <div className="ml-0 md:ml-[280px] w-[100vw] md:w-[calc(100vw-280px)]">
+  <div className="ml-0 md:ml-[240px] w-[100vw] md:w-[calc(100vw-240px)]">
     <Routes>
       {/* Invoices */}
       <Route path="invoice" element={<Invoice />} />
