@@ -223,10 +223,17 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
   }));
 
   ipcMain.handle('customers:update', wrap((cust) => {
-    const { customer_id, name, address, mobile } = cust;
-    const res = db.prepare('UPDATE customers SET name = ?, address = ?, mobile = ? WHERE customer_id = ?')
-      .run(name, address, mobile, customer_id);
+    const { customer_id, name, address, mobile, reminder_enabled, reminder_days } = cust;
+    const res = db.prepare('UPDATE customers SET name = ?, address = ?, mobile = ?, reminder_enabled = ?, reminder_days = ? WHERE customer_id = ?')
+      .run(name, address, mobile, reminder_enabled ? 1 : 0, reminder_days || 0, customer_id);
     return res.changes ? { success: true } : { error: 'Customer not found' };
+  }));
+
+  ipcMain.handle('customers:checkDependencies', wrap((customer_id) => {
+    if (!customer_id) return { error: 'Customer ID is required' };
+    const maalCount = db.prepare('SELECT COUNT(*) AS cnt FROM customer_maal_account WHERE customer_id = ?').get(customer_id).cnt;
+    const jamaCount = db.prepare('SELECT COUNT(*) AS cnt FROM customer_jama_account WHERE customer_id = ?').get(customer_id).cnt;
+    return { maalCount, jamaCount, hasDependencies: maalCount > 0 || jamaCount > 0 };
   }));
 
   ipcMain.handle('customers:delete', wrap((customer_id) => {
@@ -433,8 +440,8 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
       }
 
       // Keep maal mirror row in sync
-      db.prepare(`UPDATE customer_maal_account SET maal_date = ?, maal_amount = ?, maal_remark = ? WHERE maal_invoice_no = ?`)
-        .run(invoice_date, grandTotal, remark, invoice_id);
+      db.prepare(`UPDATE customer_maal_account SET customer_id = ?, maal_date = ?, maal_amount = ?, maal_remark = ? WHERE maal_invoice_no = ?`)
+        .run(customer_id, invoice_date, grandTotal, remark, invoice_id);
 
       // Handle payment/advance (Jama entry management)
       const paymentRemark = `Invoice ${invoice_id}`;
@@ -448,8 +455,8 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
         const payDate = payment_date || invoice_date;
         if (existingPayment) {
           // Update existing Jama entry
-          db.prepare(`UPDATE customer_jama_account SET jama_date = ?, jama_txn_type = ?, jama_amount = ? WHERE id = ?`)
-            .run(payDate, payment_type, paymentAmt, existingPayment.id);
+          db.prepare(`UPDATE customer_jama_account SET customer_id = ?, jama_date = ?, jama_txn_type = ?, jama_amount = ? WHERE id = ?`)
+            .run(customer_id, payDate, payment_type, paymentAmt, existingPayment.id);
         } else {
           // Create new Jama entry
           db.prepare(`INSERT INTO customer_jama_account (customer_id, jama_date, jama_txn_type, jama_amount, jama_remark) VALUES (?, ?, ?, ?, ?)`)
@@ -735,8 +742,8 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
       if (paymentAmt > 0) {
         const payDate = payment_date || order_date;
         if (existingPayment) {
-          db.prepare(`UPDATE customer_jama_account SET jama_date = ?, jama_txn_type = ?, jama_amount = ? WHERE id = ?`)
-            .run(payDate, payment_type, paymentAmt, existingPayment.id);
+          db.prepare(`UPDATE customer_jama_account SET customer_id = ?, jama_date = ?, jama_txn_type = ?, jama_amount = ? WHERE id = ?`)
+            .run(customer_id, payDate, payment_type, paymentAmt, existingPayment.id);
         } else {
           db.prepare(`INSERT INTO customer_jama_account (customer_id, jama_date, jama_txn_type, jama_amount, jama_remark)
                         VALUES (?, ?, ?, ?, ?)`)
@@ -1332,8 +1339,8 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
       if (paymentAmt > 0) {
         const payDate = payment_date || order_date;
         if (existingPayment) {
-          db.prepare(`UPDATE supplier_jama_account SET jama_date = ?, jama_txn_type = ?, jama_amount = ? WHERE id = ?`)
-            .run(payDate, payment_type, paymentAmt, existingPayment.id);
+          db.prepare(`UPDATE supplier_jama_account SET supplier_id = ?, jama_date = ?, jama_txn_type = ?, jama_amount = ? WHERE id = ?`)
+            .run(supplier_id, payDate, payment_type, paymentAmt, existingPayment.id);
         } else {
           db.prepare(`INSERT INTO supplier_jama_account (supplier_id, jama_date, jama_txn_type, jama_amount, jama_remark)
                         VALUES (?, ?, ?, ?, ?)`)
@@ -1387,10 +1394,17 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
   }));
 
   ipcMain.handle('suppliers:update', wrap((sup) => {
-    const { supplier_id, name, address, mobile } = sup;
-    const res = db.prepare('UPDATE suppliers SET name = ?, address = ?, mobile = ? WHERE supplier_id = ?')
-      .run(name, address, mobile, supplier_id);
+    const { supplier_id, name, address, mobile, reminder_enabled, reminder_days } = sup;
+    const res = db.prepare('UPDATE suppliers SET name = ?, address = ?, mobile = ?, reminder_enabled = ?, reminder_days = ? WHERE supplier_id = ?')
+      .run(name, address, mobile, reminder_enabled ? 1 : 0, reminder_days || 0, supplier_id);
     return res.changes ? { success: true } : { error: 'Supplier not found' };
+  }));
+
+  ipcMain.handle('suppliers:checkDependencies', wrap((supplier_id) => {
+    if (!supplier_id) return { error: 'Supplier ID is required' };
+    const maalCount = db.prepare('SELECT COUNT(*) AS cnt FROM supplier_maal_account WHERE supplier_id = ?').get(supplier_id).cnt;
+    const jamaCount = db.prepare('SELECT COUNT(*) AS cnt FROM supplier_jama_account WHERE supplier_id = ?').get(supplier_id).cnt;
+    return { maalCount, jamaCount, hasDependencies: maalCount > 0 || jamaCount > 0 };
   }));
 
   ipcMain.handle('suppliers:delete', wrap((supplier_id) => {

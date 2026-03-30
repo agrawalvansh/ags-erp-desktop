@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Save, Trash } from 'lucide-react';
+import { ArrowLeft, Trash2, Check } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import Popup from 'reactjs-popup';
-import 'reactjs-popup/dist/index.css';
 
 const AddAccountEntry = () => {
   const { slug, type, id } = useParams(); // type => 'maal' | 'jama'; id present when editing
@@ -27,6 +25,7 @@ const AddAccountEntry = () => {
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // Load existing entry when editing
   useEffect(() => {
@@ -130,6 +129,7 @@ const AddAccountEntry = () => {
 
       // Only on confirmed success
       toast.success('Entry deleted successfully');
+      setShowDeleteModal(false);
       navigate(`/accounts/customers/${slug}`);
     } catch (err) {
       toast.error('An error occurred while deleting. Please try again.');
@@ -145,181 +145,201 @@ const AddAccountEntry = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const isMaal = type === 'maal';
+  const entryLabel = isMaal ? 'Maal' : 'Jama';
+  const categoryLabel = isMaal ? 'Customer Debit (Maal)' : 'Customer Credit (Jama)';
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="w-full">
-        <header className="bg-[#caf0f8] p-4 md:p-6">
-          <div className="max-w-3xl mx-auto flex items-center">
-            <button
-              onClick={() => navigate(`/accounts/customers/${slug}`)}
-              className="flex items-center text-[#05014A] hover:text-[#03012e] cursor-pointer"
-            >
-              <ArrowLeft className="mr-2" size={20} />
-              Back to Customer Account
-            </button>
-          </div>
-        </header>
-      </div>
-
-      <div className="p-4 md:p-6 max-w-xl mx-auto">
-        <h1 className="text-2xl font-bold mb-6">
-          {isEditing ? 'Edit' : 'Add'} {type === 'maal' ? 'Maal' : 'Jama'} Entry
+    <div className="min-h-screen bg-[#F7F9FB]">
+      {/* ─── Top Bar ─── */}
+      <header className="bg-[#F7F9FB] flex items-center gap-4 px-8 py-5">
+        <button
+          onClick={() => navigate(`/accounts/customers/${slug}`)}
+          className="flex items-center gap-2 text-[#434655] hover:text-[#004AC6] transition-colors group cursor-pointer"
+        >
+          <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
+          <span className="text-sm font-medium">Back to Customer Account</span>
+        </button>
+        <div className="bg-[#ECEEF0] h-6 w-[1px]"></div>
+        <h1 className="text-lg font-bold text-[#191C1E]">
+          {isEditing ? 'Edit' : 'Add'} {entryLabel} Entry
         </h1>
+      </header>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Date */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Date</label>
-            <input
-              type="date"
-              name="date"
-              value={formData.date}
-              onChange={handleChange}
-              className={`w-full border rounded px-3 py-2 ${errors.date ? 'border-red-500' : 'border-gray-300'}`}
-              required
-            />
-            {errors.date && <p className="text-sm text-red-500 mt-1">{errors.date}</p>}
-          </div>
+      {/* ─── Content Canvas ─── */}
+      <main className="flex flex-col items-center px-4 py-8 md:py-12">
+        {/* Form Container */}
+        <div className="w-full max-w-xl bg-white rounded-xl shadow-sm border border-[#C3C6D7]/10 overflow-hidden">
+          {/* Gradient Accent Bar */}
+          <div className="h-1.5 rounded-t-xl" style={{ background: 'linear-gradient(135deg, #004AC6 0%, #2563EB 100%)' }}></div>
 
-          {type === 'maal' ? (
-            <div>
-              <label className="block text-sm font-medium mb-1">Invoice Number</label>
-              <input
-                type="text"
-                name="invoiceNumber"
-                value={formData.invoiceNumber}
-                onChange={handleChange}
-                className={`w-full border rounded px-3 py-2 ${errors.invoiceNumber ? 'border-red-500' : 'border-gray-300'}`}
-                required
-                placeholder='Enter invoice number'
-                autoComplete="off"
-              />
-              {errors.invoiceNumber && <p className="text-sm text-red-500 mt-1">{errors.invoiceNumber}</p>}
+          <form onSubmit={handleSubmit} className="p-8 md:p-10 space-y-8">
+            {/* Header Info */}
+            <div className="mb-2 border-b border-[#ECEEF0] pb-6">
+              <p className="text-[10px] font-bold uppercase text-[#434655] tracking-widest mb-1">Transaction Category</p>
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-black text-[#191C1E] tracking-tight">{categoryLabel}</h2>
+                <span className="px-3 py-1 bg-[#004AC6]/10 text-[#004AC6] text-xs font-bold rounded-full">
+                  {isEditing ? 'Edit Voucher' : 'New Voucher'}
+                </span>
+              </div>
             </div>
-          ) : (
-            <div>
-              <label className="block text-sm font-medium mb-1">Transaction Type</label>
-              <select
-                name="txnType"
-                value={formData.txnType}
-                onChange={handleChange}
-                className={`w-full border rounded px-3 py-2 ${errors.txnType ? 'border-red-500' : 'border-gray-300'}`}
-                required
-              >
-                <option value="">Select Transaction Type</option>
-                <option value="Cash">Cash</option>
-                <option value="UPI">UPI</option>
-                <option value="Transfer">Transfer</option>
-                <option value="RTGS">RTGS</option>
-              </select>
-              {errors.txnType && <p className="text-sm text-red-500 mt-1">{errors.txnType}</p>}
-            </div>
-          )}
 
-          {/* Amount */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Amount (₹)</label>
-            <input
-              type="number"
-              name="amount"
-              value={formData.amount}
-              onChange={handleChange}
-              className={`w-full border rounded px-3 py-2 ${errors.amount ? 'border-red-500' : 'border-gray-300'}`}
-              required
-              placeholder="Enter amount"
-            />
-            {errors.amount && <p className="text-sm text-red-500 mt-1">{errors.amount}</p>}
-          </div>
+            {/* Form Fields Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Date */}
+              <div className="space-y-2">
+                <label className="block text-[10px] font-bold uppercase text-[#434655] tracking-wider ml-1">
+                  Date <span className="text-[#BA1A1A]">*</span>
+                </label>
+                <input
+                  type="date"
+                  name="date"
+                  value={formData.date}
+                  onChange={handleChange}
+                  className={`w-full bg-[#F2F4F6] border-none rounded-lg px-4 py-3 text-sm font-medium focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none ${errors.date ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
+                  required
+                />
+                {errors.date && <p className="text-xs text-[#BA1A1A] ml-1">{errors.date}</p>}
+              </div>
 
-          {/* Remark */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Remark</label>
-            <input
-              type="text"
-              name="remark"
-              value={formData.remark}
-              onChange={handleChange}
-              className="w-full border rounded px-3 py-2"
-              placeholder="Enter remark"
-              autoComplete="off"
-            />
-          </div>
-
-          <div className="mt-8 flex justify-end">
-            {isEditing && (
-              <Popup
-                trigger={
-                  <button
-                    type="button"
-                    disabled={deleting}
-                    className="flex items-center bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed mr-4 cursor-pointer transform hover:scale-105 active:scale-95 shadow-md hover:shadow-lg"
+              {/* Transaction Type (Jama) or Invoice Number (Maal) */}
+              {isMaal ? (
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-bold uppercase text-[#434655] tracking-wider ml-1">
+                    Invoice Number <span className="text-[#BA1A1A]">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="invoiceNumber"
+                    value={formData.invoiceNumber}
+                    onChange={handleChange}
+                    className={`w-full bg-[#F2F4F6] border-none rounded-lg px-4 py-3 text-sm font-medium focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none ${errors.invoiceNumber ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
+                    required
+                    placeholder="Enter invoice number"
+                    autoComplete="off"
+                  />
+                  {errors.invoiceNumber && <p className="text-xs text-[#BA1A1A] ml-1">{errors.invoiceNumber}</p>}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-bold uppercase text-[#434655] tracking-wider ml-1">
+                    Transaction Type <span className="text-[#BA1A1A]">*</span>
+                  </label>
+                  <select
+                    name="txnType"
+                    value={formData.txnType}
+                    onChange={handleChange}
+                    className={`w-full bg-[#F2F4F6] border-none rounded-lg px-4 py-3 text-sm font-medium focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none appearance-none ${errors.txnType ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
+                    required
                   >
-                    <Trash className="mr-2" size={20} />
-                    {deleting ? (
-                      <span className="flex items-center">
-                        <svg className="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                        </svg>
-                        Deleting...
-                      </span>
-                    ) : (
-                      'Delete'
-                    )}
-                  </button>
-                }
-                modal
-                nested
-                overlayStyle={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
-              >
-                {close => (
-                  <div className="relative transform transition-all duration-300 scale-100">
-                    <div className="bg-white p-8 rounded-xl shadow-2xl mx-auto border border-gray-100">
-                      <div className="mb-6">
-                        <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                          <Trash className="text-red-600" size={24} />
-                        </div>
-                        <h2 className="text-2xl font-bold text-gray-800 text-center mb-2">
-                          Confirm Delete
-                        </h2>
-                        <p className="text-gray-600 text-center">
-                          Are you sure you want to delete this product? This action cannot be undone.
-                        </p>
-                      </div>
+                    <option value="">Select Transaction Type</option>
+                    <option value="Cash">Cash</option>
+                    <option value="UPI">UPI</option>
+                    <option value="Transfer">Transfer</option>
+                    <option value="RTGS">RTGS</option>
+                  </select>
+                  {errors.txnType && <p className="text-xs text-[#BA1A1A] ml-1">{errors.txnType}</p>}
+                </div>
+              )}
 
-                      <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-                        <button
-                          onClick={close}
-                          className="w-full sm:w-auto px-6 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-gray-300 cursor-pointer"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={() => {
-                            handleDelete();
-                            close();
-                          }}
-                          className="w-full sm:w-auto px-6 py-2.5 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transform hover:scale-105 active:scale-95 cursor-pointer"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </Popup>
-            )}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="flex items-center bg-[#05014A] text-white px-6 py-2 rounded-lg hover:bg-[#03012e] disabled:opacity-50 cursor-pointer"
-            >
-              <Save className="mr-2" size={20} />
-              {isLoading ? (isEditing ? 'Updating...' : 'Saving...') : (isEditing ? 'Update Entry' : 'Add Entry')}
-            </button>
+              {/* Amount */}
+              <div className="md:col-span-2 space-y-2">
+                <label className="block text-[10px] font-bold uppercase text-[#434655] tracking-wider ml-1">
+                  Amount (₹) <span className="text-[#BA1A1A]">*</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#434655] font-bold">₹</span>
+                  <input
+                    type="number"
+                    name="amount"
+                    value={formData.amount}
+                    onChange={handleChange}
+                    className={`w-full bg-[#F2F4F6] border-none rounded-lg pl-8 pr-4 py-4 text-2xl font-black text-[#004AC6] focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none placeholder:text-[#C3C6D7] ${errors.amount ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
+                    required
+                    placeholder="0.00"
+                  />
+                </div>
+                {errors.amount && <p className="text-xs text-[#BA1A1A] ml-1">{errors.amount}</p>}
+              </div>
+
+              {/* Remark */}
+              <div className="md:col-span-2 space-y-2">
+                <label className="block text-[10px] font-bold uppercase text-[#434655] tracking-wider ml-1">
+                  Remark
+                </label>
+                <textarea
+                  name="remark"
+                  value={formData.remark}
+                  onChange={handleChange}
+                  className="w-full bg-[#F2F4F6] border-none rounded-lg px-4 py-3 text-sm font-medium focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none resize-none placeholder:text-[#C3C6D7]"
+                  placeholder="Enter transaction details or reference numbers..."
+                  rows={3}
+                  autoComplete="off"
+                />
+              </div>
+            </div>
+
+            {/* Action Footer */}
+            <div className="flex items-center justify-between pt-8 border-t border-[#ECEEF0]">
+              {isEditing ? (
+                <button
+                  type="button"
+                  disabled={deleting}
+                  onClick={() => setShowDeleteModal(true)}
+                  className="px-6 py-3 bg-[#DC2626] text-white font-bold rounded-xl text-sm hover:bg-red-700 transition-colors active:scale-95 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {deleting ? 'Deleting...' : 'Delete'}
+                </button>
+              ) : (
+                <div></div>
+              )}
+              <button
+                type="submit"
+                disabled={submitting}
+                className="px-10 py-3 text-white font-bold rounded-xl text-sm shadow-lg shadow-[#004AC6]/20 hover:opacity-90 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                style={{ background: 'linear-gradient(135deg, #004AC6 0%, #2563EB 100%)' }}
+              >
+                <span>{submitting ? (isEditing ? 'Updating...' : 'Saving...') : 'Save Entry'}</span>
+                {!submitting && <Check size={16} />}
+              </button>
+            </div>
+          </form>
+        </div>
+      </main>
+
+      {/* ─── Delete Confirmation — Stitch Glass Overlay ─── */}
+      {showDeleteModal && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.7)' }}
+        >
+          <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl border border-[#C3C6D7]/20 p-8 text-center">
+            <div className="w-16 h-16 bg-red-100/50 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Trash2 size={28} className="text-[#DC2626]" />
+            </div>
+            <h3 className="text-lg font-bold text-[#0F172A] mb-2">Delete Entry?</h3>
+            <p className="text-sm text-[#434655] mb-8 px-4">
+              This action cannot be undone. This {entryLabel.toLowerCase()} entry will be permanently removed.
+            </p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => handleDelete()}
+                disabled={deleting}
+                className="w-full py-3 bg-[#DC2626] text-white font-bold rounded-xl text-sm active:scale-95 transition-transform cursor-pointer hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Delete Entry
+              </button>
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="w-full py-3 bg-[#ECEEF0] text-[#191C1E] font-bold rounded-xl text-sm hover:bg-[#E6E8EA] transition-colors active:scale-95 cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
-        </form>
-      </div>
+        </div>
+      )}
     </div>
   );
 };

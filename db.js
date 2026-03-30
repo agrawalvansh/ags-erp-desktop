@@ -52,6 +52,10 @@ db.prepare(`
   )
 `).run();
 
+// Migration: add reminder columns to customers (safe to re-run)
+try { db.prepare('ALTER TABLE customers ADD COLUMN reminder_enabled INTEGER DEFAULT 0').run(); } catch (e) { /* column already exists */ }
+try { db.prepare('ALTER TABLE customers ADD COLUMN reminder_days INTEGER DEFAULT 0').run(); } catch (e) { /* column already exists */ }
+
 // Suppliers table
 db.prepare(`
   CREATE TABLE IF NOT EXISTS suppliers (
@@ -61,6 +65,10 @@ db.prepare(`
     mobile         TEXT
   )
 `).run();
+
+// Migration: add reminder columns to suppliers (safe to re-run)
+try { db.prepare('ALTER TABLE suppliers ADD COLUMN reminder_enabled INTEGER DEFAULT 0').run(); } catch (e) { /* column already exists */ }
+try { db.prepare('ALTER TABLE suppliers ADD COLUMN reminder_days INTEGER DEFAULT 0').run(); } catch (e) { /* column already exists */ }
 
 // 2. Invoices
 

@@ -89,108 +89,127 @@ const ListQuickSales = () => {
     };
 
     return (
-        <div className="flex flex-col min-h-screen bg-gray-50">
-            {/* Header */}
-            <header className="bg-[#caf0f8] p-4 md:p-6">
-                <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-                    <h1 className="text-2xl md:text-3xl font-bold text-[#05014A]">Quick Sales</h1>
-
-                    <div className="flex flex-col sm:flex-row w-full md:w-auto gap-3">
-                        <div className="relative w-full">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                            <input
-                                type="text"
-                                placeholder="Search Quick Sales..."
-                                className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#05014A] focus:border-transparent"
-                                value={searchTerm}
-                                onChange={(e) => {
-                                    setSearchTerm(e.target.value);
-                                    setCurrentPage(1);
-                                }}
-                            />
+        <div className="flex flex-col min-h-screen bg-[#F7F9FB]">
+            {/* Page Header */}
+            <div className="px-4 md:px-8 pt-8 pb-2">
+                <div className="max-w-7xl mx-auto">
+                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+                        <div>
+                            <h1 className="text-3xl font-extrabold tracking-tight text-[#191C1E] mb-1">Quick Sales</h1>
+                            <p className="text-[#434655] text-sm font-medium">View and manage rapid point-of-sale transactions</p>
                         </div>
-
-                        <button
-                            className="flex items-center justify-center bg-[#05014A] text-white px-4 py-2 rounded-lg hover:bg-[#03012e] transition-colors duration-200 shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#05014A] whitespace-nowrap cursor-pointer"
-                            onClick={() => navigate('/quick-sales/create')}
-                        >
-                            <Plus className="mr-2" size={20} />
-                            New Quick Sale
-                        </button>
+                        <div className="flex items-center gap-3">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#434655]" size={18} />
+                                <input
+                                    type="text"
+                                    placeholder="Search Quick Sales..."
+                                    className="w-72 bg-white border border-[#C3C6D7]/20 rounded-lg py-2.5 pl-10 pr-10 text-sm focus:border-[#004AC6] focus:ring-4 focus:ring-[#004AC6]/5 transition-all outline-none"
+                                    value={searchTerm}
+                                    onChange={(e) => {
+                                        setSearchTerm(e.target.value);
+                                        setCurrentPage(1);
+                                    }}
+                                />
+                                {searchTerm && (
+                                    <button
+                                        type="button"
+                                        onClick={() => { setSearchTerm(''); setCurrentPage(1); }}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#434655] hover:text-[#DC2626] cursor-pointer transition-colors"
+                                    >
+                                        ×
+                                    </button>
+                                )}
+                            </div>
+                            <button
+                                className="cursor-pointer bg-gradient-to-br from-[#004AC6] to-[#2563EB] text-white px-5 py-2.5 rounded-lg flex items-center gap-2 font-semibold shadow-lg shadow-[#004AC6]/20 active:scale-95 transition-transform whitespace-nowrap"
+                                onClick={() => navigate('/quick-sales/create')}
+                            >
+                                <Plus size={18} />
+                                <span>New Sale</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </header>
+            </div>
 
-            {/* Table */}
-            <main className="flex-1 p-4 md:p-6">
-                <div className="max-w-7xl mx-auto bg-white rounded-xl shadow-md overflow-hidden">
+            {/* Data Table */}
+            <main className="flex-1 px-4 md:px-8 pb-12">
+                <div className="max-w-7xl mx-auto bg-white rounded-xl overflow-hidden shadow-sm border border-[#C3C6D7]/5">
                     <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-[#05014A] text-white">
+                        <table className="w-full text-left border-collapse">
+                            <thead className="bg-[#F2F4F6]/50">
                                 <tr>
-                                    <th className="p-3 text-left">No.</th>
+                                    <th className="py-4 px-6 text-[11px] font-bold text-[#434655] uppercase tracking-wider">No.</th>
                                     <th
-                                        className="p-3 text-left cursor-pointer hover:bg-[#03012e] transition-colors"
+                                        className="py-4 px-6 text-[11px] font-bold text-[#434655] uppercase tracking-wider cursor-pointer hover:text-[#004AC6] transition-colors"
                                         onClick={() => handleSort('qs_id')}
                                     >
-                                        <div className="flex items-center">
-                                            Quick Sale No.
+                                        <div className="flex items-center gap-1">
+                                            Quick Sale ID
                                             <ChevronDown
-                                                className={`ml-1 transition-transform ${sortConfig.key === 'qs_id' && sortConfig.direction === 'desc' ? 'rotate-180' : ''}`}
-                                                size={16}
+                                                className={`transition-transform ${sortConfig.key === 'qs_id' && sortConfig.direction === 'desc' ? 'rotate-180' : ''}`}
+                                                size={14}
                                             />
                                         </div>
                                     </th>
                                     <th
-                                        className="p-3 text-left cursor-pointer hover:bg-[#03012e] transition-colors"
-                                        onClick={() => handleSort('total')}
-                                    >
-                                        <div className="flex items-center">
-                                            Amount
-                                            <ChevronDown
-                                                className={`ml-1 transition-transform ${sortConfig.key === 'total' && sortConfig.direction === 'desc' ? 'rotate-180' : ''}`}
-                                                size={16}
-                                            />
-                                        </div>
-                                    </th>
-                                    <th
-                                        className="p-3 text-left cursor-pointer hover:bg-[#03012e] transition-colors"
+                                        className="py-4 px-6 text-[11px] font-bold text-[#434655] uppercase tracking-wider cursor-pointer hover:text-[#004AC6] transition-colors"
                                         onClick={() => handleSort('qs_date')}
                                     >
-                                        <div className="flex items-center">
+                                        <div className="flex items-center gap-1">
                                             Date
                                             <ChevronDown
-                                                className={`ml-1 transition-transform ${sortConfig.key === 'qs_date' && sortConfig.direction === 'desc' ? 'rotate-180' : ''}`}
-                                                size={16}
+                                                className={`transition-transform ${sortConfig.key === 'qs_date' && sortConfig.direction === 'desc' ? 'rotate-180' : ''}`}
+                                                size={14}
                                             />
                                         </div>
                                     </th>
-                                    <th className="p-3 text-center">Action</th>
+                                    <th
+                                        className="py-4 px-6 text-[11px] font-bold text-[#434655] uppercase tracking-wider text-right cursor-pointer hover:text-[#004AC6] transition-colors"
+                                        onClick={() => handleSort('total')}
+                                    >
+                                        <div className="flex items-center justify-end gap-1">
+                                            Total Amount (₹)
+                                            <ChevronDown
+                                                className={`transition-transform ${sortConfig.key === 'total' && sortConfig.direction === 'desc' ? 'rotate-180' : ''}`}
+                                                size={14}
+                                            />
+                                        </div>
+                                    </th>
+                                    <th className="py-4 px-6 text-[11px] font-bold text-[#434655] uppercase tracking-wider text-right">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-200">
+                            <tbody className="divide-y-0">
                                 {processedSales.length > 0 ? (
                                     processedSales.map((sale, index) => (
-                                        <tr key={sale.qs_id} className="hover:bg-gray-50 transition-colors">
-                                            <td className="p-3">{(currentPage - 1) * itemsPerPage + index + 1}</td>
-                                            <td className="p-3 font-medium text-gray-900 cursor-pointer hover:text-blue-600 hover:underline" onClick={() => handleEdit(sale.qs_id)}>{sale.qs_id}</td>
-                                            <td className="p-3">₹{(parseFloat(sale.total) || 0).toFixed(2)}</td>
-                                            <td className="p-3">{sale.qs_date}</td>
-                                            <td className="p-3 text-center">
-                                                <div className="flex items-center justify-center space-x-3">
+                                        <tr key={sale.qs_id} className="group hover:bg-[#F2F4F6] transition-colors cursor-pointer">
+                                            <td className="py-5 px-6 text-sm text-[#434655] font-medium">{String((currentPage - 1) * itemsPerPage + index + 1).padStart(2, '0')}</td>
+                                            <td className="py-5 px-6">
+                                                <span
+                                                    className="bg-[#E6E8EA] px-2 py-1 rounded text-[10px] font-bold text-[#004AC6] cursor-pointer hover:bg-[#D0E1FB] transition-colors"
+                                                    onClick={() => handleEdit(sale.qs_id)}
+                                                >
+                                                    {sale.qs_id}
+                                                </span>
+                                            </td>
+                                            <td className="py-5 px-6 text-sm font-medium text-[#191C1E]">{sale.qs_date}</td>
+                                            <td className="py-5 px-6 text-right font-black text-[#191C1E]">₹{(parseFloat(sale.total) || 0).toFixed(2)}</td>
+                                            <td className="py-5 px-6 text-right">
+                                                <div className="flex items-center justify-end gap-2">
                                                     <button
                                                         onClick={() => handleEdit(sale.qs_id)}
-                                                        className="cursor-pointer text-blue-500 hover:text-blue-700 transition-colors"
+                                                        className="cursor-pointer p-2 rounded-full hover:bg-white text-[#434655] hover:text-[#004AC6] transition-all shadow-none hover:shadow-sm"
                                                         title="Edit"
                                                     >
-                                                        <Edit size={18} />
+                                                        <Edit size={16} />
                                                     </button>
                                                     <button
                                                         onClick={() => setDeleteTarget(sale.qs_id)}
-                                                        className="cursor-pointer text-red-500 hover:text-red-700 transition-colors"
+                                                        className="cursor-pointer p-2 rounded-full hover:bg-white text-[#434655] hover:text-[#DC2626] transition-all shadow-none hover:shadow-sm"
                                                         title="Delete"
                                                     >
-                                                        <Trash2 size={18} />
+                                                        <Trash2 size={16} />
                                                     </button>
                                                 </div>
                                             </td>
@@ -198,7 +217,7 @@ const ListQuickSales = () => {
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan="5" className="p-6 text-center text-gray-500">
+                                        <td colSpan="5" className="px-6 py-12 text-center text-[#434655] text-sm">
                                             No quick sales found.
                                         </td>
                                     </tr>
@@ -207,30 +226,57 @@ const ListQuickSales = () => {
                         </table>
                     </div>
 
-                    {/* Pagination */}
+                    {/* Pagination Footer */}
                     {totalPages > 1 && (
-                        <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3 sm:px-6">
-                            <div className="text-sm text-gray-700">
-                                Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
-                                <span className="font-medium">
+                        <div className="px-8 py-6 flex items-center justify-between bg-[#F2F4F6]/30 border-t border-[#C3C6D7]/10">
+                            <p className="text-sm text-[#434655]">
+                                Showing <span className="font-bold text-[#191C1E]">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+                                <span className="font-bold text-[#191C1E]">
                                     {Math.min(currentPage * itemsPerPage, filteredSales.length)}
                                 </span>{' '}
-                                of <span className="font-medium">{filteredSales.length}</span> results
-                            </div>
-                            <div className="flex space-x-2">
+                                of <span className="font-bold text-[#191C1E]">{filteredSales.length}</span> results
+                            </p>
+                            <div className="flex items-center gap-2">
                                 <button
                                     onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                                     disabled={currentPage === 1}
-                                    className={`px-3 py-1 rounded-md ${currentPage === 1 ? 'bg-gray-100 cursor-not-allowed' : 'bg-[#05014A] text-white hover:bg-[#03012e] cursor-pointer'}`}
+                                    className={`flex items-center gap-1 px-4 py-2 text-sm font-bold rounded-lg transition-all border border-transparent ${currentPage === 1 ? 'text-[#C3C6D7] cursor-not-allowed opacity-50' : 'text-[#434655] hover:text-[#004AC6] hover:bg-white hover:border-[#C3C6D7]/20 cursor-pointer'}`}
                                 >
-                                    Previous
+                                    ← Previous
                                 </button>
+                                <div className="flex items-center gap-1">
+                                    {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                                        let pageNum;
+                                        if (totalPages <= 5) {
+                                            pageNum = i + 1;
+                                        } else if (currentPage <= 3) {
+                                            pageNum = i + 1;
+                                        } else if (currentPage >= totalPages - 2) {
+                                            pageNum = totalPages - 4 + i;
+                                        } else {
+                                            pageNum = currentPage - 2 + i;
+                                        }
+                                        return (
+                                            <button
+                                                key={pageNum}
+                                                onClick={() => setCurrentPage(pageNum)}
+                                                className={`w-9 h-9 flex items-center justify-center rounded-lg font-bold text-sm transition-colors cursor-pointer ${
+                                                    currentPage === pageNum
+                                                        ? 'bg-[#004AC6] text-white'
+                                                        : 'hover:bg-white text-[#434655]'
+                                                }`}
+                                            >
+                                                {pageNum}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                                 <button
                                     onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                                     disabled={currentPage === totalPages}
-                                    className={`px-3 py-1 rounded-md ${currentPage === totalPages ? 'bg-gray-100 cursor-not-allowed' : 'bg-[#05014A] text-white hover:bg-[#03012e] cursor-pointer'}`}
+                                    className={`flex items-center gap-1 px-4 py-2 text-sm font-bold rounded-lg transition-all border border-transparent ${currentPage === totalPages ? 'text-[#C3C6D7] cursor-not-allowed opacity-50' : 'text-[#191C1E] hover:text-[#004AC6] hover:bg-white hover:border-[#C3C6D7]/20 cursor-pointer'}`}
                                 >
-                                    Next
+                                    Next →
                                 </button>
                             </div>
                         </div>
@@ -238,7 +284,7 @@ const ListQuickSales = () => {
                 </div>
             </main>
 
-            {/* Delete Confirmation Popup */}
+            {/* Delete Confirmation Modal */}
             <Popup
                 open={deleteTarget !== null}
                 onClose={() => setDeleteTarget(null)}
@@ -254,20 +300,20 @@ const ListQuickSales = () => {
                                 <AlertTriangle className="text-red-600" size={24} />
                             </div>
                         </div>
-                        <h2 className="text-xl font-bold text-gray-800 text-center mb-2">
+                        <h2 className="text-xl font-bold text-[#0F172A] text-center mb-2">
                             Delete Quick Sale
                         </h2>
-                        <p className="text-gray-600 text-center mb-6">
+                        <p className="text-[#64748B] text-center mb-6">
                             {`Are you sure you want to delete "${deleteTarget}"?`}
                         </p>
-                        <div className="flex flex-col sm:flex-row gap-3">
+                        <div className="flex gap-3">
                             <button
                                 onClick={() => {
                                     setDeleteTarget(null);
                                     close();
                                 }}
                                 disabled={isDeleting}
-                                className="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors cursor-pointer disabled:opacity-50"
+                                className="flex-1 px-4 py-2.5 rounded-lg border border-[#E2E8F0] text-[#64748B] font-medium hover:bg-[#F1F5F9] transition-colors cursor-pointer disabled:opacity-50"
                             >
                                 Cancel
                             </button>

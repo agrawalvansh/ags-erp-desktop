@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Search, ChevronDown, Plus, Edit, Trash2, AlertTriangle, CircleX } from 'lucide-react';
+import { Search, ChevronDown, ChevronLeft, ChevronRight, Plus, Edit, Trash2, X } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
-import Popup from 'reactjs-popup';
-import 'reactjs-popup/dist/index.css';
 
 const CustomerOrder = () => {
   const navigate = useNavigate();
@@ -13,6 +11,7 @@ const CustomerOrder = () => {
   const [orders, setOrders] = useState([]);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('All');
 
   const fetchOrders = async () => {
     try {
@@ -39,6 +38,12 @@ const CustomerOrder = () => {
       date: o.order_date || o.date,
     }));
 
+    // Status filter
+    if (statusFilter !== 'All') {
+      merged = merged.filter(o => o.status === statusFilter);
+    }
+
+    // Search filter
     let filtered = merged.filter(
       (o) =>
         (o.orderNo || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -53,16 +58,19 @@ const CustomerOrder = () => {
       });
     }
 
-    const start = (currentPage - 1) * itemsPerPage;
-    return filtered.slice(start, start + itemsPerPage);
-  }, [searchTerm, sortConfig, currentPage, orders]);
+    return filtered;
+  }, [searchTerm, sortConfig, orders, statusFilter]);
 
-  const totalFiltered = orders.filter(
-    (o) =>
-      (o.order_id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (o.customer_name || o.name || '').toLowerCase().includes(searchTerm.toLowerCase())
-  ).length;
+  const totalFiltered = processedOrders.length;
   const totalPages = Math.ceil(totalFiltered / itemsPerPage);
+
+  useEffect(() => {
+    if (totalPages > 0 && currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
+
+  const paginatedOrders = processedOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const handleSort = (key) => {
     let direction = 'asc';
@@ -74,7 +82,7 @@ const CustomerOrder = () => {
     navigate(`/orders/customers/${orderNo}`);
   };
 
-  const confirmDelete = async (close) => {
+  const confirmDelete = async () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
     try {
@@ -91,150 +99,192 @@ const CustomerOrder = () => {
     } finally {
       setIsDeleting(false);
       setDeleteTarget(null);
-      close();
     }
   };
 
-  return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-[#caf0f8] p-4 md:p-6">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <h1 className="text-2xl md:text-3xl font-bold text-[#05014A]">Orders Received</h1>
+  // Format date
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    } catch {
+      return dateStr;
+    }
+  };
 
-          <div className="flex flex-col sm:flex-row w-full md:w-auto gap-3">
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+  // Status badge styles
+  const getStatusStyle = (status) => {
+    const s = (status || '').toLowerCase();
+    if (s === 'completed' || s === 'delivered') return 'bg-emerald-100 text-emerald-700 border-emerald-200/50';
+    if (s === 'cancelled') return 'bg-rose-100 text-rose-700 border-rose-200/50';
+    if (s === 'pending' || s === 'received') return 'bg-amber-100 text-amber-700 border-amber-200/50';
+    return 'bg-[#E6E8EA] text-[#434655] border-[#C3C6D7]/20';
+  };
+
+  // Sort icon
+  const SortIcon = ({ column }) => (
+    <ChevronDown
+      size={14}
+      className={`ml-0.5 transition-transform ${sortConfig.key === column && sortConfig.direction === 'desc' ? 'rotate-180' : ''} ${sortConfig.key === column ? 'text-[#004AC6]' : ''}`}
+    />
+  );
+
+  // Page numbers for pagination
+  const pageNumbers = useMemo(() => {
+    const pages = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (currentPage > 3) pages.push('...');
+      for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
+        pages.push(i);
+      }
+      if (currentPage < totalPages - 2) pages.push('...');
+      pages.push(totalPages);
+    }
+    return pages;
+  }, [currentPage, totalPages]);
+
+  // Unique statuses for filter tabs
+  const statusTabs = useMemo(() => {
+    const statuses = [...new Set(orders.map(o => o.status || 'Received'))];
+    return ['All', ...statuses];
+  }, [orders]);
+
+  return (
+    <div className="min-h-screen bg-[#F7F9FB]">
+      {/* ─── Page Content ─── */}
+      <section className="p-8 max-w-7xl mx-auto">
+        {/* ─── Header ─── */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+          <div>
+            <h2 className="text-3xl font-extrabold tracking-tight text-[#191C1E] mb-1">Customer Orders</h2>
+            <p className="text-[#434655] text-sm font-medium">Orders received from customers</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#434655]" />
               <input
                 ref={searchInputRef}
                 type="text"
-                placeholder="Search Orders..."
-                className="w-full pl-10 pr-10 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#05014A] focus:border-transparent"
+                placeholder="Search orders..."
+                className="w-72 bg-white border border-[#C3C6D7]/20 rounded-lg py-2.5 pl-10 pr-10 text-sm focus:border-[#004AC6] focus:ring-4 focus:ring-[#004AC6]/5 transition-all outline-none"
                 value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1);
-                }}
+                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
               />
               {searchTerm && (
                 <button
-                  type="button"
                   onClick={() => { setSearchTerm(''); setCurrentPage(1); searchInputRef.current?.focus(); }}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
-                  aria-label="Clear search"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#434655] hover:text-[#191C1E] cursor-pointer"
                 >
-                  <CircleX size={18} />
+                  <X size={16} />
                 </button>
               )}
             </div>
-
             <button
-              className="flex items-center justify-center bg-[#05014A] text-white px-4 py-2 rounded-lg hover:bg-[#03012e] transition-colors duration-200 shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#05014A] whitespace-nowrap cursor-pointer"
               onClick={() => navigate('/orders/customers/add')}
+              className="flex items-center gap-2 text-white px-5 py-2.5 rounded-lg font-semibold shadow-lg shadow-[#004AC6]/20 active:scale-95 transition-transform cursor-pointer"
+              style={{ background: 'linear-gradient(135deg, #004AC6 0%, #2563EB 100%)' }}
             >
-              <Plus className="mr-2" size={20} />
-              Add New Order
+              <Plus size={18} />
+              <span>New Order</span>
             </button>
-
           </div>
         </div>
-      </header>
 
-      {/* Orders Table */}
-      <main className="flex-1 p-4 md:p-6">
-        <div className="max-w-7xl mx-auto bg-white rounded-xl shadow-md overflow-hidden">
+        {/* ─── Filter Tabs ─── */}
+        <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-1">
+          {statusTabs.map(tab => (
+            <button
+              key={tab}
+              onClick={() => { setStatusFilter(tab); setCurrentPage(1); }}
+              className={`px-5 py-2 rounded-full text-xs font-bold transition-colors cursor-pointer ${statusFilter === tab
+                  ? 'bg-[#004AC6] text-white shadow-sm'
+                  : 'bg-white text-[#434655] hover:bg-[#F2F4F6] border border-[#C3C6D7]/10'
+                }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+
+        {/* ─── Data Table ─── */}
+        <div className="bg-white rounded-xl overflow-hidden shadow-sm border border-[#C3C6D7]/5">
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-[#05014A] text-white">
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-[#F2F4F6]/50">
                 <tr>
-                  <th className="p-3 text-left">No.</th>
+                  <th className="py-4 px-6 text-[11px] font-bold text-[#434655] uppercase tracking-wider">No.</th>
                   <th
-                    className="p-3 text-left cursor-pointer hover:bg-[#03012e] transition-colors"
+                    className="py-4 px-6 text-[11px] font-bold text-[#434655] uppercase tracking-wider cursor-pointer hover:text-[#004AC6] transition-colors"
                     onClick={() => handleSort('orderNo')}
                   >
                     <div className="flex items-center">
-                      Order No.
-                      <ChevronDown
-                        className={`ml-1 transition-transform ${sortConfig.key === 'orderNo' && sortConfig.direction === 'desc' ? 'rotate-180' : ''
-                          }`}
-                        size={16}
-                      />
+                      Order ID <SortIcon column="orderNo" />
                     </div>
                   </th>
                   <th
-                    className="p-3 text-left cursor-pointer hover:bg-[#03012e] transition-colors"
+                    className="py-4 px-6 text-[11px] font-bold text-[#434655] uppercase tracking-wider cursor-pointer hover:text-[#004AC6] transition-colors"
                     onClick={() => handleSort('name')}
                   >
                     <div className="flex items-center">
-                      Name
-                      <ChevronDown
-                        className={`ml-1 transition-transform ${sortConfig.key === 'name' && sortConfig.direction === 'desc' ? 'rotate-180' : ''
-                          }`}
-                        size={16}
-                      />
+                      Customer Name <SortIcon column="name" />
                     </div>
                   </th>
                   <th
-                    className="p-3 text-left cursor-pointer hover:bg-[#03012e] transition-colors"
+                    className="py-4 px-6 text-[11px] font-bold text-[#434655] uppercase tracking-wider cursor-pointer hover:text-[#004AC6] transition-colors"
                     onClick={() => handleSort('date')}
                   >
                     <div className="flex items-center">
-                      Date
-                      <ChevronDown
-                        className={`ml-1 transition-transform ${sortConfig.key === 'date' && sortConfig.direction === 'desc' ? 'rotate-180' : ''
-                          }`}
-                        size={16}
-                      />
+                      Date <SortIcon column="date" />
                     </div>
                   </th>
                   <th
-                    className="p-3 text-left cursor-pointer hover:bg-[#03012e] transition-colors"
+                    className="py-4 px-6 text-[11px] font-bold text-[#434655] uppercase tracking-wider text-center cursor-pointer hover:text-[#004AC6] transition-colors"
                     onClick={() => handleSort('status')}
                   >
-                    <div className="flex items-center">
-                      Status
-                      <ChevronDown
-                        className={`ml-1 transition-transform ${sortConfig.key === 'status' && sortConfig.direction === 'desc' ? 'rotate-180' : ''
-                          }`}
-                        size={16}
-                      />
+                    <div className="flex items-center justify-center">
+                      Status <SortIcon column="status" />
                     </div>
                   </th>
-                  <th className="p-3 text-center">Action</th>
+                  <th className="py-4 px-6 text-[11px] font-bold text-[#434655] uppercase tracking-wider text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
-                {processedOrders.length > 0 ? (
-                  processedOrders.map((order, index) => (
+              <tbody>
+                {paginatedOrders.length > 0 ? (
+                  paginatedOrders.map((order, index) => (
                     <tr
                       key={order.orderNo || index}
-                      className="hover:bg-gray-50 transition-colors"
+                      className="hover:bg-[#F2F4F6] transition-colors cursor-pointer"
+                      onClick={() => handleRowClick(order.orderNo)}
                     >
-                      <td className="p-3">{(currentPage - 1) * itemsPerPage + index + 1}</td>
-                      <td
-                        className="p-3 font-medium text-blue-600 cursor-pointer hover:underline"
-                        onClick={() => handleRowClick(order.orderNo)}
-                      >
-                        {order.orderNo}
+                      <td className="py-5 px-6 text-sm text-[#434655]">{(currentPage - 1) * itemsPerPage + index + 1}</td>
+                      <td className="py-5 px-6">
+                        <span className="bg-[#E6E8EA] px-2 py-1 rounded text-[10px] font-bold text-[#004AC6]">{order.orderNo}</span>
                       </td>
-                      <td className="p-3">{order.name}</td>
-                      <td className="p-3">{order.date}</td>
-                      <td className="p-3">{order.status}</td>
-                      <td className="p-3 text-center">
-                        <div className="flex items-center justify-center space-x-3">
+                      <td className="py-5 px-6 font-bold text-[#191C1E] text-sm">{order.name}</td>
+                      <td className="py-5 px-6 text-sm text-[#434655]">{formatDate(order.date)}</td>
+                      <td className="py-5 px-6 text-center">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${getStatusStyle(order.status)}`}>
+                          {order.status}
+                        </span>
+                      </td>
+                      <td className="py-5 px-6 text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => navigate(`/orders/customers/${order.orderNo}`)}
-                            className="cursor-pointer text-blue-500 hover:text-blue-700 transition-colors"
-                            aria-label="Edit order"
+                            className="p-2 rounded-full hover:bg-white text-[#434655] hover:text-[#004AC6] transition-all hover:shadow-sm cursor-pointer"
                           >
-                            <Edit size={18} />
+                            <Edit size={16} />
                           </button>
                           <button
-                            onClick={(e) => { e.stopPropagation(); setDeleteTarget(order.orderNo); }}
-                            className="cursor-pointer text-red-500 hover:text-red-700 transition-colors"
-                            aria-label="Delete order"
+                            onClick={() => setDeleteTarget(order.orderNo)}
+                            className="p-2 rounded-full hover:bg-white text-[#434655] hover:text-[#DC2626] transition-all hover:shadow-sm cursor-pointer"
                           >
-                            <Trash2 size={18} />
+                            <Trash2 size={16} />
                           </button>
                         </div>
                       </td>
@@ -242,7 +292,7 @@ const CustomerOrder = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="6" className="p-6 text-center text-gray-500">
+                    <td colSpan="6" className="py-12 text-center text-[#434655] text-sm">
                       No orders found.
                     </td>
                   </tr>
@@ -251,80 +301,80 @@ const CustomerOrder = () => {
             </table>
           </div>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3 sm:px-6">
-              <div className="text-sm text-gray-700">
-                Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
-                <span className="font-medium">
-                  {Math.min(currentPage * itemsPerPage, totalFiltered)}
-                </span>{' '}
-                of <span className="font-medium">{totalFiltered}</span> results
-              </div>
-              <div className="flex space-x-2">
+          {/* ─── Pagination Footer ─── */}
+          {totalPages > 0 && (
+            <div className="px-8 py-6 flex items-center justify-between bg-[#F2F4F6]/30 border-t border-[#C3C6D7]/10">
+              <p className="text-sm text-[#434655]">
+                Showing <span className="font-bold text-[#191C1E]">{totalFiltered === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+                <span className="font-bold text-[#191C1E]">{Math.min(currentPage * itemsPerPage, totalFiltered)}</span>{' '}
+                of <span className="font-bold text-[#191C1E]">{totalFiltered}</span> results
+              </p>
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                   disabled={currentPage === 1}
-                  className={`px-3 py-1 rounded-md ${currentPage === 1
-                    ? 'bg-gray-100 cursor-not-allowed'
-                    : 'bg-[#05014A] text-white hover:bg-[#03012e] cursor-pointer'
-                    }`}
+                  className="flex items-center gap-1 px-4 py-2 text-sm font-bold text-[#434655] hover:text-[#004AC6] hover:bg-white rounded-lg transition-all border border-transparent hover:border-[#C3C6D7]/20 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
                 >
+                  <ChevronLeft size={16} />
                   Previous
                 </button>
+                <div className="flex items-center gap-1">
+                  {pageNumbers.map((page, i) =>
+                    page === '...' ? (
+                      <span key={`dots-${i}`} className="px-2 text-[#434655]">...</span>
+                    ) : (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`w-9 h-9 flex items-center justify-center rounded-lg font-bold text-sm transition-colors cursor-pointer ${currentPage === page
+                            ? 'bg-[#004AC6] text-white'
+                            : 'hover:bg-white text-[#434655]'
+                          }`}
+                      >
+                        {page}
+                      </button>
+                    )
+                  )}
+                </div>
                 <button
-                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
-                  className={`px-3 py-1 rounded-md ${currentPage === totalPages
-                    ? 'bg-gray-100 cursor-not-allowed'
-                    : 'bg-[#05014A] text-white hover:bg-[#03012e] cursor-pointer'
-                    }`}
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages || totalPages === 0}
+                  className="flex items-center gap-1 px-4 py-2 text-sm font-bold text-[#191C1E] hover:text-[#004AC6] hover:bg-white rounded-lg transition-all border border-transparent hover:border-[#C3C6D7]/20 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
                 >
                   Next
+                  <ChevronRight size={16} />
                 </button>
               </div>
             </div>
           )}
         </div>
-      </main>
+      </section>
 
-      {/* Delete Confirmation Popup */}
-      <Popup
-        open={!!deleteTarget}
-        onClose={() => setDeleteTarget(null)}
-        modal
-        nested
-        overlayStyle={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
-      >
-        {close => (
-          <div className="bg-white p-8 rounded-xl shadow-2xl mx-auto border border-gray-100" style={{ maxWidth: '400px' }}>
-            <div className="mb-6">
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <AlertTriangle className="text-red-600" size={24} />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-800 text-center mb-2">Confirm Delete</h2>
-              <p className="text-gray-600 text-center">
-                Are you sure you want to delete order <strong>{deleteTarget}</strong>? This action cannot be undone.
-              </p>
+      {/* ─── Delete Confirmation Modal — Stitch Glass Overlay ─── */}
+      {deleteTarget !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.7)' }}>
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#C3C6D7]/20 p-8">
+            <div className="w-12 h-12 rounded-full bg-red-100/50 flex items-center justify-center text-red-600 mb-6 mx-auto">
+              <Trash2 size={28} />
             </div>
-            <div className="flex gap-3">
+            <h2 className="text-2xl font-extrabold text-[#0F172A] tracking-tight mb-3 text-center">Delete Order?</h2>
+            <p className="text-[#434655] leading-relaxed mb-8 text-center">
+              Are you sure you want to delete order <span className="font-bold text-[#191C1E]">{deleteTarget}</span>? This action cannot be undone.
+            </p>
+            <div className="flex items-center gap-3">
               <button
-                onClick={() => { setDeleteTarget(null); close(); }}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
+                onClick={() => setDeleteTarget(null)}
+                className="flex-1 px-6 py-3 bg-[#E6E8EA] text-[#191C1E] font-bold rounded-xl hover:bg-[#E0E3E5] transition-all text-sm cursor-pointer"
+              >Cancel</button>
               <button
-                onClick={() => confirmDelete(close)}
+                onClick={confirmDelete}
                 disabled={isDeleting}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors cursor-pointer disabled:opacity-50"
-              >
-                {isDeleting ? 'Deleting...' : 'Delete'}
-              </button>
+                className="flex-1 px-6 py-3 bg-red-600 text-white font-bold rounded-xl shadow-lg shadow-red-600/20 hover:bg-red-700 hover:scale-[1.02] active:scale-95 transition-all text-sm cursor-pointer disabled:opacity-50"
+              >{isDeleting ? 'Deleting...' : 'Delete'}</button>
             </div>
           </div>
-        )}
-      </Popup>
+        </div>
+      )}
     </div>
   );
 };

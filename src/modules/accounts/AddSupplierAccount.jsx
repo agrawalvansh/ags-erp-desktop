@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Save, Trash } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, Lock } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import Popup from 'reactjs-popup';
-import 'reactjs-popup/dist/index.css';
 
 // Form to create / edit a supplier (mirrors AddBuyerAccount but hits /api/suppliers)
 const AddSupplierAccount = () => {
@@ -19,6 +17,7 @@ const AddSupplierAccount = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // Fetch data – either next ID (add) or existing supplier (edit)
   useEffect(() => {
@@ -72,11 +71,13 @@ const AddSupplierAccount = () => {
       setLoading(false);
     }
   };
+
   const handleDelete = async () => {
     setDeleting(true);
     try {
       await window.api.invoke('suppliers:delete', supplierId);
       toast.success('Supplier deleted successfully');
+      setShowDeleteModal(false);
       navigate('/accounts/suppliers');
     } catch (err) {
       toast.error(err.message);
@@ -87,145 +88,156 @@ const AddSupplierAccount = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="w-full">
-        <header className="bg-[#caf0f8] p-4 md:p-6">
-          <div className="max-w-3xl mx-auto flex items-center">
+    <div className="min-h-screen bg-[#F7F9FB]">
+      {/* ─── Page Content ─── */}
+      <div className="flex-1 p-8">
+        <div className="max-w-4xl mx-auto">
+          {/* ─── Header Section ─── */}
+          <div className="mb-8">
             <button
-              onClick={() => navigate(`/accounts/suppliers`)}
-              className="flex items-center text-[#05014A] hover:text-[#03012e] cursor-pointer"
+              onClick={() => navigate('/accounts/suppliers')}
+              className="flex items-center gap-2 text-[#434655] hover:text-[#004AC6] transition-colors mb-3 group cursor-pointer"
             >
-              <ArrowLeft className="mr-2" size={20} />
-              Back to Supplier Account
+              <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
+              <span className="text-sm font-medium">Back to Supplier Accounts</span>
             </button>
+            <h2 className="text-[20px] font-bold text-[#191C1E]">
+              {isEdit ? 'Edit Supplier' : 'Add New Supplier'}
+            </h2>
           </div>
-        </header>
-      </div>
-      <div className="flex flex-col min-h-screen bg-gray-50 p-4 md:p-6">
-        <div className="max-w-xl w-full mx-auto bg-white rounded-lg shadow p-6 space-y-6">
-          <h1 className="text-2xl font-bold text-center text-[#05014A]">{isEdit ? 'Edit Supplier' : 'Add New Supplier'}</h1>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block mb-1 font-medium">Supplier&nbsp;ID</label>
-              <input
-                type="text"
-                value={supplierId}
-                readOnly
-                className="w-full px-3 py-2 border rounded bg-gray-100 cursor-not-allowed"
-              />
-            </div>
+          {/* ─── Form Card ─── */}
+          <div className="max-w-[576px] mx-auto bg-white rounded-xl shadow-sm border border-[#C3C6D7]/10 p-8">
+            <form onSubmit={handleSubmit} className="space-y-6" autoComplete="off">
+              {/* Supplier ID (Read-only) */}
+              <div className="space-y-2">
+                <label className="block text-[10px] font-bold uppercase text-[#434655] tracking-wider">
+                  Supplier ID
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={supplierId}
+                    readOnly
+                    className="w-full bg-[#ECEEF0] border-none rounded-lg px-4 py-3 text-sm text-[#434655] cursor-not-allowed focus:ring-0 outline-none"
+                    autoComplete="off"
+                  />
+                  <Lock size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#434655]/40" />
+                </div>
+              </div>
 
-            <div>
-              <label className="block mb-1 font-medium">Name<span className="text-red-500">*</span></label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#05014A]"
-                required
-              />
-            </div>
+              {/* Name (Required) */}
+              <div className="space-y-2">
+                <label className="block text-[10px] font-bold uppercase text-[#434655] tracking-wider">
+                  Name <span className="text-[#BA1A1A]">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full bg-[#F2F4F6] border-none rounded-lg px-4 py-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none"
+                  placeholder="Enter supplier name"
+                  required
+                  autoComplete="off"
+                />
+              </div>
 
-            <div>
-              <label className="block mb-1 font-medium">Address</label>
-              <textarea
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#05014A] resize-none"
-                rows={3}
-              ></textarea>
-            </div>
+              {/* Address (Textarea) */}
+              <div className="space-y-2">
+                <label className="block text-[10px] font-bold uppercase text-[#434655] tracking-wider">
+                  Address
+                </label>
+                <textarea
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="w-full bg-[#F2F4F6] border-none rounded-lg px-4 py-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none resize-none"
+                  placeholder="Enter complete business address"
+                  rows={3}
+                  autoComplete="off"
+                ></textarea>
+              </div>
 
-            <div>
-              <label className="block mb-1 font-medium">Mobile&nbsp;No.</label>
-              <input
-                type="text"
-                value={mobile}
-                onChange={(e) => setMobile(e.target.value)}
-                className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#05014A]"
-                maxLength={15}
-              />
-            </div>
+              {/* Mobile No. */}
+              <div className="space-y-2">
+                <label className="block text-[10px] font-bold uppercase text-[#434655] tracking-wider">
+                  Mobile No.
+                </label>
+                <input
+                  type="text"
+                  value={mobile}
+                  onChange={(e) => setMobile(e.target.value)}
+                  className="w-full bg-[#F2F4F6] border-none rounded-lg px-4 py-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none"
+                  placeholder="Enter mobile number"
+                  maxLength={15}
+                  autoComplete="off"
+                />
+              </div>
 
-            {error && <p className="text-red-600 text-sm">{error}</p>}
+              {error && <p className="text-[#BA1A1A] text-sm">{error}</p>}
 
-            <div className="mt-8 flex justify-end">
-              {isEdit && (
-                <Popup
-                  trigger={
-                    <button
-                      type="button"
-                      disabled={deleting}
-                      className="flex items-center bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed mr-4 cursor-pointer transform hover:scale-105 active:scale-95 shadow-md hover:shadow-lg"
-                    >
-                      <Trash className="mr-2" size={20} />
-                      {deleting ? (
-                        <span className="flex items-center">
-                          <svg className="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                          </svg>
-                          Deleting...
-                        </span>
-                      ) : (
-                        'Delete'
-                      )}
-                    </button>
-                  }
-                  modal
-                  nested
-                  overlayStyle={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+              {/* Form Actions */}
+              <div className="flex items-center justify-between pt-6 border-t border-[#ECEEF0]">
+                {isEdit ? (
+                  <button
+                    type="button"
+                    disabled={deleting}
+                    onClick={() => setShowDeleteModal(true)}
+                    className="px-6 py-2.5 bg-[#DC2626] text-white font-bold rounded-xl text-sm hover:bg-red-700 transition-colors active:scale-95 duration-150 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    {deleting ? 'Deleting...' : 'Delete'}
+                  </button>
+                ) : (
+                  <div></div>
+                )}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="px-8 py-2.5 text-white font-bold rounded-xl text-sm shadow-lg shadow-[#004AC6]/20 hover:opacity-90 transition-all active:scale-95 duration-150 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  style={{ background: 'linear-gradient(135deg, #004AC6 0%, #2563EB 100%)' }}
                 >
-                  {close => (
-                    <div className="relative transform transition-all duration-300 scale-100">
-                      <div className="bg-white p-8 rounded-xl shadow-2xl mx-auto border border-gray-100">
-                        <div className="mb-6">
-                          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Trash className="text-red-600" size={24} />
-                          </div>
-                          <h2 className="text-2xl font-bold text-gray-800 text-center mb-2">
-                            Confirm Delete
-                          </h2>
-                          <p className="text-gray-600 text-center">
-                            Are you sure you want to delete this Supplier? This action cannot be undone.
-                          </p>
-                        </div>
-
-                        <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-                          <button
-                            onClick={close}
-                            className="w-full sm:w-auto px-6 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-gray-300 cursor-pointer"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            onClick={() => {
-                              handleDelete();
-                              close();
-                            }}
-                            className="w-full sm:w-auto px-6 py-2.5 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transform hover:scale-105 active:scale-95 cursor-pointer"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </Popup>
-              )}
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex items-center bg-[#05014A] text-white px-6 py-2 rounded-lg hover:bg-[#03012e] disabled:opacity-50 cursor-pointer"
-              >
-                <Save className="mr-2" size={20} />
-                {loading ? (isEdit ? 'Updating...' : 'Saving...') : (isEdit ? 'Update Supplier' : 'Add Supplier')}
-              </button>
-            </div>
-          </form>
+                  {loading
+                    ? (isEdit ? 'Updating...' : 'Saving...')
+                    : (isEdit ? 'Update Supplier' : 'Add Supplier')
+                  }
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
+
+      {/* ─── Delete Confirmation — Stitch Glass Overlay ─── */}
+      {showDeleteModal && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.7)' }}
+        >
+          <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl border border-[#C3C6D7]/20 p-8 text-center">
+            <div className="w-16 h-16 bg-red-100/50 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Trash2 size={28} className="text-[#DC2626]" />
+            </div>
+            <h3 className="text-lg font-bold text-[#0F172A] mb-2">Delete Supplier?</h3>
+            <p className="text-sm text-[#434655] mb-8 px-4">
+              This action cannot be undone. All pending drafts for this supplier will be permanently removed.
+            </p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => handleDelete()}
+                disabled={deleting}
+                className="w-full py-3 bg-[#DC2626] text-white font-bold rounded-xl text-sm active:scale-95 transition-transform cursor-pointer hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Delete Supplier
+              </button>
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="w-full py-3 bg-[#ECEEF0] text-[#191C1E] font-bold rounded-xl text-sm hover:bg-[#E6E8EA] transition-colors active:scale-95 cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
