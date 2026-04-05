@@ -233,7 +233,9 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     if (!customer_id) return { error: 'Customer ID is required' };
     const maalCount = db.prepare('SELECT COUNT(*) AS cnt FROM customer_maal_account WHERE customer_id = ?').get(customer_id).cnt;
     const jamaCount = db.prepare('SELECT COUNT(*) AS cnt FROM customer_jama_account WHERE customer_id = ?').get(customer_id).cnt;
-    return { maalCount, jamaCount, hasDependencies: maalCount > 0 || jamaCount > 0 };
+    const invoiceCount = db.prepare('SELECT COUNT(*) AS cnt FROM invoices WHERE customer_id = ?').get(customer_id).cnt;
+    const orderCount = db.prepare('SELECT COUNT(*) AS cnt FROM customer_orders WHERE customer_id = ?').get(customer_id).cnt;
+    return { maalCount, jamaCount, invoiceCount, orderCount, hasDependencies: maalCount > 0 || jamaCount > 0 || invoiceCount > 0 || orderCount > 0 };
   }));
 
   ipcMain.handle('customers:delete', wrap((customer_id) => {
@@ -1404,7 +1406,8 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     if (!supplier_id) return { error: 'Supplier ID is required' };
     const maalCount = db.prepare('SELECT COUNT(*) AS cnt FROM supplier_maal_account WHERE supplier_id = ?').get(supplier_id).cnt;
     const jamaCount = db.prepare('SELECT COUNT(*) AS cnt FROM supplier_jama_account WHERE supplier_id = ?').get(supplier_id).cnt;
-    return { maalCount, jamaCount, hasDependencies: maalCount > 0 || jamaCount > 0 };
+    const orderCount = db.prepare('SELECT COUNT(*) AS cnt FROM supplier_orders WHERE supplier_id = ?').get(supplier_id).cnt;
+    return { maalCount, jamaCount, orderCount, hasDependencies: maalCount > 0 || jamaCount > 0 || orderCount > 0 };
   }));
 
   ipcMain.handle('suppliers:delete', wrap((supplier_id) => {

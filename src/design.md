@@ -14,12 +14,15 @@ All pages MUST use these exact CSS tokens. Extracted from the canonical `Invoice
 | Surface Container | `#ECEEF0` | Dividers, borders |
 | Surface Container High | `#E6E8EA` | Secondary button bg |
 | Surface Dim | `#F8FAFC` | Top bar bg, table header row bg (list pages) |
-| On-Surface | `#191C1E` / `#0F172A` | Primary text |
+| On-Surface | `#191C1E` / `#0F172A` | Primary text — use `#191C1E` for headings, high-emphasis labels, and bold text; use `#0F172A` for body copy and lower-emphasis content |
 | On-Surface Variant | `#434655` | Labels, secondary text |
 | Muted Text | `#64748B` | Table cell text, descriptions |
 | Outline Variant | `#C3C6D7` | Borders (at /10 or /20 opacity) |
 | Border Soft | `#E2E8F0` | Card borders, header borders |
-| Error | `#BA1A1A` / `#DC2626` | Delete actions, round-off |
+| Error | `#BA1A1A` / `#DC2626` | Delete actions, round-off — use `#BA1A1A` for inline validation text and required-field asterisks; use `#DC2626` for delete buttons, error icons, and active error states. Always verify contrast against your background tokens |
+| Pill Background | `#D0E1FB` | Items pill background (light blue, used at /30 opacity) |
+| Pill Text | `#54647A` | Items pill text (muted slate) |
+| Secondary Hover | `#E0E3E5` | Secondary button hover state |
 
 ## Typography
 
@@ -47,7 +50,7 @@ focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all
 ## Table (List Pages)
 
 ```
-Container: bg-white rounded-xl shadow-sm border border-[#C3C6D7]/5 overflow-hidden
+Container: bg-white rounded-xl shadow-sm border border-[#C3C6D7]/10 overflow-hidden
 Header row: bg-[#F2F4F6]/50
 Header cell: py-4 px-6 text-[11px] font-bold text-[#434655] uppercase tracking-wider
 Body: divide-y-0 (no visible dividers — hover row instead)

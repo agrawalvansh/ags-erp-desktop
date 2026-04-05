@@ -18,6 +18,7 @@ const PriceList = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [highlightedCode, setHighlightedCode] = useState(null);
   const rowRefs = useRef({});
+  const deleteModalRef = useRef(null);
 
   // Load products from backend on first render (IPC)
   useEffect(() => {
@@ -136,6 +137,15 @@ const PriceList = () => {
       setIsDeleting(false);
     }
   };
+
+  // Focus management for delete modal
+  useEffect(() => {
+    if (deleteTarget !== null) {
+      const prev = document.activeElement;
+      requestAnimationFrame(() => deleteModalRef.current?.focus());
+      return () => prev?.focus();
+    }
+  }, [deleteTarget]);
 
   // Format currency
   const formatCurrency = (value) => {
@@ -275,6 +285,7 @@ const PriceList = () => {
                         ? 'bg-yellow-50'
                         : 'hover:bg-[#F2F4F6]/50'
                       }`}
+                      onClick={() => navigate(`/price-list/edit/${item.code}`)}
                     >
                       <td className="py-5 px-6 text-sm font-medium text-[#434655]">{index + 1}</td>
                       <td className="py-5 px-6">
@@ -291,7 +302,7 @@ const PriceList = () => {
                       <td className="py-5 px-6">
                         <span className="text-xs font-medium px-3 py-1 bg-[#D0E1FB]/30 text-[#54647A] rounded-full">{item.packingType}</span>
                       </td>
-                      <td className="py-5 px-6 text-right">
+                      <td className="py-5 px-6 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-2">
                           {item.productName && item.productName.trim() ? (
                             <button
@@ -328,12 +339,22 @@ const PriceList = () => {
 
       {/* Delete Confirmation Modal — Stitch Glass Overlay */}
       {deleteTarget !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.7)' }}>
+        <div
+          ref={deleteModalRef}
+          tabIndex={-1}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 outline-none"
+          style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.7)' }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-modal-heading"
+          onKeyDown={(e) => { if (e.key === 'Escape' && !isDeleting) setDeleteTarget(null); }}
+          onClick={(e) => { if (e.target === e.currentTarget && !isDeleting) setDeleteTarget(null); }}
+        >
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#C3C6D7]/20 p-8 transform scale-100 transition-all">
             <div className="w-12 h-12 rounded-full bg-red-100/50 flex items-center justify-center text-red-600 mb-6">
               <AlertTriangle size={28} />
             </div>
-            <h2 className="text-2xl font-extrabold text-[#0F172A] tracking-tight mb-3">
+            <h2 id="delete-modal-heading" className="text-2xl font-extrabold text-[#0F172A] tracking-tight mb-3">
               Delete Product?
             </h2>
             <p className="text-[#434655] leading-relaxed mb-8">

@@ -256,7 +256,6 @@ const order = () => {
   const hasUnsavedChanges = useCallback(() => isDirty, [isDirty]);
   const blocker = useBlocker(({ currentLocation, nextLocation }) => hasUnsavedChanges() && currentLocation.pathname !== nextLocation.pathname);
 
-  const formatNumber = (value) => (parseFloat(value) || 0).toFixed(2);
   const formatName = (name) => {
     if (!name) return '';
     return name.replace(/-/g, ' ').split(' ').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
@@ -411,7 +410,7 @@ const order = () => {
 
   const handlePrint = () => {
     const originalTitle = document.title;
-    if (supplierId && customorderNo) { document.title = `${supplierId} ${customorderNo}`; }
+    if ((buyer || supplierId) && customorderNo) { document.title = `${buyer || supplierId} ${customorderNo}`; }
     window.print();
     document.title = originalTitle;
   };

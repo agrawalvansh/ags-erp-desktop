@@ -212,12 +212,17 @@ const AddBuyerAccount = () => {
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center p-4"
           style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.7)' }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-modal-heading"
+          onKeyDown={(e) => { if (e.key === 'Escape') setShowDeleteModal(false); }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowDeleteModal(false); }}
         >
           <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl border border-[#C3C6D7]/20 p-8 text-center">
             <div className="w-16 h-16 bg-red-100/50 rounded-full flex items-center justify-center mx-auto mb-6">
               <Trash2 size={28} className="text-[#DC2626]" />
             </div>
-            <h3 className="text-lg font-bold text-[#0F172A] mb-2">Delete Customer?</h3>
+            <h3 id="delete-modal-heading" className="text-lg font-bold text-[#0F172A] mb-2">Delete Customer?</h3>
             <p className="text-sm text-[#434655] mb-8 px-4">
               This action cannot be undone. All pending drafts for this customer will be permanently removed.
             </p>
@@ -225,6 +230,7 @@ const AddBuyerAccount = () => {
               <button
                 onClick={() => handleDelete()}
                 disabled={deleting}
+                autoFocus
                 className="w-full py-3 bg-[#DC2626] text-white font-bold rounded-xl text-sm active:scale-95 transition-transform cursor-pointer hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Delete Customer

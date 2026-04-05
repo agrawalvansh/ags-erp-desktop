@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Search, Edit, Trash2, Filter, Plus, Phone, MapPin, Building, Save, X, ArrowLeft, Bell, Clock } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -35,6 +35,7 @@ const SupplierAccountDetail = () => {
   // Reminder state
   const [reminderEnabled, setReminderEnabled] = useState(false);
   const [reminderDays, setReminderDays] = useState(1);
+  const lastSavedReminderDaysRef = useRef(1);
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Fetch functions
@@ -66,7 +67,9 @@ const SupplierAccountDetail = () => {
         } else {
           setSupplier(found);
           setReminderEnabled(!!found.reminder_enabled);
-          setReminderDays(Math.max(1, found.reminder_days || 1));
+          const days = Math.max(1, found.reminder_days || 1);
+          setReminderDays(days);
+          lastSavedReminderDaysRef.current = days;
         }
       } catch (err) {
         setError('Error loading supplier data');
@@ -106,7 +109,6 @@ const SupplierAccountDetail = () => {
   };
 
   const saveReminderDays = async () => {
-    const prev = reminderDays;
     try {
       await window.api.invoke('suppliers:update', {
         supplier_id: slug,
@@ -116,8 +118,9 @@ const SupplierAccountDetail = () => {
         reminder_enabled: reminderEnabled ? 1 : 0,
         reminder_days: reminderDays,
       });
+      lastSavedReminderDaysRef.current = reminderDays;
     } catch (err) {
-      setReminderDays(prev);
+      setReminderDays(lastSavedReminderDaysRef.current);
       toast.error('Failed to update reminder days');
     }
   };
@@ -485,12 +488,12 @@ const SupplierAccountDetail = () => {
                 {isReminderTriggered ? (
                   <>
                     <h4 className="text-xl font-bold mt-1">⚠️ Balance Clear</h4>
-                    <p className="text-xs opacity-80 mt-2">Balance is ₹0 No pending dues. Reminder was set for {reminderDays} day{reminderDays > 1 ? 's' : ''}.</p>
+                    <p className="text-xs opacity-80 mt-2">Balance is ₹0. No pending dues. Reminder was set for {reminderDays} day{reminderDays > 1 ? 's' : ''}.</p>
                   </>
                 ) : reminderEnabled ? (
                   <>
                     <h4 className="text-xl font-bold mt-1">Reminder Active</h4>
-                    <p className="text-xs opacity-80 mt-2">Will alert if balance reaches zero within {reminderDays} day{reminderDays > 1 ? 's' : ''}.</p>
+                    <p className="text-xs opacity-80 mt-2">Alert active: triggers when balance is zero or negative.</p>
                   </>
                 ) : (
                   <>

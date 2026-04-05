@@ -186,12 +186,14 @@ const ListQuickSales = () => {
                                         <tr key={sale.qs_id} className="group hover:bg-[#F2F4F6] transition-colors cursor-pointer">
                                             <td className="py-5 px-6 text-sm text-[#434655] font-medium">{String((currentPage - 1) * itemsPerPage + index + 1).padStart(2, '0')}</td>
                                             <td className="py-5 px-6">
-                                                <span
-                                                    className="bg-[#E6E8EA] px-2 py-1 rounded text-[10px] font-bold text-[#004AC6] cursor-pointer hover:bg-[#D0E1FB] transition-colors"
+                                                <button
+                                                    type="button"
+                                                    className="bg-[#E6E8EA] px-2 py-1 rounded text-[10px] font-bold text-[#004AC6] cursor-pointer hover:bg-[#D0E1FB] transition-colors border-none"
                                                     onClick={() => handleEdit(sale.qs_id)}
+                                                    aria-label={`Open quick sale ${sale.qs_id}`}
                                                 >
                                                     {sale.qs_id}
-                                                </span>
+                                                </button>
                                             </td>
                                             <td className="py-5 px-6 text-sm font-medium text-[#191C1E]">{sale.qs_date}</td>
                                             <td className="py-5 px-6 text-right font-black text-[#191C1E]">₹{(parseFloat(sale.total) || 0).toFixed(2)}</td>

@@ -147,9 +147,11 @@ const AddPriceListProduct = () => {
       await window.api.deleteProduct(paramCode);
       toast.success('Product deleted successfully');
       navigate('/price-list');
+      return true;
     } catch (err) {
       toast.error(err.message);
       console.error(err);
+      return false;
     } finally {
       setDeleting(false);
     }
@@ -288,7 +290,7 @@ const AddPriceListProduct = () => {
                 {/* Cost Price */}
                 <div className="col-span-1">
                   <label className="block text-xs font-bold text-[#434655] uppercase tracking-wider mb-2">
-                    Cost Price (₹)
+                    Cost Price (₹) <span className="text-[#BA1A1A]">*</span>
                   </label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400">₹</span>
@@ -400,12 +402,8 @@ const AddPriceListProduct = () => {
               >Cancel</button>
               <button
                 onClick={async () => {
-                  try {
-                    await handleDelete();
-                    setShowDeleteModal(false);
-                  } catch {
-                    // handleDelete shows error toast; keep modal open
-                  }
+                  const success = await handleDelete();
+                  if (success) setShowDeleteModal(false);
                 }}
                 disabled={deleting}
                 className="flex-1 px-6 py-3 bg-red-600 text-white font-bold rounded-xl shadow-lg shadow-red-600/20 hover:bg-red-700 hover:scale-[1.02] active:scale-95 transition-all text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"

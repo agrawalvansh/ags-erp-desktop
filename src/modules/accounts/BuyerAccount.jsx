@@ -94,7 +94,12 @@ const BuyerAccount = () => {
     try {
       const deps = await window.api.invoke('customers:checkDependencies', buyer.id);
       if (deps.hasDependencies) {
-        setDeleteError(`Cannot delete: this customer has ${deps.maalCount} maal and ${deps.jamaCount} jama entries. Remove them first.`);
+        const parts = [];
+        if (deps.maalCount > 0) parts.push(`${deps.maalCount} maal`);
+        if (deps.jamaCount > 0) parts.push(`${deps.jamaCount} jama`);
+        if (deps.invoiceCount > 0) parts.push(`${deps.invoiceCount} invoice`);
+        if (deps.orderCount > 0) parts.push(`${deps.orderCount} order`);
+        setDeleteError(`Cannot delete: this customer has ${parts.join(', ')} entries. Remove them first.`);
         setDeleteTarget(buyer);
       } else {
         setDeleteTarget(buyer);
@@ -127,8 +132,9 @@ const BuyerAccount = () => {
 
   // Helper to get initials from name
   const getInitials = (name) => {
-    if (!name) return '?';
-    const parts = name.trim().split(/\s+/);
+    const trimmed = name?.trim();
+    if (!trimmed) return '?';
+    const parts = trimmed.split(/\s+/);
     if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
     return parts[0].substring(0, 2).toUpperCase();
   };

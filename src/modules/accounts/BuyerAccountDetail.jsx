@@ -101,7 +101,8 @@ const BuyerAccountDetail = () => {
   };
 
   const handleReminderDaysChange = (days) => {
-    const numDays = parseInt(days) || 0;
+    const parsed = parseInt(days);
+    const numDays = isNaN(parsed) ? 1 : Math.min(365, Math.max(1, parsed));
     setReminderDays(numDays);
   };
 
@@ -205,7 +206,7 @@ const BuyerAccountDetail = () => {
   const formatBalanceCurrency = (val) =>
     new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(val) || 0);
 
-  // Delete handler
+  // Delete handler — returns true on success, false on failure
   const handleDeleteEntry = async (row) => {
     try {
       let result;
@@ -216,13 +217,15 @@ const BuyerAccountDetail = () => {
       }
       if (!result || result.success === false || result.error) {
         toast.error(result?.error || 'Failed to delete entry.');
-        return;
+        return false;
       }
       toast.success('Entry deleted successfully');
       fetchInvoices();
       fetchTransactions();
+      return true;
     } catch (err) {
       toast.error('Error deleting entry: ' + err.message);
+      return false;
     }
   };
 
@@ -687,7 +690,9 @@ const BuyerAccountDetail = () => {
                         ) : (
                           <div className="flex items-center justify-center gap-1">
                             <button className="p-1.5 rounded-full hover:bg-white text-[#434655] hover:text-[#004AC6] transition-all hover:shadow-sm cursor-pointer" onClick={() => handleEditClick(row)}><Edit size={16} /></button>
-                            <button className="p-1.5 rounded-full hover:bg-white text-[#434655] hover:text-[#DC2626] transition-all hover:shadow-sm cursor-pointer" onClick={() => setDeleteTarget(row)}><Trash2 size={16} /></button>
+                            {!row.isLinkedToInvoiceOrOrder && (
+                              <button className="p-1.5 rounded-full hover:bg-white text-[#434655] hover:text-[#DC2626] transition-all hover:shadow-sm cursor-pointer" onClick={() => setDeleteTarget(row)}><Trash2 size={16} /></button>
+                            )}
                           </div>
                         )}
                       </td>
@@ -730,8 +735,8 @@ const BuyerAccountDetail = () => {
                   const target = deleteTarget;
                   setIsDeleting(true);
                   try {
-                    await handleDeleteEntry(target);
-                    setDeleteTarget(null);
+                    const success = await handleDeleteEntry(target);
+                    if (success) setDeleteTarget(null);
                   } finally {
                     setIsDeleting(false);
                   }

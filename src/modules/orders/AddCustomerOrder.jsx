@@ -182,7 +182,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors 
 };
 
 // ─── Main Order Component ───
-const order = () => {
+const AddCustomerOrder = () => {
   const wrapperRef = useRef(null);
   const printRef = useRef(null);
   const { orderId: orderNo } = useParams();
@@ -385,7 +385,7 @@ const order = () => {
       toast.success(`Order saved successfully (ID: ${data.order_id || currentorderId})`);
       const savedOrderId = data.order_id || currentorderId;
       if (!currentorderId && data.order_id) { setCurrentorderId(data.order_id); setCustomorderNo(data.order_id); }
-      setOriginalOrderData({ ...payload, order_id: savedOrderId, items: orderItems.map(i => ({ product_code: i.code || i.product_code, quantity: parseFloat(i.quantity), item_remark: i.itemRemark || '', packing_type: i.packingType || '' })) });
+      setOriginalOrderData({ ...payload, order_id: savedOrderId, items: orderItems.map(i => ({ ...i, product_code: i.code || i.product_code, product_size: i.size || '', quantity: parseFloat(i.quantity), item_remark: i.itemRemark || '', packing_type: i.packingType || '' })) });
       setIsNewOrder(false); setIsSaved(true); setIsEditing(false);
     } catch (err) { console.error('Error saving order:', err); toast.error('An error occurred while saving. Please try again.'); }
   };
@@ -638,4 +638,4 @@ const order = () => {
   );
 };
 
-export default order;
+export default AddCustomerOrder;
