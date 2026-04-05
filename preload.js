@@ -50,11 +50,22 @@ exposed.invoke = (...args) => ipcRenderer.invoke(...args);
 
 // Listen for batch Marathi translation events from main process
 exposed.onMarathiBatchStart = (callback) => {
-  ipcRenderer.on('marathi:batchStart', (_event, data) => callback(data));
+  const handler = (_event, data) => callback(data);
+  ipcRenderer.on('marathi:batchStart', handler);
+  return () => ipcRenderer.removeListener('marathi:batchStart', handler);
 };
 exposed.onMarathiBatchComplete = (callback) => {
-  ipcRenderer.on('marathi:batchComplete', (_event, data) => callback(data));
+  const handler = (_event, data) => callback(data);
+  ipcRenderer.on('marathi:batchComplete', handler);
+  return () => ipcRenderer.removeListener('marathi:batchComplete', handler);
 };
+// Progress reporting for batch transliteration
+exposed.onTranslateBatchProgress = (callback) => {
+  const handler = (_event, data) => callback(data);
+  ipcRenderer.on('translate:batchProgress', handler);
+  return () => ipcRenderer.removeListener('translate:batchProgress', handler);
+};
+exposed.cancelBatchTransliterate = (operationId) => ipcRenderer.invoke('translate:batchCancel', operationId);
 
 if (!('api' in globalThis)) {
   contextBridge.exposeInMainWorld('api', exposed);

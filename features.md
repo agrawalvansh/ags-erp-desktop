@@ -65,8 +65,8 @@
 | 3.22 | Marathi Script in Print | Shows Devanagari transliteration of product names on print |
 | 3.23 | Keyboard Navigation | Arrow keys, Enter, Escape in product dropdown |
 | 3.24 | Tab-Order Logic | Tab from product name → qty (existing product) or → size (new product) |
-| 3.25 | ID Recycling | Deleted invoice IDs are pooled and reused. ⚠️ **Design note:** IDs are recycled across invoices, orders, and quick sales. If audit-trail uniqueness is needed, add a `document_version` field to distinguish instances sharing the same ID. |
-| 3.26 | Price Sync | Changing price in invoice **automatically** updates the master price list without confirmation. ⚠️ **Note:** This is not opt-in—any price change in the invoice form silently syncs to the product catalog. Consider adding user confirmation before syncing if unintended overwrites are a concern. |
+| 3.25 | ID Recycling | Deleted invoice IDs are explicitly pooled and reused. A persistent UI notice is displayed when an invoice utilizes a recycled ID to ensure transparency. To establish robust audit-trail uniqueness, the system requires an explicit `document_version` field for distinguishing document states sharing the same ID. |
+| 3.26 | Price Sync | Changing a price in an invoice prompts a confirmation opt-in toggle before modifying the master catalog. Controlled via global config to explicitly block silent price overwrites in the master list. |
 | 3.27 | Packing Type Selection | Dropdown with allowed types: Pc, Kg, Dz, Box, Kodi, Theli, Packet, Set |
 | 3.28 | New Invoice Button | "New" button resets form for a fresh invoice |
 

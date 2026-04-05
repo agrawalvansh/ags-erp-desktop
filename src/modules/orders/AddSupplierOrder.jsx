@@ -466,16 +466,16 @@ const AddSupplierOrder = () => {
       </header>
 
       {/* ─── Main Content ─── */}
-      <main className="px-8 pb-12 max-w-7xl mx-auto space-y-6">
+      <main className="px-8 pb-12 max-w-7xl mx-auto space-y-6 print:p-0 print:m-0 print:space-y-2">
         {/* ─── Supplier Info Card ─── */}
-        <section className="bg-white p-8 rounded-xl shadow-sm border border-[#C3C6D7]/10 print:shadow-none print:border-none" ref={printRef}>
+        <section className="bg-white p-8 rounded-xl shadow-sm border border-[#C3C6D7]/10 print:shadow-none print:border-none print:p-0 print:m-0" ref={printRef}>
           {/* Print header */}
-          <div className="hidden print:block text-center mb-4">
+          <div className="hidden print:block text-center mb-2">
             <h1 className="text-2xl font-bold">Supplier Order</h1>
-            <p className="text-sm text-gray-600">Order No: {customorderNo} | Date: {orderDate}</p>
+            <p className="text-xs text-gray-600">Order No: {customorderNo} | Date: {orderDate}</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-x-8 gap-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-x-8 gap-y-6 print:gap-y-2 print:gap-x-4">
             {/* Supplier Name */}
             <div className="flex flex-col space-y-2 relative" ref={wrapperRef}>
               <label className="text-[0.65rem] font-bold text-[#434655] uppercase tracking-[0.05em]">Supplier Name</label>
@@ -554,24 +554,24 @@ const AddSupplierOrder = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="text-[0.65rem] font-bold text-[#434655] uppercase tracking-widest border-b border-[#C3C6D7]/10">
-                  <th className="px-8 py-5 w-16">S.No</th>
-                  <th className="px-8 py-5">Item Name</th>
-                  <th className="px-8 py-5">Size</th>
-                  <th className="px-8 py-5 text-right">Qty</th>
-                  <th className="px-8 py-5">Unit</th>
-                  <th className="px-8 py-5">Remark</th>
+                  <th className="px-8 py-5 w-16 print:px-2 print:py-1 print:text-[8px]">S.No</th>
+                  <th className="px-8 py-5 print:px-2 print:py-1 print:text-[8px]">Item Name</th>
+                  <th className="px-8 py-5 print:px-2 print:py-1 print:text-[8px]">Size</th>
+                  <th className="px-8 py-5 text-right print:px-2 print:py-1 print:text-[8px]">Qty</th>
+                  <th className="px-8 py-5 print:px-2 print:py-1 print:text-[8px]">Unit</th>
+                  <th className="px-8 py-5 print:px-2 print:py-1 print:text-[8px]">Remark</th>
                   <th className="px-8 py-5 text-center print:hidden">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#C3C6D7]/5">
                 {orderItems.map((item, index) => (
-                  <tr key={index} className="hover:bg-[#F2F4F6]/50 transition-colors">
-                    <td className="px-8 py-5 text-sm text-[#434655]">{String(index + 1).padStart(2, '0')}</td>
-                    <td className="px-8 py-5 text-sm font-bold text-[#191C1E]" style={{ maxWidth: '200px', wordWrap: 'break-word', whiteSpace: 'normal' }}>{item.productName}</td>
-                    <td className="px-8 py-5 text-sm text-[#434655]">{item.size || '-'}</td>
-                    <td className="px-8 py-5 text-sm font-medium text-[#191C1E] text-right">{item.quantity}</td>
-                    <td className="px-8 py-5 text-sm text-[#434655]">{item.packingType}</td>
-                    <td className="px-8 py-5 text-sm text-[#434655]" style={{ maxWidth: '150px', wordWrap: 'break-word', whiteSpace: 'normal' }}>{item.itemRemark || '-'}</td>
+                  <tr key={index} className="hover:bg-[#F2F4F6]/50 transition-colors print:break-inside-avoid print:border-b print:border-gray-200">
+                    <td className="px-8 py-5 text-sm text-[#434655] print:px-2 print:py-1 print:text-[10px]">{String(index + 1).padStart(2, '0')}</td>
+                    <td className="px-8 py-5 text-sm font-bold text-[#191C1E] print:px-2 print:py-1 print:text-[10px]" style={{ maxWidth: '200px', wordWrap: 'break-word', whiteSpace: 'normal' }}>{item.productName}</td>
+                    <td className="px-8 py-5 text-sm text-[#434655] print:px-2 print:py-1 print:text-[10px]">{item.size || '-'}</td>
+                    <td className="px-8 py-5 text-sm font-medium text-[#191C1E] text-right print:px-2 print:py-1 print:text-[10px]">{item.quantity}</td>
+                    <td className="px-8 py-5 text-sm text-[#434655] print:px-2 print:py-1 print:text-[10px]">{item.packingType}</td>
+                    <td className="px-8 py-5 text-sm text-[#434655] print:px-2 print:py-1 print:text-[10px]" style={{ maxWidth: '150px', wordWrap: 'break-word', whiteSpace: 'normal' }}>{item.itemRemark || '-'}</td>
                     <td className="px-8 py-5 text-center print:hidden">
                       <div className="flex items-center justify-center gap-1">
                         <button onClick={() => handleEditItem(index)} className="p-2 rounded-lg text-[#434655] hover:text-[#004AC6] hover:bg-white transition-all cursor-pointer"><Edit size={16} /></button>

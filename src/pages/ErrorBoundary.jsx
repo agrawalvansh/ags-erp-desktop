@@ -5,8 +5,9 @@ const ErrorBoundary = () => {
   const error = useRouteError();
   const navigate = useNavigate();
 
-  const errorMessage = error?.message || error?.statusText || 'An unexpected error occurred';
-  const errorStack = error?.stack || '';
+  const isDev = import.meta.env.DEV; // Vite automatically exposes this based on environment
+  const errorMessage = isDev ? (error?.message || error?.statusText || 'An unexpected error occurred') : 'An unexpected error occurred';
+  const errorStack = isDev ? (error?.stack || '') : '';
 
   return (
     <div className="min-h-screen bg-[#F7F9FB] flex items-center justify-center p-6">
@@ -42,7 +43,13 @@ const ErrorBoundary = () => {
         {/* Action buttons */}
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => {
+              if (window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate('/');
+              }
+            }}
             className="flex-1 px-6 py-3 bg-[#E6E8EA] text-[#191C1E] font-bold rounded-xl hover:bg-[#E0E3E5] transition-all text-sm flex items-center justify-center gap-2 cursor-pointer"
           >
             <ArrowLeft size={16} />

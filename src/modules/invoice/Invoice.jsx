@@ -18,7 +18,7 @@ import {
 
 // Add Item Form Component
 // Improved Add Item Form Component
-const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors, productNameInputRef, onProductSelected }) => {
+const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors, productNameInputRef, onProductSelected, autoSyncPrice, setAutoSyncPrice }) => {
   const [showProdDropdown, setShowProdDropdown] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const prodWrapperRef = useRef(null);
@@ -278,8 +278,23 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
           )}
         </div>
 
+        {/* Price Sync Options */}
+        <div className="col-span-12 flex items-center justify-end mb-2 mt-[-10px]">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={autoSyncPrice}
+              onChange={(e) => setAutoSyncPrice(e.target.checked)}
+              className="w-4 h-4 text-[#2563EB] border-gray-300 rounded focus:ring-[#2563EB]"
+            />
+            <span className="text-[12px] font-bold text-[#475569] uppercase">
+              Update Master Price List
+            </span>
+          </label>
+        </div>
+
         {/* Add Button — col-span-2 */}
-        <div className="col-span-12 md:col-span-2">
+        <div className="col-span-12 md:col-span-2 md:col-start-11">
           <button
             onClick={handleAddItem}
             className="cursor-pointer w-full py-2.5 bg-gradient-to-br from-[#004AC6] to-[#2563EB] text-white font-bold text-sm uppercase rounded-lg shadow-sm hover:opacity-90 transition-all flex items-center justify-center gap-2"
@@ -329,6 +344,7 @@ const Invoice = () => {
   const [currentInvoiceId, setCurrentInvoiceId] = useState(invoiceNo || '');
   const [editIndex, setEditIndex] = useState(-1);
   const [showNavigationWarning, setShowNavigationWarning] = useState(false);
+  const [autoSyncPrice, setAutoSyncPrice] = useState(false);
 
   // Payment/Advance state
   const [paymentAmount, setPaymentAmount] = useState('');
@@ -415,6 +431,7 @@ const Invoice = () => {
     setIsSaved(true);
     setCurrentInvoiceId('');
     setEditIndex(-1);
+    setAutoSyncPrice(false);
     // Reset payment fields
     setPaymentAmount('');
     setPaymentType('Cash');
@@ -704,7 +721,7 @@ const Invoice = () => {
     } else if (newItem.code && originalProduct) {
       // Using existing product without name change - check if price changed
       const originalPrice = originalProduct.selling_price ?? originalProduct.sellingPrice ?? 0;
-      if (originalPrice !== sellingPrice) {
+      if (autoSyncPrice && originalPrice !== sellingPrice) {
         try {
           await window.api.invoke('products:update', {
             code: newItem.code,
@@ -714,7 +731,7 @@ const Invoice = () => {
             cost_price: originalProduct.cost_price || 0,
             selling_price: sellingPrice
           });
-          toast.success('Price updated in Price List');
+          toast.success('Price updated in Master Price List');
 
           // Refresh products list
           const updatedProducts = await window.api.getProducts();
@@ -1029,6 +1046,22 @@ const Invoice = () => {
           </div>
         </div>
 
+        {/* Persistent ID Recycling UI Notice */}
+        <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mx-4 sm:mx-6 mt-4 print:hidden rounded-r-md">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3 flex-1">
+              <p className="text-sm text-blue-700 font-medium">
+                <strong>ID Recycling Note:</strong> To maintain uninterrupted sequences, deleted estimate IDs are explicitly pooled and reused seamlessly across Sales, Orders, and Invoices.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Customer Details Section */}
         <section className="px-4 sm:px-8 py-6 print:py-3">
           <div className="bg-white p-6 rounded-xl shadow-sm border border-[#C3C6D7]/10 flex flex-wrap gap-6 items-end">
@@ -1125,6 +1158,9 @@ const Invoice = () => {
             products={products}
             formErrors={formErrors}
             productNameInputRef={productNameInputRef}
+            onProductSelected={() => { }}
+            autoSyncPrice={autoSyncPrice}
+            setAutoSyncPrice={setAutoSyncPrice}
           />
         </div>
 

@@ -606,7 +606,7 @@ const CreateQuickSale = () => {
                 </div>
             )}
 
-            <div ref={printRef} className="max-w-[1040px] mx-auto bg-white shadow-sm rounded-xl border border-[#E2E8F0] overflow-hidden print:shadow-none print:rounded-none print:border-none print:w-[210mm] print:min-h-[297mm]">
+            <div ref={printRef} className="max-w-[1040px] mx-auto bg-white shadow-sm rounded-xl border border-[#E2E8F0] overflow-hidden print:shadow-none print:rounded-none print:border-none print:w-[100%] print:m-0">
                 {/* Top Bar — Reference / Title / Date */}
                 <div className="px-4 sm:px-6 py-4 border-b border-[#E2E8F0] bg-[#F8FAFC] print:bg-white print:py-3">
                     <div className="flex items-center justify-between">
@@ -640,20 +640,20 @@ const CreateQuickSale = () => {
                         <table className="w-full min-w-[700px] text-left border-collapse">
                             <thead className="bg-[#F2F4F6] text-[10px] font-extrabold uppercase text-[#434655] tracking-wider">
                                 <tr>
-                                    <th className="py-4 px-6 w-16">S.No</th>
-                                    <th className="py-4 px-6">Item Name</th>
-                                    <th className="py-4 px-6 w-32 text-center">Size</th>
-                                    <th className="py-4 px-6 w-32 text-right">Qty</th>
-                                    <th className="py-4 px-6 w-32 text-right">Rate (₹)</th>
-                                    <th className="py-4 px-6 w-40 text-right">Amount (₹)</th>
+                                    <th className="py-4 px-6 w-16 print:py-1 print:px-2 print:text-[8px]">S.No</th>
+                                    <th className="py-4 px-6 print:py-1 print:px-2 print:text-[8px]">Item Name</th>
+                                    <th className="py-4 px-6 w-32 text-center print:py-1 print:px-2 print:text-[8px]">Size</th>
+                                    <th className="py-4 px-6 w-32 text-right print:py-1 print:px-2 print:text-[8px]">Qty</th>
+                                    <th className="py-4 px-6 w-32 text-right print:py-1 print:px-2 print:text-[8px]">Rate (₹)</th>
+                                    <th className="py-4 px-6 w-40 text-right print:py-1 print:px-2 print:text-[8px]">Amount (₹)</th>
                                     <th className="py-4 px-6 w-24 text-center print:hidden">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="text-sm divide-y divide-[#ECEEF0]">
                                 {invoiceItems.map((item, index) => (
-                                    <tr key={index} className="hover:bg-[#F2F4F6]/50 transition-colors">
-                                        <td className="py-4 px-6 text-[#434655] font-medium">{String(index + 1).padStart(2, '0')}</td>
-                                        <td className="py-4 px-6 font-bold text-[#191C1E]" style={{ maxWidth: '200px', wordWrap: 'break-word', whiteSpace: 'normal' }}>
+                                    <tr key={index} className="hover:bg-[#F2F4F6]/50 transition-colors print:break-inside-avoid print:border-b print:border-gray-200 print:text-[10px]">
+                                        <td className="py-4 px-6 text-[#434655] font-medium print:py-1 print:px-2 text-xs">{String(index + 1).padStart(2, '0')}</td>
+                                        <td className="py-4 px-6 font-bold text-[#191C1E] print:py-1 print:px-2 text-xs" style={{ maxWidth: '200px', wordWrap: 'break-word', whiteSpace: 'normal' }}>
                                             <span className="print:hidden">{item.productName}</span>
                                             <span className="hidden print:inline">
                                                 {printMarathi && marathiNames[item.code || item.product_code]
@@ -661,10 +661,10 @@ const CreateQuickSale = () => {
                                                     : item.productName}
                                             </span>
                                         </td>
-                                        <td className="py-4 px-6 text-[#434655] text-center">{item.size || '-'}</td>
-                                        <td className="py-4 px-6 text-right text-[#191C1E]">{item.quantity} {item.packingType}</td>
-                                        <td className="py-4 px-6 text-right font-medium">{formatNumber(item.sellingPrice)}</td>
-                                        <td className="py-4 px-6 text-right font-bold text-[#004AC6]">{formatNumber(item.amount)}</td>
+                                        <td className="py-4 px-6 text-[#434655] text-center print:py-1 print:px-2 text-xs">{item.size || '-'}</td>
+                                        <td className="py-4 px-6 text-right text-[#191C1E] print:py-1 print:px-2 text-xs">{item.quantity} {item.packingType}</td>
+                                        <td className="py-4 px-6 text-right font-medium print:py-1 print:px-2 text-xs">{formatNumber(item.sellingPrice)}</td>
+                                        <td className="py-4 px-6 text-right font-bold text-[#004AC6] print:py-1 print:px-2 text-xs">{formatNumber(item.amount)}</td>
                                         <td className="py-4 px-6 text-center print:hidden">
                                             <div className="flex items-center justify-center gap-2">
                                                 <button onClick={() => handleEditItem(index)} className="cursor-pointer p-1.5 rounded-md text-[#434655] hover:text-[#004AC6] hover:bg-white transition-colors"><Edit size={15} /></button>

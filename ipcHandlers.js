@@ -46,14 +46,22 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
           continue;
         }
         const url = `https://inputtools.google.com/request?text=${encodeURIComponent(word)}&itc=mr-t-i0-und&num=1`;
-        const res = await fetch(url);
-        if (!res.ok) { result.push(word); continue; }
-        const data = await res.json();
-        // Response: ["SUCCESS",[["word",["transliterated",...]]]]
-        if (data[0] === 'SUCCESS' && data[1] && data[1][0] && data[1][0][1] && data[1][0][1][0]) {
-          result.push(data[1][0][1][0]);
-        } else {
-          result.push(word); // fallback to original
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        try {
+          const res = await fetch(url, { signal: controller.signal });
+          clearTimeout(timeout);
+          if (!res.ok) { result.push(word); continue; }
+          const data = await res.json();
+          // Response: ["SUCCESS",[["word",["transliterated",...]]]]
+          if (data[0] === 'SUCCESS' && data[1] && data[1][0] && data[1][0][1] && data[1][0][1][0]) {
+            result.push(data[1][0][1][0]);
+          } else {
+            result.push(word); // fallback to original
+          }
+        } catch (fetchErr) {
+          clearTimeout(timeout);
+          result.push(word); // fallback on abort/network error
         }
       }
       return result.join(' ');
@@ -69,6 +77,15 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     db.prepare(`
         INSERT INTO products (code, name, size, packing_type, cost_price, selling_price, is_deleted)
         VALUES (?, ?, ?, ?, ?, ?, 0)
+        ON CONFLICT(code) DO UPDATE SET
+            name = excluded.name,
+            size = excluded.size,
+            packing_type = excluded.packing_type,
+            cost_price = excluded.cost_price,
+            selling_price = excluded.selling_price,
+            is_deleted = 0,
+            marathi_name = CASE WHEN products.name IS NOT excluded.name THEN NULL ELSE products.marathi_name END,
+            marathi_status = CASE WHEN products.name IS NOT excluded.name THEN NULL ELSE products.marathi_status END
       `).run(code, name, size, packing_type, cost_price, selling_price);
 
     // Auto-transliterate to Marathi (non-blocking, never fails product creation)
@@ -87,12 +104,30 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     return row || { error: 'Product not found' };
   }));
 
-  ipcMain.handle('products:update', wrap((prod) => {
+  ipcMain.handle('products:update', wrap(async (prod) => {
     const { code, name, size, packing_type, cost_price, selling_price } = prod;
+
+    // Check if name changed to decide whether to re-transliterate
+    const existing = db.prepare('SELECT name FROM products WHERE code = ?').get(code);
+    const nameChanged = existing && existing.name !== name;
+
     const res = db.prepare(`
         UPDATE products SET name = ?, size = ?, packing_type = ?, cost_price = ?, selling_price = ? 
         WHERE code = ? AND (is_deleted = 0 OR is_deleted IS NULL)
       `).run(name, size, packing_type, cost_price, selling_price, code);
+
+    if (res.changes && nameChanged) {
+      // Name changed — re-transliterate marathi_name (non-blocking)
+      try {
+        const marathiName = await transliterateToMarathi(name);
+        if (marathiName) {
+          db.prepare("UPDATE products SET marathi_name = ?, marathi_status = 'transliterated' WHERE code = ?").run(marathiName, code);
+        } else {
+          db.prepare("UPDATE products SET marathi_name = NULL, marathi_status = NULL WHERE code = ?").run(code);
+        }
+      } catch (e) { console.error('Marathi re-transliterate failed (non-critical):', e.message); }
+    }
+
     return res.changes ? { success: true } : { error: 'Product not found' };
   }));
 
@@ -407,8 +442,8 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     const linkedPayment = db.prepare(
       `SELECT id, jama_date AS payment_date, jama_txn_type AS payment_type, jama_amount AS payment_amount
         FROM customer_jama_account 
-        WHERE jama_remark = ? OR jama_remark LIKE ?`
-    ).get(paymentRemark, `${paymentRemark}%`);
+        WHERE jama_remark = ?`
+    ).get(paymentRemark);
 
     return {
       ...header,
@@ -448,8 +483,8 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
       // Handle payment/advance (Jama entry management)
       const paymentRemark = `Invoice ${invoice_id}`;
       const existingPayment = db.prepare(
-        `SELECT id FROM customer_jama_account WHERE jama_remark LIKE ? OR jama_remark = ?`
-      ).get(`${paymentRemark}%`, paymentRemark);
+        `SELECT id FROM customer_jama_account WHERE jama_remark = ?`
+      ).get(paymentRemark);
 
       const paymentAmt = parseFloat(payment_amount) || 0;
 
@@ -691,8 +726,8 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     const linkedPayment = db.prepare(
       `SELECT id, jama_date AS payment_date, jama_txn_type AS payment_type, jama_amount AS payment_amount
         FROM customer_jama_account 
-        WHERE jama_remark = ? OR jama_remark LIKE ?`
-    ).get(paymentRemark, `${paymentRemark}%`);
+        WHERE jama_remark = ?`
+    ).get(paymentRemark);
 
     return {
       ...header,
@@ -736,8 +771,8 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
       // Handle payment/advance (Jama entry management)
       const paymentRemark = `Order ${orderId}`;
       const existingPayment = db.prepare(
-        `SELECT id FROM customer_jama_account WHERE jama_remark = ? OR jama_remark LIKE ?`
-      ).get(paymentRemark, `${paymentRemark}%`);
+        `SELECT id FROM customer_jama_account WHERE jama_remark = ?`
+      ).get(paymentRemark);
 
       const paymentAmt = parseFloat(payment_amount) || 0;
 
@@ -888,8 +923,8 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
 
       // Step 3: Delete linked Jama entry (payment associated with this invoice)
       const paymentRemark = `Invoice ${invoice_id}`;
-      db.prepare('DELETE FROM customer_jama_account WHERE jama_remark LIKE ? OR jama_remark = ?')
-        .run(`${paymentRemark}%`, paymentRemark);
+      db.prepare('DELETE FROM customer_jama_account WHERE jama_remark = ?')
+        .run(paymentRemark);
 
       // Step 4: Delete the invoice header
       const res = db.prepare('DELETE FROM invoices WHERE invoice_id = ?').run(invoice_id);
@@ -1290,8 +1325,8 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     const linkedPayment = db.prepare(
       `SELECT id, jama_date AS payment_date, jama_txn_type AS payment_type, jama_amount AS payment_amount
         FROM supplier_jama_account 
-        WHERE jama_remark = ? OR jama_remark LIKE ?`
-    ).get(paymentRemark, `${paymentRemark}%`);
+        WHERE jama_remark = ?`
+    ).get(paymentRemark);
 
     return {
       ...header,
@@ -1334,8 +1369,8 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
 
       const paymentRemark = `Order ${orderId}`;
       const existingPayment = db.prepare(
-        `SELECT id FROM supplier_jama_account WHERE jama_remark = ? OR jama_remark LIKE ?`
-      ).get(paymentRemark, `${paymentRemark}%`);
+        `SELECT id FROM supplier_jama_account WHERE jama_remark = ?`
+      ).get(paymentRemark);
 
       const paymentAmt = parseFloat(payment_amount) || 0;
       if (paymentAmt > 0) {
@@ -1607,25 +1642,69 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
   }));
 
   // Batch transliterate all products with missing Marathi names
-  ipcMain.handle('translate:batchMissing', wrap(async () => {
-    const missing = db.prepare(
-      "SELECT code, name FROM products WHERE (marathi_name IS NULL OR marathi_name = '') AND (is_deleted = 0 OR is_deleted IS NULL)"
-    ).all();
-    if (missing.length === 0) return { success: true, translated: 0, total: 0 };
-    let translated = 0;
-    for (const prod of missing) {
-      try {
-        const marathiName = await transliterateToMarathi(prod.name);
-        if (marathiName) {
-          db.prepare("UPDATE products SET marathi_name = ?, marathi_status = 'transliterated' WHERE code = ?").run(marathiName, prod.code);
-          translated++;
-        }
-        // Small delay to avoid rate limiting
-        await new Promise(r => setTimeout(r, 100));
-      } catch (e) { console.error(`Batch transliterate failed for ${prod.code}:`, e.message); }
+  // Per-operation cancel tokens to avoid leaking between concurrent runs
+  const batchOperations = new Map();
+
+  ipcMain.handle('translate:batchCancel', wrap((operationId) => {
+    if (operationId && batchOperations.has(operationId)) {
+      batchOperations.get(operationId).cancelled = true;
+    } else {
+      // Cancel all active operations if no specific ID given
+      for (const op of batchOperations.values()) op.cancelled = true;
     }
-    return { success: true, translated, total: missing.length };
+    return { success: true };
   }));
+
+  ipcMain.handle('translate:batchMissing', async (event) => {
+    try {
+      const operationId = `batch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const token = { cancelled: false };
+      batchOperations.set(operationId, token);
+
+      const missing = db.prepare(
+        "SELECT code, name FROM products WHERE (marathi_name IS NULL OR marathi_name = '') AND (is_deleted = 0 OR is_deleted IS NULL)"
+      ).all();
+      const total = missing.length;
+      if (total === 0) {
+        batchOperations.delete(operationId);
+        return { success: true, translated: 0, total: 0, operationId };
+      }
+
+      let translated = 0;
+      const CHUNK_SIZE = 10;
+
+      for (let i = 0; i < missing.length; i++) {
+        if (token.cancelled) {
+          event.sender.send('translate:batchProgress', { translated, total, cancelled: true, operationId });
+          batchOperations.delete(operationId);
+          return { success: true, translated, total, cancelled: true, operationId };
+        }
+        const prod = missing[i];
+        try {
+          const marathiName = await transliterateToMarathi(prod.name);
+          if (marathiName) {
+            db.prepare("UPDATE products SET marathi_name = ?, marathi_status = 'transliterated' WHERE code = ?").run(marathiName, prod.code);
+            translated++;
+          }
+        } catch (e) { console.error(`Batch transliterate failed for ${prod.code}:`, e.message); }
+
+        // Report progress every item
+        event.sender.send('translate:batchProgress', { translated, total, current: i + 1, operationId });
+
+        // Delay between chunks to avoid rate limiting
+        if ((i + 1) % CHUNK_SIZE === 0) {
+          await new Promise(r => setTimeout(r, 200));
+        } else {
+          await new Promise(r => setTimeout(r, 50));
+        }
+      }
+      batchOperations.delete(operationId);
+      return { success: true, translated, total, operationId };
+    } catch (err) {
+      console.error('Batch transliteration error:', err);
+      return { error: err.message };
+    }
+  });
 
   // Check which product codes are missing Marathi names
   ipcMain.handle('translate:checkMissing', wrap((codes) => {
