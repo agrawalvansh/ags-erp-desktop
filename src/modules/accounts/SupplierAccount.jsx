@@ -89,7 +89,8 @@ const SupplierAccount = () => {
         if (deps.maalCount > 0) parts.push(`${deps.maalCount} maal`);
         if (deps.jamaCount > 0) parts.push(`${deps.jamaCount} jama`);
         if (deps.orderCount > 0) parts.push(`${deps.orderCount} order`);
-        setDeleteError(`Cannot delete: this supplier has ${parts.join(', ')} entries. Remove them first.`);
+        const detail = parts.length > 0 ? parts.join(', ') : 'existing dependent';
+        setDeleteError(`Cannot delete: this supplier has ${detail} entries. Remove them first.`);
         setDeleteTarget(supplier);
       } else {
         setDeleteTarget(supplier);
