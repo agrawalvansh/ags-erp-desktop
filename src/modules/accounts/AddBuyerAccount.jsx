@@ -210,11 +210,13 @@ const AddBuyerAccount = () => {
       {/* ─── Delete Confirmation — Stitch Glass Overlay ─── */}
       {showDeleteModal && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 outline-none"
           style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.7)' }}
           role="dialog"
           aria-modal="true"
           aria-labelledby="delete-modal-heading"
+          tabIndex={-1}
+          ref={(el) => el?.focus()}
           onKeyDown={(e) => { if (e.key === 'Escape') setShowDeleteModal(false); }}
           onClick={(e) => { if (e.target === e.currentTarget) setShowDeleteModal(false); }}
         >

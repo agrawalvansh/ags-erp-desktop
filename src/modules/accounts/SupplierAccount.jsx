@@ -347,12 +347,22 @@ const SupplierAccount = () => {
 
       {/* Delete Confirmation Modal — Stitch Glass Overlay */}
       {deleteTarget !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.7)' }}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 outline-none"
+          style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.7)' }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-supplier-heading"
+          tabIndex={-1}
+          ref={(el) => el?.focus()}
+          onKeyDown={(e) => { if (e.key === 'Escape' && !isDeleting) { setDeleteTarget(null); setDeleteError(null); } }}
+          onClick={(e) => { if (e.target === e.currentTarget && !isDeleting) { setDeleteTarget(null); setDeleteError(null); } }}
+        >
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#C3C6D7]/20 p-8 transform scale-100 transition-all">
             <div className="w-12 h-12 rounded-full bg-red-100/50 flex items-center justify-center text-red-600 mb-6">
               <AlertTriangle size={28} />
             </div>
-            <h2 className="text-2xl font-extrabold text-[#0F172A] tracking-tight mb-3">
+            <h2 id="delete-supplier-heading" className="text-2xl font-extrabold text-[#0F172A] tracking-tight mb-3">
               Delete Supplier?
             </h2>
             {deleteError ? (

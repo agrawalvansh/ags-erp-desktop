@@ -76,6 +76,7 @@ const ListQuickSales = () => {
             if (res.success) {
                 toast.success(`${deleteTarget} deleted`);
                 fetchSales();
+                setDeleteTarget(null);
             } else {
                 toast.error(res.error || 'Failed to delete');
             }
@@ -84,7 +85,6 @@ const ListQuickSales = () => {
             toast.error('Failed to delete quick sale');
         } finally {
             setIsDeleting(false);
-            setDeleteTarget(null);
         }
     };
 
@@ -322,7 +322,6 @@ const ListQuickSales = () => {
                             <button
                                 onClick={async () => {
                                     await confirmDelete();
-                                    close();
                                 }}
                                 disabled={isDeleting}
                                 className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors cursor-pointer disabled:opacity-50"

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Search, Edit, Trash2, Filter, Plus, Phone, MapPin, Building, Save, X, ArrowLeft, Bell, Clock } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -35,6 +35,7 @@ const BuyerAccountDetail = () => {
   // Reminder state
   const [reminderEnabled, setReminderEnabled] = useState(false);
   const [reminderDays, setReminderDays] = useState(0);
+  const lastSavedReminderDaysRef = useRef(0);
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Fetch functions
@@ -66,7 +67,9 @@ const BuyerAccountDetail = () => {
         } else {
           setBuyer(found);
           setReminderEnabled(!!found.reminder_enabled);
-          setReminderDays(found.reminder_days || 0);
+          const days = found.reminder_days || 0;
+          setReminderDays(days);
+          lastSavedReminderDaysRef.current = days;
         }
       } catch (err) {
         setError('Error loading customer data');
@@ -107,7 +110,6 @@ const BuyerAccountDetail = () => {
   };
 
   const saveReminderDays = async () => {
-    const prev = reminderDays;
     try {
       await window.api.invoke('customers:update', {
         customer_id: slug,
@@ -117,8 +119,9 @@ const BuyerAccountDetail = () => {
         reminder_enabled: reminderEnabled ? 1 : 0,
         reminder_days: reminderDays,
       });
+      lastSavedReminderDaysRef.current = reminderDays;
     } catch (err) {
-      setReminderDays(prev);
+      setReminderDays(lastSavedReminderDaysRef.current);
       toast.error('Failed to update reminder days');
     }
   };
@@ -486,12 +489,12 @@ const BuyerAccountDetail = () => {
                 {isReminderTriggered ? (
                   <>
                     <h4 className="text-xl font-bold mt-1">⚠️ Balance Clear</h4>
-                    <p className="text-xs opacity-80 mt-2">Balance is ₹0 No pending dues. Reminder was set for {reminderDays} day{reminderDays > 1 ? 's' : ''}.</p>
+                    <p className="text-xs opacity-80 mt-2">Balance is ₹0. No pending dues. Reminder was set for {reminderDays} day{reminderDays > 1 ? 's' : ''}.</p>
                   </>
                 ) : reminderEnabled ? (
                   <>
                     <h4 className="text-xl font-bold mt-1">Reminder Active</h4>
-                    <p className="text-xs opacity-80 mt-2">Will alert if balance reaches zero within {reminderDays} day{reminderDays > 1 ? 's' : ''}.</p>
+                    <p className="text-xs opacity-80 mt-2">Alert active: triggers when balance is zero or negative.</p>
                   </>
                 ) : (
                   <>
@@ -716,12 +719,22 @@ const BuyerAccountDetail = () => {
 
       {/* Delete Confirmation Modal — Stitch Glass Overlay */}
       {deleteTarget !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.7)' }}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 outline-none"
+          style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.7)' }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-entry-heading"
+          tabIndex={-1}
+          ref={(el) => el?.focus()}
+          onKeyDown={(e) => { if (e.key === 'Escape' && !isDeleting) setDeleteTarget(null); }}
+          onClick={(e) => { if (e.target === e.currentTarget && !isDeleting) setDeleteTarget(null); }}
+        >
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#C3C6D7]/20 p-8">
             <div className="w-12 h-12 rounded-full bg-red-100/50 flex items-center justify-center text-red-600 mb-6">
               <Trash2 size={28} />
             </div>
-            <h2 className="text-2xl font-extrabold text-[#0F172A] tracking-tight mb-3">Delete Entry?</h2>
+            <h2 id="delete-entry-heading" className="text-2xl font-extrabold text-[#0F172A] tracking-tight mb-3">Delete Entry?</h2>
             <p className="text-[#434655] leading-relaxed mb-8">
               Are you sure you want to delete this <span className="font-bold text-[#191C1E]">{deleteTarget?.type === 'maal' ? 'maal' : 'jama'}</span> entry? This action cannot be undone.
             </p>

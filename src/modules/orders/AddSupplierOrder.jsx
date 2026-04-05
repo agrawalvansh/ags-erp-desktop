@@ -130,7 +130,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors 
                       <span className="text-xs font-bold text-[#434655]">₹{(p.selling_price ?? p.sellingPrice ?? 0).toFixed(2)}</span>
                     </button>
                   ))
-                ) : (<div></div>)}
+                ) : (<div className="p-3 text-sm text-[#434655]">No products found</div>)}
               </div>
             )}
           </div>
@@ -187,7 +187,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors 
 };
 
 // ─── Main Order Component ───
-const order = () => {
+const AddSupplierOrder = () => {
   const wrapperRef = useRef(null);
   const printRef = useRef(null);
   const { orderId: orderNo } = useParams();
@@ -392,7 +392,7 @@ const order = () => {
       toast.success(`Order saved successfully (ID: ${data.order_id || currentorderId})`);
       const savedOrderId = data.order_id || currentorderId;
       if (!currentorderId && data.order_id) { setCurrentorderId(data.order_id); setCustomorderNo(data.order_id); }
-      setOriginalOrderData({ ...payload, order_id: savedOrderId, items: orderItems.map(i => ({ product_code: i.code || i.product_code, quantity: parseFloat(i.quantity), item_remark: i.itemRemark || '', packing_type: i.packingType || '' })) });
+      setOriginalOrderData({ ...payload, order_id: savedOrderId, items: orderItems.map(i => ({ ...i, product_code: i.code || i.product_code, product_size: i.size || '', quantity: parseFloat(i.quantity), item_remark: i.itemRemark || '', packing_type: i.packingType || '' })) });
       setIsNewOrder(false); setIsSaved(true); setIsEditing(false);
     } catch (err) { console.error('Error saving order:', err); toast.error('An error occurred while saving. Please try again.'); }
   };
@@ -632,10 +632,20 @@ const order = () => {
 
       {/* ─── Delete Confirmation — Stitch Glass Overlay ─── */}
       {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 print:hidden" style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.7)' }}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 print:hidden outline-none"
+          style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.7)' }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-order-heading"
+          tabIndex={-1}
+          ref={(el) => el?.focus()}
+          onKeyDown={(e) => { if (e.key === 'Escape') setShowDeleteModal(false); }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowDeleteModal(false); }}
+        >
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#C3C6D7]/20 p-8">
             <div className="w-12 h-12 rounded-full bg-red-100/50 flex items-center justify-center text-red-600 mb-6 mx-auto"><Trash2 size={28} /></div>
-            <h2 className="text-2xl font-extrabold text-[#0F172A] tracking-tight mb-3 text-center">Delete Order?</h2>
+            <h2 id="delete-order-heading" className="text-2xl font-extrabold text-[#0F172A] tracking-tight mb-3 text-center">Delete Order?</h2>
             <p className="text-[#434655] leading-relaxed mb-8 text-center">Are you sure you want to delete this order? This action cannot be undone.</p>
             <div className="flex items-center gap-3">
               <button onClick={() => setShowDeleteModal(false)} className="flex-1 px-6 py-3 bg-[#E6E8EA] text-[#191C1E] font-bold rounded-xl hover:bg-[#E0E3E5] transition-all text-sm cursor-pointer">Cancel</button>
@@ -648,4 +658,4 @@ const order = () => {
   );
 };
 
-export default order;
+export default AddSupplierOrder;
