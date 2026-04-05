@@ -36,7 +36,13 @@ const BuyerAccountDetail = () => {
   const [reminderEnabled, setReminderEnabled] = useState(false);
   const [reminderDays, setReminderDays] = useState(0);
   const lastSavedReminderDaysRef = useRef(0);
+  const deleteModalRef = useRef(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Focus the delete modal when it opens
+  useEffect(() => {
+    if (deleteTarget !== null) deleteModalRef.current?.focus();
+  }, [deleteTarget]);
 
   // Fetch functions
   const fetchInvoices = useCallback(async () => {
@@ -726,7 +732,7 @@ const BuyerAccountDetail = () => {
           aria-modal="true"
           aria-labelledby="delete-entry-heading"
           tabIndex={-1}
-          ref={(el) => el?.focus()}
+          ref={deleteModalRef}
           onKeyDown={(e) => { if (e.key === 'Escape' && !isDeleting) setDeleteTarget(null); }}
           onClick={(e) => { if (e.target === e.currentTarget && !isDeleting) setDeleteTarget(null); }}
         >

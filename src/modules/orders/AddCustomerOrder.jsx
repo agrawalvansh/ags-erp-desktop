@@ -194,6 +194,12 @@ const AddCustomerOrder = () => {
   const [customerId, setCustomerId] = useState('');
   const [customers, setCustomers] = useState([]);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const deleteModalRef = useRef(null);
+
+  // Focus the delete modal when it opens
+  useEffect(() => {
+    if (showDeleteModal) deleteModalRef.current?.focus();
+  }, [showDeleteModal]);
 
   useEffect(() => {
     if (customerId && customers.length) {
@@ -629,7 +635,7 @@ const AddCustomerOrder = () => {
           aria-modal="true"
           aria-labelledby="delete-order-heading"
           tabIndex={-1}
-          ref={(el) => el?.focus()}
+          ref={deleteModalRef}
           onKeyDown={(e) => { if (e.key === 'Escape') setShowDeleteModal(false); }}
           onClick={(e) => { if (e.target === e.currentTarget) setShowDeleteModal(false); }}
         >

@@ -8,6 +8,12 @@ const BuyerAccount = () => {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const deleteModalRef = useRef(null);
+
+  // Focus the delete modal when it opens
+  useEffect(() => {
+    if (deleteTarget !== null) deleteModalRef.current?.focus();
+  }, [deleteTarget]);
   const navigate = useNavigate();
   const searchInputRef = useRef(null);
 
@@ -358,7 +364,7 @@ const BuyerAccount = () => {
           aria-modal="true"
           aria-labelledby="delete-customer-heading"
           tabIndex={-1}
-          ref={(el) => el?.focus()}
+          ref={deleteModalRef}
           onKeyDown={(e) => { if (e.key === 'Escape' && !isDeleting) { setDeleteTarget(null); setDeleteError(null); } }}
           onClick={(e) => { if (e.target === e.currentTarget && !isDeleting) { setDeleteTarget(null); setDeleteError(null); } }}
         >

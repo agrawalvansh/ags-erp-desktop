@@ -36,7 +36,13 @@ const SupplierAccountDetail = () => {
   const [reminderEnabled, setReminderEnabled] = useState(false);
   const [reminderDays, setReminderDays] = useState(1);
   const lastSavedReminderDaysRef = useRef(1);
+  const deleteModalRef = useRef(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Focus the delete modal when it opens
+  useEffect(() => {
+    if (deleteTarget !== null) deleteModalRef.current?.focus();
+  }, [deleteTarget]);
 
   // Fetch functions
   const fetchInvoices = useCallback(async () => {
@@ -732,7 +738,7 @@ const SupplierAccountDetail = () => {
           aria-modal="true"
           aria-labelledby="delete-entry-heading"
           tabIndex={-1}
-          ref={(el) => el?.focus()}
+          ref={deleteModalRef}
           onKeyDown={(e) => { if (e.key === 'Escape' && !isDeleting) setDeleteTarget(null); }}
           onClick={(e) => { if (e.target === e.currentTarget && !isDeleting) setDeleteTarget(null); }}
         >

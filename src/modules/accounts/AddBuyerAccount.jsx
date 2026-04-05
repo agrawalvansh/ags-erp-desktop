@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Save, Trash2, Lock } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -12,6 +12,12 @@ const AddBuyerAccount = () => {
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
   const [mobile, setMobile] = useState('');
+  const deleteModalRef = useRef(null);
+
+  // Focus the delete modal when it opens
+  useEffect(() => {
+    if (showDeleteModal) deleteModalRef.current?.focus();
+  }, [showDeleteModal]);
   const [customerId, setCustomerId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -216,7 +222,7 @@ const AddBuyerAccount = () => {
           aria-modal="true"
           aria-labelledby="delete-modal-heading"
           tabIndex={-1}
-          ref={(el) => el?.focus()}
+          ref={deleteModalRef}
           onKeyDown={(e) => { if (e.key === 'Escape') setShowDeleteModal(false); }}
           onClick={(e) => { if (e.target === e.currentTarget) setShowDeleteModal(false); }}
         >

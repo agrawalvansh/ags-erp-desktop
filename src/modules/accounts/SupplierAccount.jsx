@@ -9,6 +9,7 @@ const SupplierAccount = () => {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const deleteModalRef = useRef(null);
   const navigate = useNavigate();
   const searchInputRef = useRef(null);
 
@@ -17,6 +18,11 @@ const SupplierAccount = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
+
+  // Focus the delete modal when it opens
+  useEffect(() => {
+    if (deleteTarget !== null) deleteModalRef.current?.focus();
+  }, [deleteTarget]);
 
   useEffect(() => {
     const fetchSuppliers = async () => {
@@ -354,7 +360,7 @@ const SupplierAccount = () => {
           aria-modal="true"
           aria-labelledby="delete-supplier-heading"
           tabIndex={-1}
-          ref={(el) => el?.focus()}
+          ref={deleteModalRef}
           onKeyDown={(e) => { if (e.key === 'Escape' && !isDeleting) { setDeleteTarget(null); setDeleteError(null); } }}
           onClick={(e) => { if (e.target === e.currentTarget && !isDeleting) { setDeleteTarget(null); setDeleteError(null); } }}
         >

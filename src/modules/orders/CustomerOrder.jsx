@@ -11,7 +11,13 @@ const CustomerOrder = () => {
   const [orders, setOrders] = useState([]);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const deleteModalRef = useRef(null);
   const [statusFilter, setStatusFilter] = useState('All');
+
+  // Focus the delete modal when it opens
+  useEffect(() => {
+    if (deleteTarget !== null) deleteModalRef.current?.focus();
+  }, [deleteTarget]);
 
   const fetchOrders = async () => {
     try {
@@ -359,7 +365,7 @@ const CustomerOrder = () => {
           aria-modal="true"
           aria-labelledby="delete-order-heading"
           tabIndex={-1}
-          ref={(el) => el?.focus()}
+          ref={deleteModalRef}
           onKeyDown={(e) => { if (e.key === 'Escape' && !isDeleting) setDeleteTarget(null); }}
           onClick={(e) => { if (e.target === e.currentTarget && !isDeleting) setDeleteTarget(null); }}
         >
