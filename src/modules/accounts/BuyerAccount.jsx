@@ -10,10 +10,6 @@ const BuyerAccount = () => {
   const itemsPerPage = 10;
   const deleteModalRef = useRef(null);
 
-  // Focus the delete modal when it opens
-  useEffect(() => {
-    if (deleteTarget !== null) deleteModalRef.current?.focus();
-  }, [deleteTarget]);
   const navigate = useNavigate();
   const searchInputRef = useRef(null);
 
@@ -22,6 +18,11 @@ const BuyerAccount = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
+
+  // Focus the delete modal when it opens
+  useEffect(() => {
+    if (deleteTarget !== null) deleteModalRef.current?.focus();
+  }, [deleteTarget]);
 
   useEffect(() => {
     const fetchBuyers = async () => {

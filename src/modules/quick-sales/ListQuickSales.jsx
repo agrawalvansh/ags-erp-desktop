@@ -1,9 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Search, ChevronDown, Plus, Edit, Trash2, AlertTriangle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
-import Popup from 'reactjs-popup';
-import 'reactjs-popup/dist/index.css';
 
 const ListQuickSales = () => {
     const navigate = useNavigate();
@@ -14,7 +12,13 @@ const ListQuickSales = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const deleteModalRef = useRef(null);
     const itemsPerPage = 10;
+
+    // Focus the delete modal when it opens
+    useEffect(() => {
+        if (deleteTarget !== null) deleteModalRef.current?.focus();
+    }, [deleteTarget]);
 
     // Fetch quick sales on mount
     useEffect(() => {
@@ -286,52 +290,46 @@ const ListQuickSales = () => {
                 </div>
             </main>
 
-            {/* Delete Confirmation Modal */}
-            <Popup
-                open={deleteTarget !== null}
-                onClose={() => setDeleteTarget(null)}
-                modal
-                nested
-                closeOnDocumentClick={!isDeleting}
-                closeOnEscape={!isDeleting}
-            >
-                {(close) => (
-                    <div className="p-6 bg-white rounded-xl shadow-2xl max-w-md mx-auto">
-                        <div className="flex items-center justify-center mb-4">
-                            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                                <AlertTriangle className="text-red-600" size={24} />
-                            </div>
+            {/* Delete Confirmation Modal — Stitch Glass Overlay */}
+            {deleteTarget !== null && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 outline-none"
+                    style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.7)' }}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="delete-qs-heading"
+                    tabIndex={-1}
+                    ref={deleteModalRef}
+                    onKeyDown={(e) => { if (e.key === 'Escape' && !isDeleting) setDeleteTarget(null); }}
+                    onClick={(e) => { if (e.target === e.currentTarget && !isDeleting) setDeleteTarget(null); }}
+                >
+                    <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#C3C6D7]/20 p-8">
+                        <div className="w-12 h-12 rounded-full bg-red-100/50 flex items-center justify-center text-red-600 mb-6 mx-auto">
+                            <AlertTriangle size={28} />
                         </div>
-                        <h2 className="text-xl font-bold text-[#0F172A] text-center mb-2">
-                            Delete Quick Sale
+                        <h2 id="delete-qs-heading" className="text-2xl font-extrabold text-[#0F172A] tracking-tight mb-3 text-center">
+                            Delete Quick Sale?
                         </h2>
-                        <p className="text-[#64748B] text-center mb-6">
-                            {`Are you sure you want to delete "${deleteTarget}"?`}
+                        <p className="text-[#434655] leading-relaxed mb-8 text-center">
+                            Are you sure you want to delete <span className="font-bold text-[#191C1E]">"{deleteTarget}"</span>? This action cannot be undone.
                         </p>
-                        <div className="flex gap-3">
+                        <div className="flex items-center gap-3">
                             <button
-                                onClick={() => {
-                                    setDeleteTarget(null);
-                                    close();
-                                }}
+                                onClick={() => setDeleteTarget(null)}
                                 disabled={isDeleting}
-                                className="flex-1 px-4 py-2.5 rounded-lg border border-[#E2E8F0] text-[#64748B] font-medium hover:bg-[#F1F5F9] transition-colors cursor-pointer disabled:opacity-50"
-                            >
-                                Cancel
-                            </button>
+                                className="flex-1 px-6 py-3 bg-[#E6E8EA] text-[#191C1E] font-bold rounded-xl hover:bg-[#E0E3E5] transition-all text-sm cursor-pointer disabled:opacity-50"
+                            >Cancel</button>
                             <button
-                                onClick={async () => {
-                                    await confirmDelete();
-                                }}
+                                onClick={async () => { await confirmDelete(); }}
                                 disabled={isDeleting}
-                                className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors cursor-pointer disabled:opacity-50"
+                                className="flex-1 px-6 py-3 bg-red-600 text-white font-bold rounded-xl shadow-lg shadow-red-600/20 hover:bg-red-700 hover:scale-[1.02] active:scale-95 transition-all text-sm cursor-pointer disabled:opacity-50"
                             >
                                 {isDeleting ? 'Deleting...' : 'Delete'}
                             </button>
                         </div>
                     </div>
-                )}
-            </Popup>
+                </div>
+            )}
         </div>
     );
 };

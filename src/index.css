@@ -80,11 +80,6 @@ body {
   div[style*="position: fixed"][style*="z-index"] {
     display: none !important;
   }
-
-  /* Hide reactjs-popup overlays */
-  .popup-overlay {
-    display: none !important;
-  }
 }
 
 input, textarea {

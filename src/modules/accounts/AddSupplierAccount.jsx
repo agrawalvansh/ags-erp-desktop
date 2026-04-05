@@ -14,16 +14,16 @@ const AddSupplierAccount = () => {
   const [address, setAddress] = useState('');
   const [mobile, setMobile] = useState('');
   const deleteModalRef = useRef(null);
-
-  // Focus the delete modal when it opens
-  useEffect(() => {
-    if (showDeleteModal) deleteModalRef.current?.focus();
-  }, [showDeleteModal]);
   const [supplierId, setSupplierId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  // Focus the delete modal when it opens
+  useEffect(() => {
+    if (showDeleteModal) deleteModalRef.current?.focus();
+  }, [showDeleteModal]);
 
   // Fetch data – either next ID (add) or existing supplier (edit)
   useEffect(() => {
