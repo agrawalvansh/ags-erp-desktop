@@ -279,7 +279,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
         </div>
 
         {/* Price Sync Options */}
-        <div className="col-span-12 flex items-center justify-end mb-2 mt-[-10px]">
+        <div className="col-span-6 md:col-span-2 flex items-center justify-end mb-2 mt-[-10px]">
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
@@ -288,7 +288,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
               className="w-4 h-4 text-[#2563EB] border-gray-300 rounded focus:ring-[#2563EB]"
             />
             <span className="text-[12px] font-bold text-[#475569] uppercase">
-              Update Master Price List
+              Update Price List
             </span>
           </label>
         </div>
@@ -1046,22 +1046,6 @@ const Invoice = () => {
           </div>
         </div>
 
-        {/* Persistent ID Recycling UI Notice */}
-        <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mx-4 sm:mx-6 mt-4 print:hidden rounded-r-md">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3 flex-1">
-              <p className="text-sm text-blue-700 font-medium">
-                <strong>ID Recycling Note:</strong> To maintain uninterrupted sequences, deleted estimate IDs are explicitly pooled and reused seamlessly across Sales, Orders, and Invoices.
-              </p>
-            </div>
-          </div>
-        </div>
-
         {/* Customer Details Section */}
         <section className="px-4 sm:px-8 py-6 print:py-3">
           <div className="bg-white p-6 rounded-xl shadow-sm border border-[#C3C6D7]/10 flex flex-wrap gap-6 items-end">
@@ -1131,7 +1115,7 @@ const Invoice = () => {
                 value={mobileNo}
                 onChange={(e) => setMobileNo(e.target.value)}
                 className="w-full py-3 px-4 bg-[#ECEEF0] border-none rounded-lg text-sm text-[#434655] font-medium"
-                placeholder="+91 98765 43210"
+                placeholder="Enter mobile number"
               />
             </div>
 

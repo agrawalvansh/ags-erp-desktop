@@ -640,12 +640,12 @@ const CreateQuickSale = () => {
                         <table className="w-full min-w-[700px] text-left border-collapse">
                             <thead className="bg-[#F2F4F6] text-[10px] font-extrabold uppercase text-[#434655] tracking-wider">
                                 <tr>
-                                    <th className="py-4 px-6 w-16 print:py-1 print:px-2 print:text-[8px]">S.No</th>
-                                    <th className="py-4 px-6 print:py-1 print:px-2 print:text-[8px]">Item Name</th>
-                                    <th className="py-4 px-6 w-32 text-center print:py-1 print:px-2 print:text-[8px]">Size</th>
-                                    <th className="py-4 px-6 w-32 text-right print:py-1 print:px-2 print:text-[8px]">Qty</th>
-                                    <th className="py-4 px-6 w-32 text-right print:py-1 print:px-2 print:text-[8px]">Rate (₹)</th>
-                                    <th className="py-4 px-6 w-40 text-right print:py-1 print:px-2 print:text-[8px]">Amount (₹)</th>
+                                    <th className="py-4 px-6 w-16 print:py-1 print:px-2 print:text-[10px]">S.No</th>
+                                    <th className="py-4 px-6 print:py-1 print:px-2 print:text-[10px]">Item Name</th>
+                                    <th className="py-4 px-6 w-32 text-center print:py-1 print:px-2 print:text-[10px]">Size</th>
+                                    <th className="py-4 px-6 w-32 text-right print:py-1 print:px-2 print:text-[10px]">Qty</th>
+                                    <th className="py-4 px-6 w-32 text-right print:py-1 print:px-2 print:text-[10px]">Rate (₹)</th>
+                                    <th className="py-4 px-6 w-40 text-right print:py-1 print:px-2 print:text-[10px]">Amount (₹)</th>
                                     <th className="py-4 px-6 w-24 text-center print:hidden">Actions</th>
                                 </tr>
                             </thead>

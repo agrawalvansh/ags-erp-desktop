@@ -1106,8 +1106,18 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     }
     let newInvoiceId = invoice_number;
     if (!newInvoiceId) {
-      const cnt = db.prepare('SELECT COUNT(*) AS cnt FROM invoices').get().cnt;
-      newInvoiceId = `E-${cnt + 1}`;
+      // Use same reusable pool / sequence system as invoices:create
+      const reusable = db.prepare('SELECT invoice_number FROM reusable_invoice_numbers ORDER BY invoice_number ASC LIMIT 1').get();
+      let invoiceNum;
+      if (reusable) {
+        db.prepare('DELETE FROM reusable_invoice_numbers WHERE invoice_number = ?').run(reusable.invoice_number);
+        invoiceNum = reusable.invoice_number;
+      } else {
+        db.prepare("UPDATE document_sequences SET last_number = last_number + 1 WHERE doc_type = 'invoice'").run();
+        const seq = db.prepare("SELECT last_number FROM document_sequences WHERE doc_type = 'invoice'").get();
+        invoiceNum = seq.last_number;
+      }
+      newInvoiceId = `E-${invoiceNum}`;
     }
     db.prepare(`INSERT INTO customer_maal_account (customer_id, maal_date, maal_invoice_no, maal_amount, maal_remark)
                   VALUES (?, ?, ?, ?, ?)`)
@@ -1656,17 +1666,25 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
   }));
 
   ipcMain.handle('translate:batchMissing', async (event) => {
-    try {
-      const operationId = `batch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const token = { cancelled: false };
-      batchOperations.set(operationId, token);
+    const operationId = `batch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const token = { cancelled: false };
+    batchOperations.set(operationId, token);
 
+    // Safe send helper — guards against destroyed renderer windows
+    const safeSend = (channel, data) => {
+      try {
+        if (event && event.sender && !event.sender.isDestroyed()) {
+          event.sender.send(channel, data);
+        }
+      } catch (_e) { /* swallow — renderer may have closed */ }
+    };
+
+    try {
       const missing = db.prepare(
         "SELECT code, name FROM products WHERE (marathi_name IS NULL OR marathi_name = '') AND (is_deleted = 0 OR is_deleted IS NULL)"
       ).all();
       const total = missing.length;
       if (total === 0) {
-        batchOperations.delete(operationId);
         return { success: true, translated: 0, total: 0, operationId };
       }
 
@@ -1675,8 +1693,7 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
 
       for (let i = 0; i < missing.length; i++) {
         if (token.cancelled) {
-          event.sender.send('translate:batchProgress', { translated, total, cancelled: true, operationId });
-          batchOperations.delete(operationId);
+          safeSend('translate:batchProgress', { translated, total, cancelled: true, operationId });
           return { success: true, translated, total, cancelled: true, operationId };
         }
         const prod = missing[i];
@@ -1689,7 +1706,7 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
         } catch (e) { console.error(`Batch transliterate failed for ${prod.code}:`, e.message); }
 
         // Report progress every item
-        event.sender.send('translate:batchProgress', { translated, total, current: i + 1, operationId });
+        safeSend('translate:batchProgress', { translated, total, current: i + 1, operationId });
 
         // Delay between chunks to avoid rate limiting
         if ((i + 1) % CHUNK_SIZE === 0) {
@@ -1698,11 +1715,12 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
           await new Promise(r => setTimeout(r, 50));
         }
       }
-      batchOperations.delete(operationId);
       return { success: true, translated, total, operationId };
     } catch (err) {
       console.error('Batch transliteration error:', err);
       return { error: err.message };
+    } finally {
+      batchOperations.delete(operationId);
     }
   });
 

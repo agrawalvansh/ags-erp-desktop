@@ -22,24 +22,24 @@
 
 | Case | Steps | Expected Result | Status |
 |------|-------|-----------------|--------|
-| 1A.1 | Open app (fresh launch) | Login page shown, no auto-redirect | |
-| 1A.2 | Enter correct username + password → click "Sign In" | Toast "Login Successful", redirected to `/invoice` | |
-| 1A.3 | Close app and reopen | Should still be logged in (localStorage persistence) | |
-| 1A.4 | Click Logout in sidebar | Toast "Logged out successfully", redirected to `/login` | |
-| 1A.5 | After logout, try navigating to `/invoice` via URL | Redirected back to `/login` | |
+| 1A.1 | Open app (fresh launch) | Login page shown, no auto-redirect |✓|
+| 1A.2 | Enter correct username + password → click "Sign In" | Toast "Login Successful", redirected to `/invoice` |✓|
+| 1A.3 | Close app and reopen | Should still be logged in (localStorage persistence) |✓|
+| 1A.4 | Click Logout in sidebar | Toast "Logged out successfully", redirected to `/login` |✓|
+| 1A.5 | After logout, try navigating to `/invoice` via URL | Redirected back to `/login` |✓|
 
 ### 1B. Login — Error & Edge Cases
 
 | Case | Steps | Expected Result | Status |
 |------|-------|-----------------|--------|
-| 1B.1 | Enter wrong username, correct password → Sign In | Error "Wrong username or password" shown | |
-| 1B.2 | Enter correct username, wrong password → Sign In | Error "Wrong username or password" shown | |
-| 1B.3 | Leave both fields empty → Sign In | Browser native required field validation | |
-| 1B.4 | Leave username empty, fill password → Sign In | Browser validation blocks submit | |
-| 1B.5 | Leave password empty, fill username → Sign In | Browser validation blocks submit | |
-| 1B.6 | ⚠️ Paste username/password with trailing spaces | Should still work (if credentials match after trim, otherwise fail) | |
-| 1B.7 | Toggle show/hide password icon | Password field toggles between text/password type | |
-| 1B.8 | When already logged in, navigate to `/login` | Should redirect to `/invoice` automatically | |
+| 1B.1 | Enter wrong username, correct password → Sign In | Error "Wrong username or password" shown |✓|
+| 1B.2 | Enter correct username, wrong password → Sign In | Error "Wrong username or password" shown |✓|
+| 1B.3 | Leave both fields empty → Sign In | Browser native required field validation |✓|
+| 1B.4 | Leave username empty, fill password → Sign In | Browser validation blocks submit |✓|
+| 1B.5 | Leave password empty, fill username → Sign In | Browser validation blocks submit |✓|
+| 1B.6 | ⚠️ Paste username/password with trailing spaces | Should still work (if credentials match after trim, otherwise fail) |✓|
+| 1B.7 | Toggle show/hide password icon | Password field toggles between text/password type |✓|
+| 1B.8 | When already logged in, navigate to `/login` | Should redirect to `/invoice` automatically |✓|
 
 ---
 
@@ -49,27 +49,27 @@
 
 | Case | Steps | Expected Result | Status |
 |------|-------|-----------------|--------|
-| 2A.1 | Click "Estimate" in SALES section | Navigates to `/invoice`, item highlighted blue | |
-| 2A.2 | Click "Quick Sales" dropdown → "New Quick Sale" | Navigates to `/quick-sales/create` | |
-| 2A.3 | Click "Quick Sales" dropdown → "View Quick Sales" | Navigates to `/quick-sales/list` | |
-| 2A.4 | Click "Price List" | Navigates to `/price-list` | |
-| 2A.5 | Click "Accounts" dropdown → "Customers" | Navigates to `/accounts/customers` | |
-| 2A.6 | Click "Accounts" dropdown → "Suppliers" | Navigates to `/accounts/suppliers` | |
-| 2A.7 | Click "Orders" dropdown → "Customer Orders" | Navigates to `/orders/customers` | |
-| 2A.8 | Click "Orders" dropdown → "Supplier Orders" | Navigates to `/orders/suppliers` | |
-| 2A.9 | Click "Logout" at bottom | Logs out, redirects to login | |
+| 2A.1 | Click "Estimate" in SALES section | Navigates to `/invoice`, item highlighted blue |✓|
+| 2A.2 | Click "Quick Sales" dropdown → "New Quick Sale" | Navigates to `/quick-sales/create` |✓|
+| 2A.3 | Click "Quick Sales" dropdown → "View Quick Sales" | Navigates to `/quick-sales/list` |✓|
+| 2A.4 | Click "Price List" | Navigates to `/price-list` |✓|
+| 2A.5 | Click "Accounts" dropdown → "Customers" | Navigates to `/accounts/customers` |✓|
+| 2A.6 | Click "Accounts" dropdown → "Suppliers" | Navigates to `/accounts/suppliers` |✓|
+| 2A.7 | Click "Orders" dropdown → "Customer Orders" | Navigates to `/orders/customers` |✓|
+| 2A.8 | Click "Orders" dropdown → "Supplier Orders" | Navigates to `/orders/suppliers` |✓|
+| 2A.9 | Click "Logout" at bottom | Logs out, redirects to login |✓|
 | 2A.10 | Navigate to a sub-route (e.g. customer detail) | Parent dropdown auto-expands, sub-item highlighted | |
-| 2A.11 | Navigate to non-existent route (e.g. `/xyz`) | 404 Not Found page shown | |
+| 2A.11 | Navigate to non-existent route (e.g. `/xyz`) | 404 Not Found page shown |✓|
 
 ### 2B. Mobile Responsiveness
 
 | Case | Steps | Expected Result | Status |
 |------|-------|-----------------|--------|
-| 2B.1 | Resize window to < 768px width | Sidebar collapses, hamburger menu appears | |
-| 2B.2 | Click hamburger menu | Sidebar slides in from left with backdrop | |
-| 2B.3 | Click backdrop | Sidebar closes | |
-| 2B.4 | Navigate via mobile sidebar | Sidebar closes after navigation | |
-| 2B.5 | Resize window back to > 768px | Sidebar reappears in fixed position | |
+| 2B.1 | Resize window to < 768px width | Sidebar collapses, hamburger menu appears |✓|
+| 2B.2 | Click hamburger menu | Sidebar slides in from left with backdrop |✓|
+| 2B.3 | Click backdrop | Sidebar closes |✓|
+| 2B.4 | Navigate via mobile sidebar | Sidebar closes after navigation |✓|
+| 2B.5 | Resize window back to > 768px | Sidebar reappears in fixed position |✓|
 
 ---
 

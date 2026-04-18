@@ -554,12 +554,12 @@ const AddSupplierOrder = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="text-[0.65rem] font-bold text-[#434655] uppercase tracking-widest border-b border-[#C3C6D7]/10">
-                  <th className="px-8 py-5 w-16 print:px-2 print:py-1 print:text-[8px]">S.No</th>
-                  <th className="px-8 py-5 print:px-2 print:py-1 print:text-[8px]">Item Name</th>
-                  <th className="px-8 py-5 print:px-2 print:py-1 print:text-[8px]">Size</th>
-                  <th className="px-8 py-5 text-right print:px-2 print:py-1 print:text-[8px]">Qty</th>
-                  <th className="px-8 py-5 print:px-2 print:py-1 print:text-[8px]">Unit</th>
-                  <th className="px-8 py-5 print:px-2 print:py-1 print:text-[8px]">Remark</th>
+                  <th className="px-8 py-5 w-16 print:px-2 print:py-1 print:text-[10px]">S.No</th>
+                  <th className="px-8 py-5 print:px-2 print:py-1 print:text-[10px]">Item Name</th>
+                  <th className="px-8 py-5 print:px-2 print:py-1 print:text-[10px]">Size</th>
+                  <th className="px-8 py-5 text-right print:px-2 print:py-1 print:text-[10px]">Qty</th>
+                  <th className="px-8 py-5 print:px-2 print:py-1 print:text-[10px]">Unit</th>
+                  <th className="px-8 py-5 print:px-2 print:py-1 print:text-[10px]">Remark</th>
                   <th className="px-8 py-5 text-center print:hidden">Actions</th>
                 </tr>
               </thead>
