@@ -80,7 +80,7 @@ const AddPriceListProduct = () => {
     if (!formData.costPrice) newErrors.costPrice = 'Cost price is required';
     if (!formData.sellingPrice) newErrors.sellingPrice = 'Selling price is required';
     if (Number(formData.costPrice) >= Number(formData.sellingPrice)) {
-      newErrors.sellingPrice = 'Selling price must be greater than cost price';
+      newErrors.sellingPrice = 'Selling price must be greater than Cost price';
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -97,8 +97,8 @@ const AddPriceListProduct = () => {
         (!editing || p.code !== originalCode)
       );
       if (codeExists) {
-        toast.error('Product code already exists. Please use a unique code.');
-        setErrors(prev => ({ ...prev, code: 'This code is already in use' }));
+        toast.error('Product already exists in the Catalog.');
+        setErrors(prev => ({ ...prev, code: 'This code already exists' }));
         setSubmitting(false);
         return;
       }

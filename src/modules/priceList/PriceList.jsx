@@ -253,7 +253,7 @@ const PriceList = () => {
                     onClick={() => handleSort('sellingPrice')}
                   >
                     <div className="flex items-center gap-1">
-                      Selling Price (₹)
+                      Selling Price
                       <ChevronDown
                         className={`transition-transform ${sortConfig.key === 'sellingPrice' && sortConfig.direction === 'desc' ? 'rotate-180' : ''}`}
                         size={14}
@@ -272,7 +272,7 @@ const PriceList = () => {
                       />
                     </div>
                   </th>
-                  <th className="py-5 px-6 text-right">Action</th>
+                  <th className="py-5 px-6 text-center">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#C3C6D7]/5">
@@ -284,7 +284,7 @@ const PriceList = () => {
                       className={`group transition-colors duration-500 cursor-pointer ${highlightedCode === item.code
                         ? 'bg-yellow-50'
                         : 'hover:bg-[#F2F4F6]/50'
-                      }`}
+                        }`}
                       onClick={() => navigate(`/price-list/edit/${item.code}`)}
                     >
                       <td className="py-5 px-6 text-sm font-medium text-[#434655]">{index + 1}</td>
@@ -299,7 +299,7 @@ const PriceList = () => {
                         <td className="py-5 px-6 text-sm text-[#434655]">{formatCurrency(item.costPrice)}</td>
                       )}
                       <td className="py-5 px-6 text-sm font-bold text-[#004AC6]">{formatCurrency(item.sellingPrice)}</td>
-                      <td className="py-5 px-6">
+                      <td className="py-5 px-6 text-center">
                         <span className="text-xs font-medium px-3 py-1 bg-[#D0E1FB]/30 text-[#54647A] rounded-full">{item.packingType}</span>
                       </td>
                       <td className="py-5 px-6 text-right" onClick={(e) => e.stopPropagation()}>

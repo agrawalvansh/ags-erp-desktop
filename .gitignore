@@ -25,3 +25,5 @@ dist-ssr
 .gemini/
 release
 dist
+.agent/
+.env/

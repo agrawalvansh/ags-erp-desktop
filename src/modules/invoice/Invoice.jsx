@@ -533,18 +533,17 @@ const Invoice = () => {
             // Find matching product details (for packing type, size etc.)
             const prod = products.find((p) => p.code === item.product_code) || {};
 
-            // Build product name → Title-cased and include size
+            // Build product name → Title-cased (WITHOUT size — size is a separate field)
             const baseName = prod.name || item.product_name || item.product_code;
             const nameWithSpaces = formatName(baseName);
-            const sizeText = prod.size || item.size ? ` ${prod.size || item.size}` : '';
-            const productName = `${nameWithSpaces}${sizeText}`.trim();
 
             // Quantity (numeric, 3 dp)
             const quantity = parseFloat(item.quantity).toFixed(3);
 
             return {
               ...item,
-              productName,
+              productName: nameWithSpaces,
+              size: prod.size || item.size || '',
               code: item.product_code,
               quantity,               // keep numeric text only
               packingType: prod.packing_type || item.packing_type || '',
@@ -731,7 +730,7 @@ const Invoice = () => {
             cost_price: originalProduct.cost_price || 0,
             selling_price: sellingPrice
           });
-          toast.success('Price updated in Master Price List');
+          toast.success('Price updated in Price List');
 
           // Refresh products list
           const updatedProducts = await window.api.getProducts();
@@ -1387,7 +1386,7 @@ const Invoice = () => {
                     />
                     <span className="text-sm font-medium text-[#434655] group-hover:text-[#191C1E] transition-colors">Print Product Names in Marathi</span>
                   </label>
-                  <p className="text-[11px] text-[#434655]/70 leading-relaxed">System will automatically fetch translated names from the catalog master if available.</p>
+                  <p className="text-[11px] text-[#434655]/70 leading-relaxed">System will automatically fetch translated names from the catalog if available.</p>
                 </div>
               </div>
             </div>

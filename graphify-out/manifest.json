@@ -1,0 +1,186 @@
+{
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\db.js": {
+    "mtime": 1774789320.81841,
+    "hash": "c0456484296f18b14d6644a402587fe2"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\erpApi.js": {
+    "mtime": 1775384010.395413,
+    "hash": "211e229d3b664ddf566bee9274b33faf"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\eslint.config.mjs": {
+    "mtime": 1775403941.4073155,
+    "hash": "6370801b6d4925c815bb66702e19c2d8"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\ipcHandlers.js": {
+    "mtime": 1775583529.2914045,
+    "hash": "9c73a4da7108932451b7b86e77f46d0d"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\preload.js": {
+    "mtime": 1775403583.0216773,
+    "hash": "4c5f0c0f7aad05eed14bef61106e04e4"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\vite.config.mjs": {
+    "mtime": 1753772773.0,
+    "hash": "34cd562ab9b5ebc809befba2459660ab"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\src\\App.jsx": {
+    "mtime": 1775384737.8877106,
+    "hash": "262be8df4f4c2dbdad95cd0a3059f87f"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\src\\AuthContext.jsx": {
+    "mtime": 1753772773.0,
+    "hash": "60e4a77aa7565f44a08d4227a9f04b90"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\src\\Layout.jsx": {
+    "mtime": 1774712865.6311915,
+    "hash": "19074e0d0a8c75f0798cc37298ddc08b"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\src\\main.jsx": {
+    "mtime": 1753772773.0,
+    "hash": "647b1e8ffa7d63b001d90c18c66bb642"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\src\\modules\\modulesRouter.jsx": {
+    "mtime": 1774712867.648352,
+    "hash": "42130f76fc91c4b04c7f35c3da40cc1d"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\src\\modules\\accounts\\AddAccountEntry.jsx": {
+    "mtime": 1774811811.5014958,
+    "hash": "59ce7c088562d832ad79f90e76fbaeaa"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\src\\modules\\accounts\\AddBuyerAccount.jsx": {
+    "mtime": 1775385088.2944343,
+    "hash": "5eac83e8986dc25fb78de41ed770d1c9"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\src\\modules\\accounts\\AddSupplierAccount.jsx": {
+    "mtime": 1775385086.2422163,
+    "hash": "34b905e86dbba4fb6512315e6a38c608"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\src\\modules\\accounts\\AddSupplierAccountEntry.jsx": {
+    "mtime": 1774811813.5358348,
+    "hash": "07d08d91e30cf46bac86a477af9d385d"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\src\\modules\\accounts\\BuyerAccount.jsx": {
+    "mtime": 1775385081.1239457,
+    "hash": "3b81d4cb44e178b457dbc80957b77639"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\src\\modules\\accounts\\BuyerAccountDetail.jsx": {
+    "mtime": 1775378586.3011708,
+    "hash": "9175a8c18b9e3f3a232a462115ae0137"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\src\\modules\\accounts\\SupplierAccount.jsx": {
+    "mtime": 1775378594.3377018,
+    "hash": "f4578c799eac2bc118c9dee95050e2ed"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\src\\modules\\accounts\\SupplierAccountDetail.jsx": {
+    "mtime": 1775378590.769566,
+    "hash": "50b335a368af59adf4c709ddb6caadd1"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\src\\modules\\invoice\\Invoice.jsx": {
+    "mtime": 1776538745.8421524,
+    "hash": "1ff6673fb89b730b5ab5dbb1dd9a0c46"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\src\\modules\\orders\\AddCustomerOrder.jsx": {
+    "mtime": 1775583919.9086418,
+    "hash": "92e3249f3da1dbc1f9923d86f059ec94"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\src\\modules\\orders\\AddSupplierOrder.jsx": {
+    "mtime": 1775583520.533491,
+    "hash": "e65aa84509aa721f3eeef44a9e0fd4ee"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\src\\modules\\orders\\CustomerOrder.jsx": {
+    "mtime": 1775378597.489174,
+    "hash": "0fe3cbfb46e35a0d01dbba03a59f04b1"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\src\\modules\\orders\\SupplierOrder.jsx": {
+    "mtime": 1775378601.0821965,
+    "hash": "b0c88073c7475f82ebff99fc2be8e05f"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\src\\modules\\priceList\\AddPriceListProduct.jsx": {
+    "mtime": 1776599901.0278103,
+    "hash": "7689ac43dde871c4dfbf77ea7f5376ba"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\src\\modules\\priceList\\PriceList.jsx": {
+    "mtime": 1776600521.1518774,
+    "hash": "baa4913b39492e5760425b5a03559c1f"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\src\\modules\\quick-sales\\CreateQuickSales.jsx": {
+    "mtime": 1775583527.2139938,
+    "hash": "4c29e6791e5df64d57d00227affb5683"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\src\\modules\\quick-sales\\ListQuickSales.jsx": {
+    "mtime": 1775384666.7127485,
+    "hash": "679129550945ec3067a7c00f5bd27612"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\src\\pages\\ErrorBoundary.jsx": {
+    "mtime": 1775386600.9314175,
+    "hash": "9700b0f6a04e09f8e0e6cb653e40cee4"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\src\\pages\\login.jsx": {
+    "mtime": 1774812847.4760273,
+    "hash": "1d6e2d7319516b6651473122576dbec9"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\src\\pages\\NavBar.jsx": {
+    "mtime": 1774811108.169391,
+    "hash": "bc4552068c5bad263dcbc02482c65caf"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\src\\pages\\NotFound.jsx": {
+    "mtime": 1774811096.107477,
+    "hash": "2aa75ed047bbf265825141ed365d0570"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\src\\utils\\productUtils.js": {
+    "mtime": 1766489751.0028343,
+    "hash": "d452b9986a066602850f1e29438ba87b"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\index.html": {
+    "mtime": 1754849279.9639704,
+    "hash": "30b7ff5f24f0db26f95b68fde0607bcb"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\README.md": {
+    "mtime": 1771783035.4297533,
+    "hash": "390f660bdd8aadc0967045575463ce7e"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\docs\\design.md": {
+    "mtime": 1775375761.4455094,
+    "hash": "5c437a32abb984b77b5135b1160cb188"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\docs\\features.md": {
+    "mtime": 1775386620.897233,
+    "hash": "bfe1d4379f6e1a5ffb385fa09e9c3743"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\docs\\testing.md": {
+    "mtime": 1776619444.6092021,
+    "hash": "de491c7f731e52a78c5b1082c9b288f5"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\docs\\USER_GUIDE.md": {
+    "mtime": 1772552237.707498,
+    "hash": "a1e06456d4730980a9a14fad233959bf"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\release\\builder-debug.yml": {
+    "mtime": 1775385852.781406,
+    "hash": "ff5bd5428fcd0473aab3f4ffde69cba8"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\release\\builder-effective-config.yaml": {
+    "mtime": 1775385789.2377706,
+    "hash": "c50d8879ebbe4fe70751954e1a58ab66"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\release\\latest.yml": {
+    "mtime": 1775385852.798732,
+    "hash": "5f9ddb1cca7d25d0686b5b6c89e1f452"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\release\\win-unpacked\\LICENSE.electron.txt": {
+    "mtime": 1775385791.626023,
+    "hash": "4d42118d35941e0f664dddbd83f633c5"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\release\\win-unpacked\\LICENSES.chromium.html": {
+    "mtime": 1775385790.981329,
+    "hash": "3575333bc14b9a3c05160d72de394b00"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\release\\win-unpacked\\resources\\app-update.yml": {
+    "mtime": 1775385804.0984757,
+    "hash": "1ca25a8be6d32c7acc04f34146ab42a7"
+  },
+  "C:\\Users\\Vansh Agrawal\\OneDrive\\Desktop\\Development\\AGS\\ags-erp-desktop\\icons\\icon.png": {
+    "mtime": 1754851003.6727605,
+    "hash": "90090a7cf29506a6c48dede2f76875da"
+  }
+}

@@ -1,0 +1,252 @@
+{
+  "communities": {
+    "0": [
+      "ags_erp_desktop_ipchandlers_batchoperations",
+      "ags_erp_desktop_ipchandlers_changed",
+      "ags_erp_desktop_ipchandlers_changes",
+      "ags_erp_desktop_ipchandlers_createtxn",
+      "ags_erp_desktop_ipchandlers_deletedproducts",
+      "ags_erp_desktop_ipchandlers_deletetxn",
+      "ags_erp_desktop_ipchandlers_ensureproduct",
+      "ags_erp_desktop_ipchandlers_ensureproductstmt",
+      "ags_erp_desktop_ipchandlers_entry",
+      "ags_erp_desktop_ipchandlers_existing",
+      "ags_erp_desktop_ipchandlers_header",
+      "ags_erp_desktop_ipchandlers_info",
+      "ags_erp_desktop_ipchandlers_insertitemstmt",
+      "ags_erp_desktop_ipchandlers_items",
+      "ags_erp_desktop_ipchandlers_linkedinvoice",
+      "ags_erp_desktop_ipchandlers_linkedpayment",
+      "ags_erp_desktop_ipchandlers_mappings",
+      "ags_erp_desktop_ipchandlers_missing",
+      "ags_erp_desktop_ipchandlers_names",
+      "ags_erp_desktop_ipchandlers_neworderid",
+      "ags_erp_desktop_ipchandlers_placeholders",
+      "ags_erp_desktop_ipchandlers_prod",
+      "ags_erp_desktop_ipchandlers_qs_id",
+      "ags_erp_desktop_ipchandlers_res",
+      "ags_erp_desktop_ipchandlers_result",
+      "ags_erp_desktop_ipchandlers_reusable",
+      "ags_erp_desktop_ipchandlers_row",
+      "ags_erp_desktop_ipchandlers_rows",
+      "ags_erp_desktop_ipchandlers_safesend",
+      "ags_erp_desktop_ipchandlers_seq",
+      "ags_erp_desktop_ipchandlers_token",
+      "ags_erp_desktop_ipchandlers_transliteratetomarathi",
+      "ags_erp_desktop_ipchandlers_txn",
+      "ags_erp_desktop_ipchandlers_updatetxn",
+      "ags_erp_desktop_ipchandlers_wrap",
+      "invoice_invoice_invoice",
+      "ipchandlers_js"
+    ],
+    "1": [
+      "ags_erp_desktop_db_cols",
+      "ags_erp_desktop_db_database",
+      "ags_erp_desktop_db_db",
+      "ags_erp_desktop_db_dbpath",
+      "ags_erp_desktop_db_hasname",
+      "ags_erp_desktop_db_haspacking",
+      "ags_erp_desktop_db_hasremark",
+      "ags_erp_desktop_db_hassize",
+      "ags_erp_desktop_db_hastemp",
+      "ags_erp_desktop_db_maxcusorder",
+      "ags_erp_desktop_db_maxexistinginvoice",
+      "ags_erp_desktop_db_maxsuporder",
+      "ags_erp_desktop_db_migrationexists",
+      "ags_erp_desktop_db_ordermigexists",
+      "ags_erp_desktop_db_path",
+      "ags_erp_desktop_db_tableinfo",
+      "ags_erp_desktop_db_userdatapath",
+      "db_js"
+    ],
+    "2": [
+      "invoice_invoice_additemform",
+      "orders_customerorder_customerorder",
+      "src_modules_invoice_invoice_jsx",
+      "src_modules_orders_addsupplierorder_jsx",
+      "src_modules_pricelist_addpricelistproduct_jsx",
+      "src_modules_quick_sales_createquicksales_jsx",
+      "src_utils_productutils_js",
+      "utils_productutils_allowed_packing_types",
+      "utils_productutils_capitalizewords",
+      "utils_productutils_createproductpayload",
+      "utils_productutils_findproductbycode",
+      "utils_productutils_findproductbynameandsize",
+      "utils_productutils_generateproductcode",
+      "utils_productutils_isvalidpackingtype",
+      "utils_productutils_normalizeproductcode",
+      "utils_productutils_productcodeexists",
+      "utils_productutils_slugify",
+      "utils_productutils_sortproducts"
+    ],
+    "3": [
+      "ags_erp_desktop_erpapi_createcustomer",
+      "ags_erp_desktop_erpapi_createproduct",
+      "ags_erp_desktop_erpapi_createsupplier",
+      "ags_erp_desktop_erpapi_deletecustomer",
+      "ags_erp_desktop_erpapi_deleteproduct",
+      "ags_erp_desktop_erpapi_deletesupplier",
+      "ags_erp_desktop_erpapi_getcustomers",
+      "ags_erp_desktop_erpapi_getproducts",
+      "ags_erp_desktop_erpapi_getsuppliers",
+      "ags_erp_desktop_erpapi_invoke",
+      "ags_erp_desktop_erpapi_updatecustomer",
+      "ags_erp_desktop_erpapi_updateproduct",
+      "ags_erp_desktop_erpapi_updatesupplier",
+      "erpapi_js",
+      "pricelist_pricelist_pricelist",
+      "src_modules_pricelist_pricelist_jsx",
+      "utils_productutils_extractnumericfromsize"
+    ],
+    "4": [
+      "pages_login_loginpage",
+      "pages_navbar_navbar",
+      "pages_navbar_navsections",
+      "src_app_app",
+      "src_app_jsx",
+      "src_authcontext_authcontext",
+      "src_authcontext_authprovider",
+      "src_authcontext_jsx",
+      "src_authcontext_useauth",
+      "src_layout_jsx",
+      "src_layout_layout",
+      "src_main_jsx",
+      "src_pages_errorboundary_jsx",
+      "src_pages_login_jsx",
+      "src_pages_navbar_jsx",
+      "src_pages_notfound_jsx"
+    ],
+    "5": [
+      "accounts_buyeraccount_buyeraccount",
+      "accounts_buyeraccountdetail_parsedate",
+      "orders_supplierorder_supplierorder",
+      "quick_sales_listquicksales_listquicksales",
+      "src_modules_accounts_addaccountentry_jsx",
+      "src_modules_accounts_addbuyeraccount_jsx",
+      "src_modules_accounts_addsupplieraccount_jsx",
+      "src_modules_accounts_addsupplieraccountentry_jsx",
+      "src_modules_accounts_supplieraccount_jsx",
+      "src_modules_accounts_supplieraccountdetail_jsx",
+      "src_modules_modulesrouter_jsx"
+    ],
+    "6": [
+      "ags_erp_desktop_preload_buildapimap",
+      "ags_erp_desktop_preload_contextbridge_ipcrenderer",
+      "ags_erp_desktop_preload_crudmap",
+      "ags_erp_desktop_preload_exposed",
+      "ags_erp_desktop_preload_handler",
+      "ags_erp_desktop_preload_ipcfetch",
+      "ags_erp_desktop_preload_originalfetch",
+      "ags_erp_desktop_preload_translateendpoint",
+      "preload_js"
+    ],
+    "7": [
+      "eslint_config_mjs"
+    ],
+    "8": [
+      "vite_config_mjs"
+    ]
+  },
+  "cohesion": {
+    "0": 0.05,
+    "1": 0.11,
+    "2": 0.34,
+    "3": 0.21,
+    "4": 0.22,
+    "5": 0.2,
+    "6": 0.28,
+    "7": 1.0,
+    "8": 1.0
+  },
+  "gods": [
+    {
+      "id": "ags_erp_desktop_erpapi_invoke",
+      "label": "invoke()",
+      "degree": 13
+    },
+    {
+      "id": "utils_productutils_generateproductcode",
+      "label": "generateProductCode()",
+      "degree": 9
+    },
+    {
+      "id": "src_authcontext_useauth",
+      "label": "useAuth()",
+      "degree": 7
+    },
+    {
+      "id": "orders_customerorder_customerorder",
+      "label": "CustomerOrder()",
+      "degree": 7
+    },
+    {
+      "id": "utils_productutils_capitalizewords",
+      "label": "capitalizeWords()",
+      "degree": 6
+    },
+    {
+      "id": "utils_productutils_allowed_packing_types",
+      "label": "ALLOWED_PACKING_TYPES",
+      "degree": 6
+    },
+    {
+      "id": "utils_productutils_sortproducts",
+      "label": "sortProducts()",
+      "degree": 6
+    },
+    {
+      "id": "utils_productutils_normalizeproductcode",
+      "label": "normalizeProductCode()",
+      "degree": 5
+    },
+    {
+      "id": "invoice_invoice_additemform",
+      "label": "AddItemForm()",
+      "degree": 4
+    },
+    {
+      "id": "utils_productutils_productcodeexists",
+      "label": "productCodeExists()",
+      "degree": 4
+    }
+  ],
+  "surprises": [
+    {
+      "source": "useAuth()",
+      "target": "LoginPage()",
+      "source_files": [
+        "src/AuthContext.jsx",
+        "src/pages/login.jsx"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "peripheral node `LoginPage()` unexpectedly reaches hub `useAuth()`"
+    },
+    {
+      "source": "useAuth()",
+      "target": "NavBar()",
+      "source_files": [
+        "src/AuthContext.jsx",
+        "src/pages/NavBar.jsx"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "peripheral node `NavBar()` unexpectedly reaches hub `useAuth()`"
+    },
+    {
+      "source": "useAuth()",
+      "target": "Layout()",
+      "source_files": [
+        "src/AuthContext.jsx",
+        "src/Layout.jsx"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "cross-file semantic connection"
+    }
+  ],
+  "tokens": {
+    "input": 0,
+    "output": 0
+  }
+}

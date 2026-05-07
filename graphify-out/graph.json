@@ -1,0 +1,3203 @@
+{
+  "directed": false,
+  "multigraph": false,
+  "graph": {},
+  "nodes": [
+    {
+      "label": "db.js",
+      "file_type": "code",
+      "source_file": "db.js",
+      "source_location": "L1",
+      "community": 1,
+      "norm_label": "db.js",
+      "id": "db_js"
+    },
+    {
+      "label": "Database",
+      "file_type": "code",
+      "source_file": "db.js",
+      "source_location": "L5",
+      "community": 1,
+      "norm_label": "database",
+      "id": "ags_erp_desktop_db_database"
+    },
+    {
+      "label": "path",
+      "file_type": "code",
+      "source_file": "db.js",
+      "source_location": "L6",
+      "community": 1,
+      "norm_label": "path",
+      "id": "ags_erp_desktop_db_path"
+    },
+    {
+      "label": "userDataPath",
+      "file_type": "code",
+      "source_file": "db.js",
+      "source_location": "L10",
+      "community": 1,
+      "norm_label": "userdatapath",
+      "id": "ags_erp_desktop_db_userdatapath"
+    },
+    {
+      "label": "dbPath",
+      "file_type": "code",
+      "source_file": "db.js",
+      "source_location": "L11",
+      "community": 1,
+      "norm_label": "dbpath",
+      "id": "ags_erp_desktop_db_dbpath"
+    },
+    {
+      "label": "db",
+      "file_type": "code",
+      "source_file": "db.js",
+      "source_location": "L15",
+      "community": 1,
+      "norm_label": "db",
+      "id": "ags_erp_desktop_db_db"
+    },
+    {
+      "label": "tableInfo",
+      "file_type": "code",
+      "source_file": "db.js",
+      "source_location": "L164",
+      "community": 1,
+      "norm_label": "tableinfo",
+      "id": "ags_erp_desktop_db_tableinfo"
+    },
+    {
+      "label": "cols",
+      "file_type": "code",
+      "source_file": "db.js",
+      "source_location": "L182",
+      "community": 1,
+      "norm_label": "cols",
+      "id": "ags_erp_desktop_db_cols"
+    },
+    {
+      "label": "hasRemark",
+      "file_type": "code",
+      "source_file": "db.js",
+      "source_location": "L183",
+      "community": 1,
+      "norm_label": "hasremark",
+      "id": "ags_erp_desktop_db_hasremark"
+    },
+    {
+      "label": "hasName",
+      "file_type": "code",
+      "source_file": "db.js",
+      "source_location": "L184",
+      "community": 1,
+      "norm_label": "hasname",
+      "id": "ags_erp_desktop_db_hasname"
+    },
+    {
+      "label": "hasSize",
+      "file_type": "code",
+      "source_file": "db.js",
+      "source_location": "L185",
+      "community": 1,
+      "norm_label": "hassize",
+      "id": "ags_erp_desktop_db_hassize"
+    },
+    {
+      "label": "hasPacking",
+      "file_type": "code",
+      "source_file": "db.js",
+      "source_location": "L186",
+      "community": 1,
+      "norm_label": "haspacking",
+      "id": "ags_erp_desktop_db_haspacking"
+    },
+    {
+      "label": "hasTemp",
+      "file_type": "code",
+      "source_file": "db.js",
+      "source_location": "L187",
+      "community": 1,
+      "norm_label": "hastemp",
+      "id": "ags_erp_desktop_db_hastemp"
+    },
+    {
+      "label": "orderMigExists",
+      "file_type": "code",
+      "source_file": "db.js",
+      "source_location": "L228",
+      "community": 1,
+      "norm_label": "ordermigexists",
+      "id": "ags_erp_desktop_db_ordermigexists"
+    },
+    {
+      "label": "maxCusOrder",
+      "file_type": "code",
+      "source_file": "db.js",
+      "source_location": "L231",
+      "community": 1,
+      "norm_label": "maxcusorder",
+      "id": "ags_erp_desktop_db_maxcusorder"
+    },
+    {
+      "label": "maxSupOrder",
+      "file_type": "code",
+      "source_file": "db.js",
+      "source_location": "L238",
+      "community": 1,
+      "norm_label": "maxsuporder",
+      "id": "ags_erp_desktop_db_maxsuporder"
+    },
+    {
+      "label": "migrationExists",
+      "file_type": "code",
+      "source_file": "db.js",
+      "source_location": "L328",
+      "community": 1,
+      "norm_label": "migrationexists",
+      "id": "ags_erp_desktop_db_migrationexists"
+    },
+    {
+      "label": "maxExistingInvoice",
+      "file_type": "code",
+      "source_file": "db.js",
+      "source_location": "L334",
+      "community": 1,
+      "norm_label": "maxexistinginvoice",
+      "id": "ags_erp_desktop_db_maxexistinginvoice"
+    },
+    {
+      "label": "erpApi.js",
+      "file_type": "code",
+      "source_file": "erpApi.js",
+      "source_location": "L1",
+      "community": 3,
+      "norm_label": "erpapi.js",
+      "id": "erpapi_js"
+    },
+    {
+      "label": "invoke()",
+      "file_type": "code",
+      "source_file": "erpApi.js",
+      "source_location": "L4",
+      "community": 3,
+      "norm_label": "invoke()",
+      "id": "ags_erp_desktop_erpapi_invoke"
+    },
+    {
+      "label": "getProducts()",
+      "file_type": "code",
+      "source_file": "erpApi.js",
+      "source_location": "L7",
+      "community": 3,
+      "norm_label": "getproducts()",
+      "id": "ags_erp_desktop_erpapi_getproducts"
+    },
+    {
+      "label": "createProduct()",
+      "file_type": "code",
+      "source_file": "erpApi.js",
+      "source_location": "L8",
+      "community": 3,
+      "norm_label": "createproduct()",
+      "id": "ags_erp_desktop_erpapi_createproduct"
+    },
+    {
+      "label": "updateProduct()",
+      "file_type": "code",
+      "source_file": "erpApi.js",
+      "source_location": "L9",
+      "community": 3,
+      "norm_label": "updateproduct()",
+      "id": "ags_erp_desktop_erpapi_updateproduct"
+    },
+    {
+      "label": "deleteProduct()",
+      "file_type": "code",
+      "source_file": "erpApi.js",
+      "source_location": "L10",
+      "community": 3,
+      "norm_label": "deleteproduct()",
+      "id": "ags_erp_desktop_erpapi_deleteproduct"
+    },
+    {
+      "label": "getCustomers()",
+      "file_type": "code",
+      "source_file": "erpApi.js",
+      "source_location": "L13",
+      "community": 3,
+      "norm_label": "getcustomers()",
+      "id": "ags_erp_desktop_erpapi_getcustomers"
+    },
+    {
+      "label": "createCustomer()",
+      "file_type": "code",
+      "source_file": "erpApi.js",
+      "source_location": "L14",
+      "community": 3,
+      "norm_label": "createcustomer()",
+      "id": "ags_erp_desktop_erpapi_createcustomer"
+    },
+    {
+      "label": "updateCustomer()",
+      "file_type": "code",
+      "source_file": "erpApi.js",
+      "source_location": "L15",
+      "community": 3,
+      "norm_label": "updatecustomer()",
+      "id": "ags_erp_desktop_erpapi_updatecustomer"
+    },
+    {
+      "label": "deleteCustomer()",
+      "file_type": "code",
+      "source_file": "erpApi.js",
+      "source_location": "L16",
+      "community": 3,
+      "norm_label": "deletecustomer()",
+      "id": "ags_erp_desktop_erpapi_deletecustomer"
+    },
+    {
+      "label": "getSuppliers()",
+      "file_type": "code",
+      "source_file": "erpApi.js",
+      "source_location": "L19",
+      "community": 3,
+      "norm_label": "getsuppliers()",
+      "id": "ags_erp_desktop_erpapi_getsuppliers"
+    },
+    {
+      "label": "createSupplier()",
+      "file_type": "code",
+      "source_file": "erpApi.js",
+      "source_location": "L20",
+      "community": 3,
+      "norm_label": "createsupplier()",
+      "id": "ags_erp_desktop_erpapi_createsupplier"
+    },
+    {
+      "label": "updateSupplier()",
+      "file_type": "code",
+      "source_file": "erpApi.js",
+      "source_location": "L21",
+      "community": 3,
+      "norm_label": "updatesupplier()",
+      "id": "ags_erp_desktop_erpapi_updatesupplier"
+    },
+    {
+      "label": "deleteSupplier()",
+      "file_type": "code",
+      "source_file": "erpApi.js",
+      "source_location": "L22",
+      "community": 3,
+      "norm_label": "deletesupplier()",
+      "id": "ags_erp_desktop_erpapi_deletesupplier"
+    },
+    {
+      "label": "eslint.config.mjs",
+      "file_type": "code",
+      "source_file": "eslint.config.mjs",
+      "source_location": "L1",
+      "community": 7,
+      "norm_label": "eslint.config.mjs",
+      "id": "eslint_config_mjs"
+    },
+    {
+      "label": "ipcHandlers.js",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1",
+      "community": 0,
+      "norm_label": "ipchandlers.js",
+      "id": "ipchandlers_js"
+    },
+    {
+      "label": "wrap()",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L13",
+      "community": 0,
+      "norm_label": "wrap()",
+      "id": "ags_erp_desktop_ipchandlers_wrap"
+    },
+    {
+      "label": "rows",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L29",
+      "community": 0,
+      "norm_label": "rows",
+      "id": "ags_erp_desktop_ipchandlers_rows"
+    },
+    {
+      "label": "transliterateToMarathi()",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L36",
+      "community": 0,
+      "norm_label": "transliteratetomarathi()",
+      "id": "ags_erp_desktop_ipchandlers_transliteratetomarathi"
+    },
+    {
+      "label": "row",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L103",
+      "community": 0,
+      "norm_label": "row",
+      "id": "ags_erp_desktop_ipchandlers_row"
+    },
+    {
+      "label": "existing",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L111",
+      "community": 0,
+      "norm_label": "existing",
+      "id": "ags_erp_desktop_ipchandlers_existing"
+    },
+    {
+      "label": "res",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L114",
+      "community": 0,
+      "norm_label": "res",
+      "id": "ags_erp_desktop_ipchandlers_res"
+    },
+    {
+      "label": "changes",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L181",
+      "community": 0,
+      "norm_label": "changes",
+      "id": "ags_erp_desktop_ipchandlers_changes"
+    },
+    {
+      "label": "mappings",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L210",
+      "community": 0,
+      "norm_label": "mappings",
+      "id": "ags_erp_desktop_ipchandlers_mappings"
+    },
+    {
+      "label": "info",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L368",
+      "community": 0,
+      "norm_label": "info",
+      "id": "ags_erp_desktop_ipchandlers_info"
+    },
+    {
+      "label": "reusable",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L417",
+      "community": 0,
+      "norm_label": "reusable",
+      "id": "ags_erp_desktop_ipchandlers_reusable"
+    },
+    {
+      "label": "seq",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L425",
+      "community": 0,
+      "norm_label": "seq",
+      "id": "ags_erp_desktop_ipchandlers_seq"
+    },
+    {
+      "label": "header",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L430",
+      "community": 0,
+      "norm_label": "header",
+      "id": "ags_erp_desktop_ipchandlers_header"
+    },
+    {
+      "label": "items",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L432",
+      "community": 0,
+      "norm_label": "items",
+      "id": "ags_erp_desktop_ipchandlers_items"
+    },
+    {
+      "label": "linkedPayment",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L442",
+      "community": 0,
+      "norm_label": "linkedpayment",
+      "id": "ags_erp_desktop_ipchandlers_linkedpayment"
+    },
+    {
+      "label": "updateTxn",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L464",
+      "community": 0,
+      "norm_label": "updatetxn",
+      "id": "ags_erp_desktop_ipchandlers_updatetxn"
+    },
+    {
+      "label": "entry",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L553",
+      "community": 0,
+      "norm_label": "entry",
+      "id": "ags_erp_desktop_ipchandlers_entry"
+    },
+    {
+      "label": "txn",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L574",
+      "community": 0,
+      "norm_label": "txn",
+      "id": "ags_erp_desktop_ipchandlers_txn"
+    },
+    {
+      "label": "ensureProduct",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L662",
+      "community": 0,
+      "norm_label": "ensureproduct",
+      "id": "ags_erp_desktop_ipchandlers_ensureproduct"
+    },
+    {
+      "label": "createTxn",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L663",
+      "community": 0,
+      "norm_label": "createtxn",
+      "id": "ags_erp_desktop_ipchandlers_createtxn"
+    },
+    {
+      "label": "newOrderId",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L710",
+      "community": 0,
+      "norm_label": "neworderid",
+      "id": "ags_erp_desktop_ipchandlers_neworderid"
+    },
+    {
+      "label": "ensureProductStmt",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L829",
+      "community": 0,
+      "norm_label": "ensureproductstmt",
+      "id": "ags_erp_desktop_ipchandlers_ensureproductstmt"
+    },
+    {
+      "label": "insertItemStmt",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L830",
+      "community": 0,
+      "norm_label": "insertitemstmt",
+      "id": "ags_erp_desktop_ipchandlers_insertitemstmt"
+    },
+    {
+      "label": "deleteTxn",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L917",
+      "community": 0,
+      "norm_label": "deletetxn",
+      "id": "ags_erp_desktop_ipchandlers_deletetxn"
+    },
+    {
+      "label": "qs_id",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1004",
+      "community": 0,
+      "norm_label": "qs_id",
+      "id": "ags_erp_desktop_ipchandlers_qs_id"
+    },
+    {
+      "label": "changed",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1061",
+      "community": 0,
+      "norm_label": "changed",
+      "id": "ags_erp_desktop_ipchandlers_changed"
+    },
+    {
+      "label": "linkedInvoice",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1151",
+      "community": 0,
+      "norm_label": "linkedinvoice",
+      "id": "ags_erp_desktop_ipchandlers_linkedinvoice"
+    },
+    {
+      "label": "deletedProducts",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1594",
+      "community": 0,
+      "norm_label": "deletedproducts",
+      "id": "ags_erp_desktop_ipchandlers_deletedproducts"
+    },
+    {
+      "label": "result",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1604",
+      "community": 0,
+      "norm_label": "result",
+      "id": "ags_erp_desktop_ipchandlers_result"
+    },
+    {
+      "label": "prod",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1645",
+      "community": 0,
+      "norm_label": "prod",
+      "id": "ags_erp_desktop_ipchandlers_prod"
+    },
+    {
+      "label": "batchOperations",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1656",
+      "community": 0,
+      "norm_label": "batchoperations",
+      "id": "ags_erp_desktop_ipchandlers_batchoperations"
+    },
+    {
+      "label": "token",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1670",
+      "community": 0,
+      "norm_label": "token",
+      "id": "ags_erp_desktop_ipchandlers_token"
+    },
+    {
+      "label": "safeSend()",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1674",
+      "community": 0,
+      "norm_label": "safesend()",
+      "id": "ags_erp_desktop_ipchandlers_safesend"
+    },
+    {
+      "label": "missing",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1683",
+      "community": 0,
+      "norm_label": "missing",
+      "id": "ags_erp_desktop_ipchandlers_missing"
+    },
+    {
+      "label": "placeholders",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1730",
+      "community": 0,
+      "norm_label": "placeholders",
+      "id": "ags_erp_desktop_ipchandlers_placeholders"
+    },
+    {
+      "label": "names",
+      "file_type": "code",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1744",
+      "community": 0,
+      "norm_label": "names",
+      "id": "ags_erp_desktop_ipchandlers_names"
+    },
+    {
+      "label": "preload.js",
+      "file_type": "code",
+      "source_file": "preload.js",
+      "source_location": "L1",
+      "community": 6,
+      "norm_label": "preload.js",
+      "id": "preload_js"
+    },
+    {
+      "label": "{ contextBridge, ipcRenderer }",
+      "file_type": "code",
+      "source_file": "preload.js",
+      "source_location": "L5",
+      "community": 6,
+      "norm_label": "{ contextbridge, ipcrenderer }",
+      "id": "ags_erp_desktop_preload_contextbridge_ipcrenderer"
+    },
+    {
+      "label": "buildApiMap()",
+      "file_type": "code",
+      "source_file": "preload.js",
+      "source_location": "L8",
+      "community": 6,
+      "norm_label": "buildapimap()",
+      "id": "ags_erp_desktop_preload_buildapimap"
+    },
+    {
+      "label": "exposed",
+      "file_type": "code",
+      "source_file": "preload.js",
+      "source_location": "L17",
+      "community": 6,
+      "norm_label": "exposed",
+      "id": "ags_erp_desktop_preload_exposed"
+    },
+    {
+      "label": "handler()",
+      "file_type": "code",
+      "source_file": "preload.js",
+      "source_location": "L53",
+      "community": 6,
+      "norm_label": "handler()",
+      "id": "ags_erp_desktop_preload_handler"
+    },
+    {
+      "label": "originalFetch",
+      "file_type": "code",
+      "source_file": "preload.js",
+      "source_location": "L80",
+      "community": 6,
+      "norm_label": "originalfetch",
+      "id": "ags_erp_desktop_preload_originalfetch"
+    },
+    {
+      "label": "crudMap",
+      "file_type": "code",
+      "source_file": "preload.js",
+      "source_location": "L82",
+      "community": 6,
+      "norm_label": "crudmap",
+      "id": "ags_erp_desktop_preload_crudmap"
+    },
+    {
+      "label": "translateEndpoint()",
+      "file_type": "code",
+      "source_file": "preload.js",
+      "source_location": "L91",
+      "community": 6,
+      "norm_label": "translateendpoint()",
+      "id": "ags_erp_desktop_preload_translateendpoint"
+    },
+    {
+      "label": "ipcFetch()",
+      "file_type": "code",
+      "source_file": "preload.js",
+      "source_location": "L109",
+      "community": 6,
+      "norm_label": "ipcfetch()",
+      "id": "ags_erp_desktop_preload_ipcfetch"
+    },
+    {
+      "label": "vite.config.mjs",
+      "file_type": "code",
+      "source_file": "vite.config.mjs",
+      "source_location": "L1",
+      "community": 8,
+      "norm_label": "vite.config.mjs",
+      "id": "vite_config_mjs"
+    },
+    {
+      "label": "App.jsx",
+      "file_type": "code",
+      "source_file": "src/App.jsx",
+      "source_location": "L1",
+      "community": 4,
+      "norm_label": "app.jsx",
+      "id": "src_app_jsx"
+    },
+    {
+      "label": "App",
+      "file_type": "code",
+      "source_file": "src/App.jsx",
+      "source_location": "L9",
+      "community": 4,
+      "norm_label": "app",
+      "id": "src_app_app"
+    },
+    {
+      "label": "AuthContext.jsx",
+      "file_type": "code",
+      "source_file": "src/AuthContext.jsx",
+      "source_location": "L1",
+      "community": 4,
+      "norm_label": "authcontext.jsx",
+      "id": "src_authcontext_jsx"
+    },
+    {
+      "label": "AuthContext",
+      "file_type": "code",
+      "source_file": "src/AuthContext.jsx",
+      "source_location": "L4",
+      "community": 4,
+      "norm_label": "authcontext",
+      "id": "src_authcontext_authcontext"
+    },
+    {
+      "label": "AuthProvider()",
+      "file_type": "code",
+      "source_file": "src/AuthContext.jsx",
+      "source_location": "L10",
+      "community": 4,
+      "norm_label": "authprovider()",
+      "id": "src_authcontext_authprovider"
+    },
+    {
+      "label": "useAuth()",
+      "file_type": "code",
+      "source_file": "src/AuthContext.jsx",
+      "source_location": "L35",
+      "community": 4,
+      "norm_label": "useauth()",
+      "id": "src_authcontext_useauth"
+    },
+    {
+      "label": "Layout.jsx",
+      "file_type": "code",
+      "source_file": "src/Layout.jsx",
+      "source_location": "L1",
+      "community": 4,
+      "norm_label": "layout.jsx",
+      "id": "src_layout_jsx"
+    },
+    {
+      "label": "Layout()",
+      "file_type": "code",
+      "source_file": "src/Layout.jsx",
+      "source_location": "L7",
+      "community": 4,
+      "norm_label": "layout()",
+      "id": "src_layout_layout"
+    },
+    {
+      "label": "main.jsx",
+      "file_type": "code",
+      "source_file": "src/main.jsx",
+      "source_location": "L1",
+      "community": 4,
+      "norm_label": "main.jsx",
+      "id": "src_main_jsx"
+    },
+    {
+      "label": "modulesRouter.jsx",
+      "file_type": "code",
+      "source_file": "src/modules/modulesRouter.jsx",
+      "source_location": "L1",
+      "community": 5,
+      "norm_label": "modulesrouter.jsx",
+      "id": "src_modules_modulesrouter_jsx"
+    },
+    {
+      "label": "AddAccountEntry.jsx",
+      "file_type": "code",
+      "source_file": "src/modules/accounts/AddAccountEntry.jsx",
+      "source_location": "L1",
+      "community": 5,
+      "norm_label": "addaccountentry.jsx",
+      "id": "src_modules_accounts_addaccountentry_jsx"
+    },
+    {
+      "label": "AddBuyerAccount.jsx",
+      "file_type": "code",
+      "source_file": "src/modules/accounts/AddBuyerAccount.jsx",
+      "source_location": "L1",
+      "community": 5,
+      "norm_label": "addbuyeraccount.jsx",
+      "id": "src_modules_accounts_addbuyeraccount_jsx"
+    },
+    {
+      "label": "AddSupplierAccount.jsx",
+      "file_type": "code",
+      "source_file": "src/modules/accounts/AddSupplierAccount.jsx",
+      "source_location": "L1",
+      "community": 5,
+      "norm_label": "addsupplieraccount.jsx",
+      "id": "src_modules_accounts_addsupplieraccount_jsx"
+    },
+    {
+      "label": "AddSupplierAccountEntry.jsx",
+      "file_type": "code",
+      "source_file": "src/modules/accounts/AddSupplierAccountEntry.jsx",
+      "source_location": "L1",
+      "community": 5,
+      "norm_label": "addsupplieraccountentry.jsx",
+      "id": "src_modules_accounts_addsupplieraccountentry_jsx"
+    },
+    {
+      "label": "BuyerAccount()",
+      "file_type": "code",
+      "source_file": "src/modules/accounts/BuyerAccount.jsx",
+      "source_location": "L6",
+      "community": 5,
+      "norm_label": "buyeraccount()",
+      "id": "accounts_buyeraccount_buyeraccount"
+    },
+    {
+      "label": "parseDate()",
+      "file_type": "code",
+      "source_file": "src/modules/accounts/BuyerAccountDetail.jsx",
+      "source_location": "L7",
+      "community": 5,
+      "norm_label": "parsedate()",
+      "id": "accounts_buyeraccountdetail_parsedate"
+    },
+    {
+      "label": "SupplierAccount.jsx",
+      "file_type": "code",
+      "source_file": "src/modules/accounts/SupplierAccount.jsx",
+      "source_location": "L1",
+      "community": 5,
+      "norm_label": "supplieraccount.jsx",
+      "id": "src_modules_accounts_supplieraccount_jsx"
+    },
+    {
+      "label": "SupplierAccountDetail.jsx",
+      "file_type": "code",
+      "source_file": "src/modules/accounts/SupplierAccountDetail.jsx",
+      "source_location": "L1",
+      "community": 5,
+      "norm_label": "supplieraccountdetail.jsx",
+      "id": "src_modules_accounts_supplieraccountdetail_jsx"
+    },
+    {
+      "label": "Invoice.jsx",
+      "file_type": "code",
+      "source_file": "src/modules/invoice/Invoice.jsx",
+      "source_location": "L1",
+      "community": 2,
+      "norm_label": "invoice.jsx",
+      "id": "src_modules_invoice_invoice_jsx"
+    },
+    {
+      "label": "AddItemForm()",
+      "file_type": "code",
+      "source_file": "src/modules/invoice/Invoice.jsx",
+      "source_location": "L21",
+      "community": 2,
+      "norm_label": "additemform()",
+      "id": "invoice_invoice_additemform"
+    },
+    {
+      "label": "Invoice()",
+      "file_type": "code",
+      "source_file": "src/modules/invoice/Invoice.jsx",
+      "source_location": "L310",
+      "community": 0,
+      "norm_label": "invoice()",
+      "id": "invoice_invoice_invoice"
+    },
+    {
+      "label": "AddSupplierOrder.jsx",
+      "file_type": "code",
+      "source_file": "src/modules/orders/AddSupplierOrder.jsx",
+      "source_location": "L1",
+      "community": 2,
+      "norm_label": "addsupplierorder.jsx",
+      "id": "src_modules_orders_addsupplierorder_jsx"
+    },
+    {
+      "label": "CustomerOrder()",
+      "file_type": "code",
+      "source_file": "src/modules/orders/CustomerOrder.jsx",
+      "source_location": "L6",
+      "community": 2,
+      "norm_label": "customerorder()",
+      "id": "orders_customerorder_customerorder"
+    },
+    {
+      "label": "SupplierOrder()",
+      "file_type": "code",
+      "source_file": "src/modules/orders/SupplierOrder.jsx",
+      "source_location": "L6",
+      "community": 5,
+      "norm_label": "supplierorder()",
+      "id": "orders_supplierorder_supplierorder"
+    },
+    {
+      "label": "AddPriceListProduct.jsx",
+      "file_type": "code",
+      "source_file": "src/modules/priceList/AddPriceListProduct.jsx",
+      "source_location": "L1",
+      "community": 2,
+      "norm_label": "addpricelistproduct.jsx",
+      "id": "src_modules_pricelist_addpricelistproduct_jsx"
+    },
+    {
+      "label": "PriceList.jsx",
+      "file_type": "code",
+      "source_file": "src/modules/priceList/PriceList.jsx",
+      "source_location": "L1",
+      "community": 3,
+      "norm_label": "pricelist.jsx",
+      "id": "src_modules_pricelist_pricelist_jsx"
+    },
+    {
+      "label": "PriceList()",
+      "file_type": "code",
+      "source_file": "src/modules/priceList/PriceList.jsx",
+      "source_location": "L9",
+      "community": 3,
+      "norm_label": "pricelist()",
+      "id": "pricelist_pricelist_pricelist"
+    },
+    {
+      "label": "CreateQuickSales.jsx",
+      "file_type": "code",
+      "source_file": "src/modules/quick-sales/CreateQuickSales.jsx",
+      "source_location": "L1",
+      "community": 2,
+      "norm_label": "createquicksales.jsx",
+      "id": "src_modules_quick_sales_createquicksales_jsx"
+    },
+    {
+      "label": "ListQuickSales()",
+      "file_type": "code",
+      "source_file": "src/modules/quick-sales/ListQuickSales.jsx",
+      "source_location": "L6",
+      "community": 5,
+      "norm_label": "listquicksales()",
+      "id": "quick_sales_listquicksales_listquicksales"
+    },
+    {
+      "label": "ErrorBoundary.jsx",
+      "file_type": "code",
+      "source_file": "src/pages/ErrorBoundary.jsx",
+      "source_location": "L1",
+      "community": 4,
+      "norm_label": "errorboundary.jsx",
+      "id": "src_pages_errorboundary_jsx"
+    },
+    {
+      "label": "login.jsx",
+      "file_type": "code",
+      "source_file": "src/pages/login.jsx",
+      "source_location": "L1",
+      "community": 4,
+      "norm_label": "login.jsx",
+      "id": "src_pages_login_jsx"
+    },
+    {
+      "label": "LoginPage()",
+      "file_type": "code",
+      "source_file": "src/pages/login.jsx",
+      "source_location": "L7",
+      "community": 4,
+      "norm_label": "loginpage()",
+      "id": "pages_login_loginpage"
+    },
+    {
+      "label": "NavBar.jsx",
+      "file_type": "code",
+      "source_file": "src/pages/NavBar.jsx",
+      "source_location": "L1",
+      "community": 4,
+      "norm_label": "navbar.jsx",
+      "id": "src_pages_navbar_jsx"
+    },
+    {
+      "label": "navSections",
+      "file_type": "code",
+      "source_file": "src/pages/NavBar.jsx",
+      "source_location": "L13",
+      "community": 4,
+      "norm_label": "navsections",
+      "id": "pages_navbar_navsections"
+    },
+    {
+      "label": "NavBar()",
+      "file_type": "code",
+      "source_file": "src/pages/NavBar.jsx",
+      "source_location": "L73",
+      "community": 4,
+      "norm_label": "navbar()",
+      "id": "pages_navbar_navbar"
+    },
+    {
+      "label": "NotFound.jsx",
+      "file_type": "code",
+      "source_file": "src/pages/NotFound.jsx",
+      "source_location": "L1",
+      "community": 4,
+      "norm_label": "notfound.jsx",
+      "id": "src_pages_notfound_jsx"
+    },
+    {
+      "label": "productUtils.js",
+      "file_type": "code",
+      "source_file": "src/utils/productUtils.js",
+      "source_location": "L1",
+      "community": 2,
+      "norm_label": "productutils.js",
+      "id": "src_utils_productutils_js"
+    },
+    {
+      "label": "slugify()",
+      "file_type": "code",
+      "source_file": "src/utils/productUtils.js",
+      "source_location": "L9",
+      "community": 2,
+      "norm_label": "slugify()",
+      "id": "utils_productutils_slugify"
+    },
+    {
+      "label": "normalizeProductCode()",
+      "file_type": "code",
+      "source_file": "src/utils/productUtils.js",
+      "source_location": "L23",
+      "community": 2,
+      "norm_label": "normalizeproductcode()",
+      "id": "utils_productutils_normalizeproductcode"
+    },
+    {
+      "label": "generateProductCode()",
+      "file_type": "code",
+      "source_file": "src/utils/productUtils.js",
+      "source_location": "L39",
+      "community": 2,
+      "norm_label": "generateproductcode()",
+      "id": "utils_productutils_generateproductcode"
+    },
+    {
+      "label": "capitalizeWords()",
+      "file_type": "code",
+      "source_file": "src/utils/productUtils.js",
+      "source_location": "L53",
+      "community": 2,
+      "norm_label": "capitalizewords()",
+      "id": "utils_productutils_capitalizewords"
+    },
+    {
+      "label": "ALLOWED_PACKING_TYPES",
+      "file_type": "code",
+      "source_file": "src/utils/productUtils.js",
+      "source_location": "L62",
+      "community": 2,
+      "norm_label": "allowed_packing_types",
+      "id": "utils_productutils_allowed_packing_types"
+    },
+    {
+      "label": "isValidPackingType()",
+      "file_type": "code",
+      "source_file": "src/utils/productUtils.js",
+      "source_location": "L83",
+      "community": 2,
+      "norm_label": "isvalidpackingtype()",
+      "id": "utils_productutils_isvalidpackingtype"
+    },
+    {
+      "label": "productCodeExists()",
+      "file_type": "code",
+      "source_file": "src/utils/productUtils.js",
+      "source_location": "L96",
+      "community": 2,
+      "norm_label": "productcodeexists()",
+      "id": "utils_productutils_productcodeexists"
+    },
+    {
+      "label": "findProductByCode()",
+      "file_type": "code",
+      "source_file": "src/utils/productUtils.js",
+      "source_location": "L114",
+      "community": 2,
+      "norm_label": "findproductbycode()",
+      "id": "utils_productutils_findproductbycode"
+    },
+    {
+      "label": "findProductByNameAndSize()",
+      "file_type": "code",
+      "source_file": "src/utils/productUtils.js",
+      "source_location": "L128",
+      "community": 2,
+      "norm_label": "findproductbynameandsize()",
+      "id": "utils_productutils_findproductbynameandsize"
+    },
+    {
+      "label": "createProductPayload()",
+      "file_type": "code",
+      "source_file": "src/utils/productUtils.js",
+      "source_location": "L155",
+      "community": 2,
+      "norm_label": "createproductpayload()",
+      "id": "utils_productutils_createproductpayload"
+    },
+    {
+      "label": "extractNumericFromSize()",
+      "file_type": "code",
+      "source_file": "src/utils/productUtils.js",
+      "source_location": "L173",
+      "community": 3,
+      "norm_label": "extractnumericfromsize()",
+      "id": "utils_productutils_extractnumericfromsize"
+    },
+    {
+      "label": "sortProducts()",
+      "file_type": "code",
+      "source_file": "src/utils/productUtils.js",
+      "source_location": "L192",
+      "community": 2,
+      "norm_label": "sortproducts()",
+      "id": "utils_productutils_sortproducts"
+    }
+  ],
+  "links": [
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "db.js",
+      "source_location": "L5",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "db_js",
+      "target": "ags_erp_desktop_db_database"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "db.js",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "db_js",
+      "target": "ags_erp_desktop_db_path"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "db.js",
+      "source_location": "L7",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "db_js",
+      "target": "src_app_app"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "db.js",
+      "source_location": "L10",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "db_js",
+      "target": "ags_erp_desktop_db_userdatapath"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "db.js",
+      "source_location": "L11",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "db_js",
+      "target": "ags_erp_desktop_db_dbpath"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "db.js",
+      "source_location": "L15",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "db_js",
+      "target": "ags_erp_desktop_db_db"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "db.js",
+      "source_location": "L393",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "db_js",
+      "target": "ags_erp_desktop_db_tableinfo"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "db.js",
+      "source_location": "L411",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "db_js",
+      "target": "ags_erp_desktop_db_cols"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "db.js",
+      "source_location": "L183",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "db_js",
+      "target": "ags_erp_desktop_db_hasremark"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "db.js",
+      "source_location": "L412",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "db_js",
+      "target": "ags_erp_desktop_db_hasname"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "db.js",
+      "source_location": "L413",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "db_js",
+      "target": "ags_erp_desktop_db_hassize"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "db.js",
+      "source_location": "L414",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "db_js",
+      "target": "ags_erp_desktop_db_haspacking"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "db.js",
+      "source_location": "L415",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "db_js",
+      "target": "ags_erp_desktop_db_hastemp"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "db.js",
+      "source_location": "L228",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "db_js",
+      "target": "ags_erp_desktop_db_ordermigexists"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "db.js",
+      "source_location": "L231",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "db_js",
+      "target": "ags_erp_desktop_db_maxcusorder"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "db.js",
+      "source_location": "L238",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "db_js",
+      "target": "ags_erp_desktop_db_maxsuporder"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "db.js",
+      "source_location": "L328",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "db_js",
+      "target": "ags_erp_desktop_db_migrationexists"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "db.js",
+      "source_location": "L334",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "db_js",
+      "target": "ags_erp_desktop_db_maxexistinginvoice"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "erpApi.js",
+      "source_location": "L4",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "erpapi_js",
+      "target": "ags_erp_desktop_erpapi_invoke"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "erpApi.js",
+      "source_location": "L7",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "erpapi_js",
+      "target": "ags_erp_desktop_erpapi_getproducts"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "erpApi.js",
+      "source_location": "L8",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "erpapi_js",
+      "target": "ags_erp_desktop_erpapi_createproduct"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "erpApi.js",
+      "source_location": "L9",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "erpapi_js",
+      "target": "ags_erp_desktop_erpapi_updateproduct"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "erpApi.js",
+      "source_location": "L10",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "erpapi_js",
+      "target": "ags_erp_desktop_erpapi_deleteproduct"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "erpApi.js",
+      "source_location": "L13",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "erpapi_js",
+      "target": "ags_erp_desktop_erpapi_getcustomers"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "erpApi.js",
+      "source_location": "L14",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "erpapi_js",
+      "target": "ags_erp_desktop_erpapi_createcustomer"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "erpApi.js",
+      "source_location": "L15",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "erpapi_js",
+      "target": "ags_erp_desktop_erpapi_updatecustomer"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "erpApi.js",
+      "source_location": "L16",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "erpapi_js",
+      "target": "ags_erp_desktop_erpapi_deletecustomer"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "erpApi.js",
+      "source_location": "L19",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "erpapi_js",
+      "target": "ags_erp_desktop_erpapi_getsuppliers"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "erpApi.js",
+      "source_location": "L20",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "erpapi_js",
+      "target": "ags_erp_desktop_erpapi_createsupplier"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "erpApi.js",
+      "source_location": "L21",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "erpapi_js",
+      "target": "ags_erp_desktop_erpapi_updatesupplier"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "erpApi.js",
+      "source_location": "L22",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "erpapi_js",
+      "target": "ags_erp_desktop_erpapi_deletesupplier"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/priceList/PriceList.jsx",
+      "source_location": "L2",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "erpapi_js",
+      "target": "src_modules_pricelist_pricelist_jsx"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "erpApi.js",
+      "source_location": "L7",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ags_erp_desktop_erpapi_invoke",
+      "target": "ags_erp_desktop_erpapi_getproducts"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "erpApi.js",
+      "source_location": "L8",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ags_erp_desktop_erpapi_invoke",
+      "target": "ags_erp_desktop_erpapi_createproduct"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "erpApi.js",
+      "source_location": "L9",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ags_erp_desktop_erpapi_invoke",
+      "target": "ags_erp_desktop_erpapi_updateproduct"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "erpApi.js",
+      "source_location": "L10",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ags_erp_desktop_erpapi_invoke",
+      "target": "ags_erp_desktop_erpapi_deleteproduct"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "erpApi.js",
+      "source_location": "L13",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ags_erp_desktop_erpapi_invoke",
+      "target": "ags_erp_desktop_erpapi_getcustomers"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "erpApi.js",
+      "source_location": "L14",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ags_erp_desktop_erpapi_invoke",
+      "target": "ags_erp_desktop_erpapi_createcustomer"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "erpApi.js",
+      "source_location": "L15",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ags_erp_desktop_erpapi_invoke",
+      "target": "ags_erp_desktop_erpapi_updatecustomer"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "erpApi.js",
+      "source_location": "L16",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ags_erp_desktop_erpapi_invoke",
+      "target": "ags_erp_desktop_erpapi_deletecustomer"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "erpApi.js",
+      "source_location": "L19",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ags_erp_desktop_erpapi_invoke",
+      "target": "ags_erp_desktop_erpapi_getsuppliers"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "erpApi.js",
+      "source_location": "L20",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ags_erp_desktop_erpapi_invoke",
+      "target": "ags_erp_desktop_erpapi_createsupplier"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "erpApi.js",
+      "source_location": "L21",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ags_erp_desktop_erpapi_invoke",
+      "target": "ags_erp_desktop_erpapi_updatesupplier"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "erpApi.js",
+      "source_location": "L22",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ags_erp_desktop_erpapi_invoke",
+      "target": "ags_erp_desktop_erpapi_deletesupplier"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/priceList/PriceList.jsx",
+      "source_location": "L2",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ags_erp_desktop_erpapi_getproducts",
+      "target": "src_modules_pricelist_pricelist_jsx"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L153",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ags_erp_desktop_erpapi_updateproduct",
+      "target": "ipchandlers_js"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L13",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_wrap"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1741",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_rows"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L36",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_transliteratetomarathi"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1570",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_row"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L143",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_existing"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1576",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_res"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1420",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_changes"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L210",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_mappings"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1557",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_info"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1243",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_reusable"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1245",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_seq"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1325",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_header"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1327",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_items"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1335",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_linkedpayment"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1358",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_updatetxn"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L553",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_entry"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1405",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_txn"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1275",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_ensureproduct"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1276",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_createtxn"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1320",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_neworderid"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L829",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_ensureproductstmt"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L968",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_insertitemstmt"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L881",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "invoice_invoice_invoice"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1068",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_deletetxn"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1004",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_qs_id"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1061",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_changed"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1151",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_linkedinvoice"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1594",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_deletedproducts"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1604",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_result"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1645",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_prod"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1656",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_batchoperations"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1670",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_token"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1674",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_safesend"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1683",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_missing"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1740",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_placeholders"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ipcHandlers.js",
+      "source_location": "L1744",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ipchandlers_js",
+      "target": "ags_erp_desktop_ipchandlers_names"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "preload.js",
+      "source_location": "L5",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "preload_js",
+      "target": "ags_erp_desktop_preload_contextbridge_ipcrenderer"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "preload.js",
+      "source_location": "L8",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "preload_js",
+      "target": "ags_erp_desktop_preload_buildapimap"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "preload.js",
+      "source_location": "L17",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "preload_js",
+      "target": "ags_erp_desktop_preload_exposed"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "preload.js",
+      "source_location": "L64",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "preload_js",
+      "target": "ags_erp_desktop_preload_handler"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "preload.js",
+      "source_location": "L80",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "preload_js",
+      "target": "ags_erp_desktop_preload_originalfetch"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "preload.js",
+      "source_location": "L82",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "preload_js",
+      "target": "ags_erp_desktop_preload_crudmap"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "preload.js",
+      "source_location": "L91",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "preload_js",
+      "target": "ags_erp_desktop_preload_translateendpoint"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "preload.js",
+      "source_location": "L109",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "preload_js",
+      "target": "ags_erp_desktop_preload_ipcfetch"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "preload.js",
+      "source_location": "L116",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ags_erp_desktop_preload_originalfetch",
+      "target": "ags_erp_desktop_preload_ipcfetch"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "preload.js",
+      "source_location": "L120",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ags_erp_desktop_preload_translateendpoint",
+      "target": "ags_erp_desktop_preload_ipcfetch"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/App.jsx",
+      "source_location": "L3",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_app_jsx",
+      "target": "src_pages_login_jsx"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/App.jsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_app_jsx",
+      "target": "src_pages_notfound_jsx"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/App.jsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_app_jsx",
+      "target": "src_pages_errorboundary_jsx"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/App.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_app_jsx",
+      "target": "src_layout_jsx"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/App.jsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_app_jsx",
+      "target": "src_modules_modulesrouter_jsx"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/App.jsx",
+      "source_location": "L9",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_app_jsx",
+      "target": "src_app_app"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/main.jsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_app_jsx",
+      "target": "src_main_jsx"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/AuthContext.jsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_authcontext_jsx",
+      "target": "src_authcontext_authcontext"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/AuthContext.jsx",
+      "source_location": "L10",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_authcontext_jsx",
+      "target": "src_authcontext_authprovider"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/AuthContext.jsx",
+      "source_location": "L35",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_authcontext_jsx",
+      "target": "src_authcontext_useauth"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Layout.jsx",
+      "source_location": "L3",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_authcontext_jsx",
+      "target": "src_layout_jsx"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/main.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_authcontext_jsx",
+      "target": "src_main_jsx"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/pages/login.jsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_authcontext_jsx",
+      "target": "src_pages_login_jsx"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/pages/NavBar.jsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_authcontext_jsx",
+      "target": "src_pages_navbar_jsx"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/main.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_authcontext_authprovider",
+      "target": "src_main_jsx"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Layout.jsx",
+      "source_location": "L3",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_authcontext_useauth",
+      "target": "src_layout_jsx"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/pages/login.jsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_authcontext_useauth",
+      "target": "src_pages_login_jsx"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/pages/NavBar.jsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_authcontext_useauth",
+      "target": "src_pages_navbar_jsx"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/Layout.jsx",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "src_authcontext_useauth",
+      "target": "src_layout_layout"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/pages/login.jsx",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "src_authcontext_useauth",
+      "target": "pages_login_loginpage"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/pages/NavBar.jsx",
+      "source_location": "L76",
+      "weight": 1.0,
+      "source": "src_authcontext_useauth",
+      "target": "pages_navbar_navbar"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Layout.jsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_layout_jsx",
+      "target": "src_pages_navbar_jsx"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Layout.jsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_layout_jsx",
+      "target": "src_layout_layout"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/pages/NavBar.jsx",
+      "source_location": "L62",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_layout_layout",
+      "target": "src_pages_navbar_jsx"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/modulesRouter.jsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_modulesrouter_jsx",
+      "target": "src_pages_notfound_jsx"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/modulesRouter.jsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_modulesrouter_jsx",
+      "target": "src_modules_invoice_invoice_jsx"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/modulesRouter.jsx",
+      "source_location": "L8",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_modulesrouter_jsx",
+      "target": "src_modules_pricelist_pricelist_jsx"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/modulesRouter.jsx",
+      "source_location": "L10",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_modulesrouter_jsx",
+      "target": "orders_customerorder_customerorder"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/modulesRouter.jsx",
+      "source_location": "L12",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_modulesrouter_jsx",
+      "target": "accounts_buyeraccount_buyeraccount"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/modulesRouter.jsx",
+      "source_location": "L13",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_modulesrouter_jsx",
+      "target": "src_modules_accounts_addbuyeraccount_jsx"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/modulesRouter.jsx",
+      "source_location": "L14",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_modulesrouter_jsx",
+      "target": "src_modules_accounts_addaccountentry_jsx"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/modulesRouter.jsx",
+      "source_location": "L15",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_modulesrouter_jsx",
+      "target": "src_modules_pricelist_addpricelistproduct_jsx"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/modulesRouter.jsx",
+      "source_location": "L16",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_modulesrouter_jsx",
+      "target": "src_modules_accounts_supplieraccount_jsx"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/modulesRouter.jsx",
+      "source_location": "L17",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_modulesrouter_jsx",
+      "target": "src_modules_accounts_supplieraccountdetail_jsx"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/modulesRouter.jsx",
+      "source_location": "L18",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_modulesrouter_jsx",
+      "target": "src_modules_accounts_addsupplieraccount_jsx"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/modulesRouter.jsx",
+      "source_location": "L19",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_modulesrouter_jsx",
+      "target": "src_modules_accounts_addsupplieraccountentry_jsx"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/modulesRouter.jsx",
+      "source_location": "L20",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_modulesrouter_jsx",
+      "target": "orders_supplierorder_supplierorder"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/modulesRouter.jsx",
+      "source_location": "L21",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_modulesrouter_jsx",
+      "target": "src_modules_orders_addsupplierorder_jsx"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/modulesRouter.jsx",
+      "source_location": "L22",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_modulesrouter_jsx",
+      "target": "src_modules_quick_sales_createquicksales_jsx"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/modulesRouter.jsx",
+      "source_location": "L23",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_modulesrouter_jsx",
+      "target": "quick_sales_listquicksales_listquicksales"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/accounts/BuyerAccountDetail.jsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "accounts_buyeraccount_buyeraccount",
+      "target": "accounts_buyeraccountdetail_parsedate"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/accounts/SupplierAccountDetail.jsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "accounts_buyeraccountdetail_parsedate",
+      "target": "src_modules_accounts_supplieraccountdetail_jsx"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/invoice/Invoice.jsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_invoice_invoice_jsx",
+      "target": "src_utils_productutils_js"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/invoice/Invoice.jsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_invoice_invoice_jsx",
+      "target": "utils_productutils_generateproductcode"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/invoice/Invoice.jsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_invoice_invoice_jsx",
+      "target": "utils_productutils_capitalizewords"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/invoice/Invoice.jsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_invoice_invoice_jsx",
+      "target": "utils_productutils_findproductbynameandsize"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/invoice/Invoice.jsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_invoice_invoice_jsx",
+      "target": "utils_productutils_findproductbycode"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/invoice/Invoice.jsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_invoice_invoice_jsx",
+      "target": "utils_productutils_productcodeexists"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/invoice/Invoice.jsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_invoice_invoice_jsx",
+      "target": "utils_productutils_normalizeproductcode"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/invoice/Invoice.jsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_invoice_invoice_jsx",
+      "target": "utils_productutils_allowed_packing_types"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/invoice/Invoice.jsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_invoice_invoice_jsx",
+      "target": "utils_productutils_sortproducts"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/invoice/Invoice.jsx",
+      "source_location": "L21",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_invoice_invoice_jsx",
+      "target": "invoice_invoice_additemform"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/invoice/Invoice.jsx",
+      "source_location": "L310",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_invoice_invoice_jsx",
+      "target": "invoice_invoice_invoice"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/orders/AddCustomerOrder.jsx",
+      "source_location": "L9",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "invoice_invoice_additemform",
+      "target": "orders_customerorder_customerorder"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/orders/AddSupplierOrder.jsx",
+      "source_location": "L9",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "invoice_invoice_additemform",
+      "target": "src_modules_orders_addsupplierorder_jsx"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/quick-sales/CreateQuickSales.jsx",
+      "source_location": "L19",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "invoice_invoice_additemform",
+      "target": "src_modules_quick_sales_createquicksales_jsx"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/orders/AddSupplierOrder.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_orders_addsupplierorder_jsx",
+      "target": "src_utils_productutils_js"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/orders/AddSupplierOrder.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_orders_addsupplierorder_jsx",
+      "target": "utils_productutils_sortproducts"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/orders/AddSupplierOrder.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_orders_addsupplierorder_jsx",
+      "target": "utils_productutils_capitalizewords"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/orders/AddSupplierOrder.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_orders_addsupplierorder_jsx",
+      "target": "utils_productutils_generateproductcode"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/orders/AddSupplierOrder.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_orders_addsupplierorder_jsx",
+      "target": "utils_productutils_allowed_packing_types"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/orders/AddCustomerOrder.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "orders_customerorder_customerorder",
+      "target": "src_utils_productutils_js"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/orders/AddCustomerOrder.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "orders_customerorder_customerorder",
+      "target": "utils_productutils_sortproducts"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/orders/AddCustomerOrder.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "orders_customerorder_customerorder",
+      "target": "utils_productutils_capitalizewords"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/orders/AddCustomerOrder.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "orders_customerorder_customerorder",
+      "target": "utils_productutils_generateproductcode"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/orders/AddCustomerOrder.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "orders_customerorder_customerorder",
+      "target": "utils_productutils_allowed_packing_types"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/priceList/AddPriceListProduct.jsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_pricelist_addpricelistproduct_jsx",
+      "target": "src_utils_productutils_js"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/priceList/AddPriceListProduct.jsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_pricelist_addpricelistproduct_jsx",
+      "target": "utils_productutils_generateproductcode"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/priceList/AddPriceListProduct.jsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_pricelist_addpricelistproduct_jsx",
+      "target": "utils_productutils_capitalizewords"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/priceList/AddPriceListProduct.jsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_pricelist_addpricelistproduct_jsx",
+      "target": "utils_productutils_allowed_packing_types"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/priceList/PriceList.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_pricelist_pricelist_jsx",
+      "target": "src_utils_productutils_js"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/priceList/PriceList.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_pricelist_pricelist_jsx",
+      "target": "utils_productutils_sortproducts"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/priceList/PriceList.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_pricelist_pricelist_jsx",
+      "target": "utils_productutils_extractnumericfromsize"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/priceList/PriceList.jsx",
+      "source_location": "L9",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_pricelist_pricelist_jsx",
+      "target": "pricelist_pricelist_pricelist"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/quick-sales/CreateQuickSales.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_quick_sales_createquicksales_jsx",
+      "target": "src_utils_productutils_js"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/quick-sales/CreateQuickSales.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_quick_sales_createquicksales_jsx",
+      "target": "utils_productutils_generateproductcode"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/quick-sales/CreateQuickSales.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_quick_sales_createquicksales_jsx",
+      "target": "utils_productutils_capitalizewords"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/quick-sales/CreateQuickSales.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_quick_sales_createquicksales_jsx",
+      "target": "utils_productutils_findproductbynameandsize"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/quick-sales/CreateQuickSales.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_quick_sales_createquicksales_jsx",
+      "target": "utils_productutils_findproductbycode"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/quick-sales/CreateQuickSales.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_quick_sales_createquicksales_jsx",
+      "target": "utils_productutils_productcodeexists"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/quick-sales/CreateQuickSales.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_quick_sales_createquicksales_jsx",
+      "target": "utils_productutils_normalizeproductcode"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/quick-sales/CreateQuickSales.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_quick_sales_createquicksales_jsx",
+      "target": "utils_productutils_allowed_packing_types"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/quick-sales/CreateQuickSales.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_modules_quick_sales_createquicksales_jsx",
+      "target": "utils_productutils_sortproducts"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/pages/login.jsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_pages_login_jsx",
+      "target": "pages_login_loginpage"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/pages/NavBar.jsx",
+      "source_location": "L13",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_pages_navbar_jsx",
+      "target": "pages_navbar_navsections"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/pages/NavBar.jsx",
+      "source_location": "L73",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_pages_navbar_jsx",
+      "target": "pages_navbar_navbar"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/utils/productUtils.js",
+      "source_location": "L9",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_utils_productutils_js",
+      "target": "utils_productutils_slugify"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/utils/productUtils.js",
+      "source_location": "L23",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_utils_productutils_js",
+      "target": "utils_productutils_normalizeproductcode"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/utils/productUtils.js",
+      "source_location": "L39",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_utils_productutils_js",
+      "target": "utils_productutils_generateproductcode"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/utils/productUtils.js",
+      "source_location": "L53",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_utils_productutils_js",
+      "target": "utils_productutils_capitalizewords"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/utils/productUtils.js",
+      "source_location": "L62",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_utils_productutils_js",
+      "target": "utils_productutils_allowed_packing_types"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/utils/productUtils.js",
+      "source_location": "L83",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_utils_productutils_js",
+      "target": "utils_productutils_isvalidpackingtype"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/utils/productUtils.js",
+      "source_location": "L96",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_utils_productutils_js",
+      "target": "utils_productutils_productcodeexists"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/utils/productUtils.js",
+      "source_location": "L114",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_utils_productutils_js",
+      "target": "utils_productutils_findproductbycode"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/utils/productUtils.js",
+      "source_location": "L128",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_utils_productutils_js",
+      "target": "utils_productutils_findproductbynameandsize"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/utils/productUtils.js",
+      "source_location": "L155",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_utils_productutils_js",
+      "target": "utils_productutils_createproductpayload"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/utils/productUtils.js",
+      "source_location": "L173",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_utils_productutils_js",
+      "target": "utils_productutils_extractnumericfromsize"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/utils/productUtils.js",
+      "source_location": "L192",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_utils_productutils_js",
+      "target": "utils_productutils_sortproducts"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/utils/productUtils.js",
+      "source_location": "L42",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "utils_productutils_slugify",
+      "target": "utils_productutils_generateproductcode"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/utils/productUtils.js",
+      "source_location": "L98",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "utils_productutils_normalizeproductcode",
+      "target": "utils_productutils_productcodeexists"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/utils/productUtils.js",
+      "source_location": "L116",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "utils_productutils_normalizeproductcode",
+      "target": "utils_productutils_findproductbycode"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/utils/productUtils.js",
+      "source_location": "L144",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "utils_productutils_generateproductcode",
+      "target": "utils_productutils_findproductbynameandsize"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/utils/productUtils.js",
+      "source_location": "L156",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "utils_productutils_generateproductcode",
+      "target": "utils_productutils_createproductpayload"
+    }
+  ],
+  "hyperedges": [],
+  "built_at_commit": "0c26b58d7413fce94867f2ec3f82b1bb4485f52a"
+}
