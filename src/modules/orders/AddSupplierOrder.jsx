@@ -6,12 +6,20 @@ import { toast } from 'react-hot-toast';
 import { sortProducts, capitalizeWords, generateProductCode, DEFAULT_PACKING_TYPE, ALLOWED_PACKING_TYPES } from '../../utils/productUtils';
 
 // ─── Stitch-styled Add Item Form ───
-const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors }) => {
+const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors, productNameInputRef }) => {
   const [showProdDropdown, setShowProdDropdown] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const prodWrapperRef = useRef(null);
   const sizeInputRef = useRef(null);
   const quantityInputRef = useRef(null);
+
+  // Auto-scroll highlighted item into view
+  useEffect(() => {
+    if (highlightedIndex >= 0 && showProdDropdown) {
+      const el = document.querySelector(`[data-so-prod-index="${highlightedIndex}"]`);
+      el?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [highlightedIndex, showProdDropdown]);
 
   const filteredProducts = useMemo(() => {
     const filtered = products.filter(p =>
@@ -96,6 +104,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors 
           <label className="text-[0.7rem] font-medium text-[#434655]">Product Name</label>
           <div className="relative">
             <input
+              ref={productNameInputRef}
               type="text"
               value={newItem.productName}
               onFocus={() => { setShowProdDropdown(true); setHighlightedIndex(0); }}
@@ -118,7 +127,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors 
                 {filteredProducts.length > 0 ? (
                   filteredProducts.map((p, index) => (
                     <button
-                      key={p.code} role="option" aria-selected={highlightedIndex === index}
+                      key={p.code} data-so-prod-index={index} role="option" aria-selected={highlightedIndex === index}
                       className={`cursor-pointer w-full text-left px-4 py-3 transition-colors flex items-center justify-between ${highlightedIndex === index ? 'bg-[#004AC6]/5' : 'hover:bg-[#F2F4F6]'} ${index === 0 ? 'rounded-t-lg' : ''} ${index === filteredProducts.length - 1 ? 'rounded-b-lg' : ''}`}
                       onClick={() => handleProductSelect(p)}
                       onMouseEnter={() => setHighlightedIndex(index)}
@@ -127,28 +136,31 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors 
                         <span className="font-medium block text-sm">{formatName(p.name)}</span>
                         {p.size && <span className="text-xs text-[#434655]">Size: {p.size}</span>}
                       </div>
-                      <span className="text-xs font-bold text-[#434655]">₹{(p.selling_price ?? p.sellingPrice ?? 0).toFixed(2)}</span>
+                      <span className="text-xs font-bold text-[#434655]">₹{(() => { const v = parseFloat(p.selling_price ?? p.sellingPrice ?? 0); return Number.isInteger(v) ? v.toString() : v.toFixed(2); })()}</span>
                     </button>
                   ))
                 ) : (<div className="p-3 text-sm text-[#434655]">No products found</div>)}
               </div>
             )}
           </div>
-          {formErrors.productName && (
-            <p className="text-xs text-[#BA1A1A] flex items-center gap-1 absolute -bottom-5">
-              <AlertCircle size={12} />{formErrors.productName}
-            </p>
-          )}
+          <div className="h-5">
+            {formErrors.productName && (
+              <p className="text-xs text-[#BA1A1A] flex items-center gap-1 mt-0.5">
+                <AlertCircle size={12} />{formErrors.productName}
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Size */}
         <div className="lg:col-span-1 space-y-2">
           <label className="text-[0.7rem] font-medium text-[#434655]">Size</label>
           <input ref={sizeInputRef} type="text" value={newItem.size || ''} onChange={(e) => setNewItem({ ...newItem, size: e.target.value })} className="w-full bg-white border-none rounded-lg py-3 px-4 text-sm font-medium focus:ring-2 focus:ring-[#2563EB]/20 outline-none" placeholder="e.g. 1Kg" />
+          <div className="h-5"></div>
         </div>
 
         {/* Qty */}
-        <div className="lg:col-span-1 space-y-2 relative">
+        <div className="lg:col-span-1 space-y-2">
           <label className="text-[0.7rem] font-medium text-[#434655]">Qty</label>
           <input
             ref={quantityInputRef} type="number" min="0.001" step="0.001" value={newItem.quantity}
@@ -157,7 +169,9 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors 
             className={`w-full bg-white border-none rounded-lg py-3 px-4 text-sm font-medium focus:ring-2 focus:ring-[#2563EB]/20 outline-none ${formErrors.quantity ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
             placeholder="0"
           />
-          {formErrors.quantity && <p className="text-xs text-[#BA1A1A] flex items-center gap-1 absolute -bottom-5"><AlertCircle size={12} />{formErrors.quantity}</p>}
+          <div className="h-5">
+            {formErrors.quantity && <p className="text-xs text-[#BA1A1A] flex items-center gap-1 mt-0.5"><AlertCircle size={12} />{formErrors.quantity}</p>}
+          </div>
         </div>
 
         {/* Unit */}
@@ -166,12 +180,14 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors 
           <select value={newItem.packingType} onChange={(e) => setNewItem({ ...newItem, packingType: e.target.value })} className="w-full bg-white border-none rounded-lg py-3 px-3 text-sm font-medium focus:ring-2 focus:ring-[#2563EB]/20 appearance-none outline-none">
             {ALLOWED_PACKING_TYPES.map((type) => (<option key={type} value={type}>{type}</option>))}
           </select>
+          <div className="h-5"></div>
         </div>
 
         {/* Item Remark */}
         <div className="lg:col-span-3 space-y-2">
           <label className="text-[0.7rem] font-medium text-[#434655]">Item Remark</label>
           <input type="text" value={newItem.itemRemark || ''} onChange={(e) => setNewItem({ ...newItem, itemRemark: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddItem(); } }} className="w-full bg-white border-none rounded-lg py-3 px-4 text-sm font-medium focus:ring-2 focus:ring-[#2563EB]/20 outline-none" placeholder="Optional note..." />
+          <div className="h-5"></div>
         </div>
 
         {/* Add Button */}
@@ -180,6 +196,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors 
             <Plus size={16} />
             <span>Add Item</span>
           </button>
+          <div className="h-5"></div>
         </div>
       </div>
     </section>
@@ -190,6 +207,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors 
 const AddSupplierOrder = () => {
   const wrapperRef = useRef(null);
   const printRef = useRef(null);
+  const productNameInputRef = useRef(null);
   const { orderId: orderNo } = useParams();
 
   // State declarations
@@ -215,6 +233,7 @@ const AddSupplierOrder = () => {
   }, [suppliers, supplierId]);
 
   const [showCustDropdown, setShowCustDropdown] = useState(false);
+  const [highlightedCustIndex, setHighlightedCustIndex] = useState(-1);
   const [mobileNo, setMobileNo] = useState('');
   const [address, setAddress] = useState('');
   const [remark, setRemark] = useState('');
@@ -331,10 +350,18 @@ const AddSupplierOrder = () => {
   }, [orderNo, products]);
 
   useEffect(() => {
-    const handleClickOutside = (event) => { if (wrapperRef.current && !wrapperRef.current.contains(event.target)) { setShowCustDropdown(false); } };
+    const handleClickOutside = (event) => { if (wrapperRef.current && !wrapperRef.current.contains(event.target)) { setShowCustDropdown(false); setHighlightedCustIndex(-1); } };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Auto-scroll highlighted supplier into view
+  useEffect(() => {
+    if (highlightedCustIndex >= 0 && showCustDropdown) {
+      const el = document.querySelector(`[data-so-cust-index="${highlightedCustIndex}"]`);
+      el?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [highlightedCustIndex, showCustDropdown]);
 
   useEffect(() => { if (supplierId) { setIsEditing(true); setIsSaved(false); } }, [supplierId]);
 
@@ -348,7 +375,11 @@ const AddSupplierOrder = () => {
   const validateForm = () => {
     const errors = {};
     if (!newItem.productName) errors.productName = 'Product is required';
-    if (!newItem.quantity) errors.quantity = 'Quantity is required';
+    if (!newItem.quantity) {
+      errors.quantity = 'Quantity is required';
+    } else if (parseFloat(newItem.quantity) <= 0) {
+      errors.quantity = 'Please enter valid quantity';
+    }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -364,6 +395,7 @@ const AddSupplierOrder = () => {
     setNewItem({ code: '', productName: '', size: '', quantity: '', packingType: DEFAULT_PACKING_TYPE, itemRemark: '' });
     setFormErrors({});
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => { productNameInputRef.current?.focus(); }, 100);
   };
 
   const handleEditItem = (index) => {
@@ -380,12 +412,14 @@ const AddSupplierOrder = () => {
   };
 
   const handleSelectsupplier = (cust) => {
-    setBuyer(cust.name); setsupplierId(cust.supplier_id); setAddress(cust.address); setMobileNo(cust.mobile); setShowCustDropdown(false);
+    setBuyer(cust.name); setsupplierId(cust.supplier_id); setAddress(cust.address); setMobileNo(cust.mobile); setShowCustDropdown(false); setHighlightedCustIndex(-1);
   };
 
   const handleSave = async () => {
     if (!supplierId) { toast.error('Please select a valid supplier'); return; }
     if (orderItems.length === 0) { toast.error('Add at least one item'); return; }
+    const payAmt = parseFloat(paymentAmount || 0);
+    if (payAmt < 0) { toast.error('Payment amount must be positive'); return; }
     const payload = {
       supplier_id: supplierId, order_date: orderDate, remark, status,
       items: orderItems.map(i => ({ product_code: i.code || i.product_code || null, product_name: i.productName || '', product_size: i.size || '', packing_type: i.packingType || '', quantity: parseFloat(i.quantity), item_remark: i.itemRemark || '', is_temporary: i.isTemporary ? 1 : 0 })),
@@ -482,11 +516,21 @@ const AddSupplierOrder = () => {
               <div className="relative">
                 <input
                   type="text" value={buyer}
-                  onFocus={() => setShowCustDropdown(true)}
+                  onFocus={() => { setShowCustDropdown(true); setHighlightedCustIndex(0); }}
                   onChange={(e) => {
-                    const name = e.target.value; setBuyer(name); setShowCustDropdown(true);
+                    const name = e.target.value; setBuyer(name); setShowCustDropdown(true); setHighlightedCustIndex(0);
                     const cust = suppliers.find(c => c.name.toLowerCase() === name.toLowerCase());
                     if (cust) { setsupplierId(cust.supplier_id); setAddress(cust.address); setMobileNo(cust.mobile); } else { setsupplierId(''); setAddress(''); setMobileNo(''); }
+                  }}
+                  onKeyDown={(e) => {
+                    if (!showCustDropdown) return;
+                    const filteredSupps = suppliers.filter(c => c.name.toLowerCase().includes(buyer.toLowerCase()));
+                    switch (e.key) {
+                      case 'ArrowDown': e.preventDefault(); setHighlightedCustIndex(prev => Math.min(prev + 1, filteredSupps.length - 1)); break;
+                      case 'ArrowUp': e.preventDefault(); setHighlightedCustIndex(prev => Math.max(prev - 1, 0)); break;
+                      case 'Enter': e.preventDefault(); if (highlightedCustIndex >= 0 && filteredSupps[highlightedCustIndex]) { handleSelectsupplier(filteredSupps[highlightedCustIndex]); } break;
+                      case 'Escape': e.preventDefault(); setShowCustDropdown(false); setHighlightedCustIndex(-1); break;
+                    }
                   }}
                   className="w-full bg-[#ECEEF0] border-none rounded-lg py-3 px-4 focus:ring-2 focus:ring-[#2563EB]/20 transition-all text-sm font-medium outline-none"
                   placeholder="Search supplier..."
@@ -500,9 +544,9 @@ const AddSupplierOrder = () => {
                 )}
               </div>
               {showCustDropdown && (
-                <ul className="absolute z-50 w-full top-full mt-1 max-h-60 overflow-y-auto bg-white border border-[#C3C6D7]/20 rounded-lg shadow-lg">
-                  {suppliers.filter((c) => c.name.toLowerCase().includes(buyer.toLowerCase())).map((c) => (
-                    <li key={c.supplier_id} className="px-4 py-2.5 hover:bg-[#004AC6]/5 cursor-pointer text-sm font-medium" onClick={() => handleSelectsupplier(c)}>{c.name}</li>
+                <ul className="absolute z-50 w-full top-full mt-1 overflow-y-auto bg-white border border-[#C3C6D7]/20 rounded-lg shadow-lg" style={{ maxHeight: '9rem' }}>
+                  {suppliers.filter((c) => c.name.toLowerCase().includes(buyer.toLowerCase())).map((c, idx) => (
+                    <li key={c.supplier_id} data-so-cust-index={idx} className={`px-4 py-2.5 cursor-pointer text-sm font-medium transition-colors ${highlightedCustIndex === idx ? 'bg-[#004AC6]/5' : 'hover:bg-[#004AC6]/5'}`} onClick={() => handleSelectsupplier(c)} onMouseEnter={() => setHighlightedCustIndex(idx)}>{c.name}</li>
                   ))}
                   {suppliers.filter((c) => c.name.toLowerCase().includes(buyer.toLowerCase())).length === 0 && (
                     <li className="px-4 py-2.5 text-[#434655] text-sm">No suppliers found</li>
@@ -546,7 +590,7 @@ const AddSupplierOrder = () => {
         </section>
 
         {/* ─── Quick Add Item ─── */}
-        <AddItemForm newItem={newItem} setNewItem={setNewItem} handleAddItem={handleAddItem} products={products} formErrors={formErrors} />
+        <AddItemForm newItem={newItem} setNewItem={setNewItem} handleAddItem={handleAddItem} products={products} formErrors={formErrors} productNameInputRef={productNameInputRef} />
 
         {/* ─── Items Table ─── */}
         <section className="bg-white rounded-xl overflow-hidden border border-[#C3C6D7]/10 shadow-sm">
@@ -569,7 +613,7 @@ const AddSupplierOrder = () => {
                     <td className="px-8 py-5 text-sm text-[#434655] print:px-2 print:py-1 print:text-[10px]">{String(index + 1).padStart(2, '0')}</td>
                     <td className="px-8 py-5 text-sm font-bold text-[#191C1E] print:px-2 print:py-1 print:text-[10px]" style={{ maxWidth: '200px', wordWrap: 'break-word', whiteSpace: 'normal' }}>{item.productName}</td>
                     <td className="px-8 py-5 text-sm text-[#434655] print:px-2 print:py-1 print:text-[10px]">{item.size || '-'}</td>
-                    <td className="px-8 py-5 text-sm font-medium text-[#191C1E] text-right print:px-2 print:py-1 print:text-[10px]">{item.quantity}</td>
+                    <td className="px-8 py-5 text-sm font-medium text-[#191C1E] text-right print:px-2 print:py-1 print:text-[10px]">{(() => { const n = parseFloat(item.quantity) || 0; if (Number.isInteger(n)) return n.toString(); return n.toFixed(3); })()}</td>
                     <td className="px-8 py-5 text-sm text-[#434655] print:px-2 print:py-1 print:text-[10px]">{item.packingType}</td>
                     <td className="px-8 py-5 text-sm text-[#434655] print:px-2 print:py-1 print:text-[10px]" style={{ maxWidth: '150px', wordWrap: 'break-word', whiteSpace: 'normal' }}>{item.itemRemark || '-'}</td>
                     <td className="px-8 py-5 text-center print:hidden">

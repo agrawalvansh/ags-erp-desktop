@@ -23,6 +23,14 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
     const sizeInputRef = useRef(null);
     const quantityInputRef = useRef(null);
 
+    // Auto-scroll highlighted item into view
+    useEffect(() => {
+      if (highlightedIndex >= 0 && showProdDropdown) {
+        const el = document.querySelector(`[data-qs-prod-index="${highlightedIndex}"]`);
+        el?.scrollIntoView({ block: 'nearest' });
+      }
+    }, [highlightedIndex, showProdDropdown]);
+
     const filteredProducts = useMemo(() => {
         const filtered = products.filter(p =>
             (p.name || '').toLowerCase().includes(newItem.productName.toLowerCase())
@@ -102,12 +110,12 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
         <div className="bg-white p-6 rounded-xl border border-[#2563EB]/20 shadow-[0_8px_30px_rgb(37,99,235,0.04)] mb-8">
             <div className="flex items-center gap-2 mb-5">
                 <Plus size={20} className="text-[#2563EB]" />
-                <h2 className="text-sm font-bold text-[#191C1E] uppercase tracking-tight">Fast Entry Console</h2>
+                <h2 className="text-sm font-bold text-[#191C1E] uppercase tracking-tight">Add New Item</h2>
             </div>
 
             <div className="grid grid-cols-12 gap-3 items-end">
-                {/* Product Name — col-span-3 */}
-                <div className="col-span-12 md:col-span-3 relative" ref={prodWrapperRef}>
+                {/* Product Name — col-span-4 */}
+                <div className="col-span-12 md:col-span-4 relative" ref={prodWrapperRef}>
                     <label className="block text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Product Name</label>
                     <div className="relative">
                         <input
@@ -124,6 +132,9 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
                             onKeyDown={handleKeyDown}
                             className={`w-full py-2.5 px-3 bg-[#F2F4F6] border-none rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all pr-10 ${formErrors.productName ? 'ring-2 ring-red-500' : ''}`}
                             placeholder="Search product..."
+                            aria-autocomplete="list"
+                            aria-expanded={showProdDropdown}
+                            aria-controls="qs-product-options"
                         />
                         {newItem.productName ? (
                             <button
@@ -139,12 +150,15 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
                             <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-[#434655]" size={16} />
                         )}
                         {showProdDropdown && (
-                            <div className="absolute z-50 w-full mt-1 bg-white border border-[#C3C6D7]/30 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                            <div className="absolute z-50 w-full mt-1 bg-white border border-[#C3C6D7]/30 rounded-lg shadow-lg max-h-60 overflow-y-auto" role="listbox" id="qs-product-options">
                                 {filteredProducts.length > 0 ? (
                                     filteredProducts.map((p, index) => (
                                         <button
-                                            key={p.code}
-                                            className={`cursor-pointer w-full text-left px-4 py-3 transition-colors flex items-center justify-between text-sm ${highlightedIndex === index ? 'bg-[#EFF6FF]' : 'hover:bg-[#F2F4F6]'} ${index === 0 ? 'rounded-t-lg' : ''} ${index === filteredProducts.length - 1 ? 'rounded-b-lg' : ''}`}
+                                        key={p.code}
+                                        data-qs-prod-index={index}
+                                        role="option"
+                                        aria-selected={highlightedIndex === index}
+                                        className={`cursor-pointer w-full text-left px-4 py-3 transition-colors flex items-center justify-between text-sm ${highlightedIndex === index ? 'bg-[#EFF6FF]' : 'hover:bg-[#F2F4F6]'} ${index === 0 ? 'rounded-t-lg' : ''} ${index === filteredProducts.length - 1 ? 'rounded-b-lg' : ''}`}
                                             onClick={() => handleProductSelect(p)}
                                             onMouseEnter={() => setHighlightedIndex(index)}
                                         >
@@ -153,19 +167,25 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
                                                 {p.size && <span className="text-xs text-[#434655] mt-0.5">{p.size}</span>}
                                             </div>
                                             <span className="text-xs font-semibold text-[#434655]">
-                                                ₹{(p.selling_price ?? p.sellingPrice ?? 0).toFixed(2)}
-                                            </span>
+                                            ₹{(() => { const v = parseFloat(p.selling_price ?? p.sellingPrice ?? 0); return Number.isInteger(v) ? v.toString() : v.toFixed(2); })()}
+                                        </span>
                                         </button>
                                     ))
-                                ) : null}
+                                ) : (
+                                    <div className="px-4 py-3 text-sm text-[#434655]/60 text-center italic">
+                                        No products found — ad-hoc item
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
-                    {formErrors.productName && (
-                        <p className="mt-1 text-xs text-red-600 flex items-center">
-                            <AlertCircle size={14} className="mr-1" />{formErrors.productName}
-                        </p>
-                    )}
+                    <div className="h-5">
+                        {formErrors.productName && (
+                            <p className="text-xs text-red-600 flex items-center mt-0.5">
+                                <AlertCircle size={14} className="mr-1" />{formErrors.productName}
+                            </p>
+                        )}
+                    </div>
                 </div>
 
                 {/* Size — col-span-2 */}
@@ -179,38 +199,44 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
                         className="w-full py-2.5 px-3 bg-[#F2F4F6] border-none rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all"
                         placeholder="e.g. 500g"
                     />
+                    <div className="h-5"></div>
                 </div>
 
-                {/* Qty — col-span-1 */}
-                <div className="col-span-3 md:col-span-1">
-                    <label className="block text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Qty</label>
-                    <input
-                        ref={quantityInputRef}
-                        type="number" min="0.001" step="0.001"
-                        value={newItem.quantity}
-                        onChange={(e) => setNewItem({ ...newItem, quantity: e.target.value })}
-                        className={`w-full py-2.5 px-3 bg-[#F2F4F6] border-none rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all ${formErrors.quantity ? 'ring-2 ring-red-500' : ''}`}
-                        placeholder="0"
-                    />
-                    {formErrors.quantity && (
-                        <p className="mt-1 text-xs text-red-600 flex items-center">
-                            <AlertCircle size={14} className="mr-1" />{formErrors.quantity}
-                        </p>
-                    )}
-                </div>
-
-                {/* Unit — col-span-2 */}
-                <div className="col-span-3 md:col-span-2">
-                    <label className="block text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Unit</label>
-                    <select
-                        value={newItem.packingType}
-                        onChange={(e) => setNewItem({ ...newItem, packingType: e.target.value })}
-                        className="w-full py-2.5 px-3 bg-[#F2F4F6] border-none rounded-lg text-sm appearance-none"
-                    >
-                        {ALLOWED_PACKING_TYPES.map(type => (
-                            <option key={type} value={type}>{type}</option>
-                        ))}
-                    </select>
+                {/* Qty + Unit — col-span-2 (matches Invoice layout) */}
+                <div className="col-span-6 md:col-span-2">
+                    <div className="flex gap-1">
+                        <div className="w-2/3">
+                            <label className="block text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Qty</label>
+                            <input
+                                ref={quantityInputRef}
+                                type="number" min="0.001" step="0.001"
+                                value={newItem.quantity}
+                                onChange={(e) => setNewItem({ ...newItem, quantity: e.target.value })}
+                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddItem(); } }}
+                                className={`w-full py-2.5 px-3 bg-[#F2F4F6] border-none rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all ${formErrors.quantity ? 'ring-2 ring-red-500' : ''}`}
+                                placeholder="0"
+                            />
+                        </div>
+                        <div className="w-1/3">
+                            <label className="block text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Unit</label>
+                            <select
+                                value={newItem.packingType}
+                                onChange={(e) => setNewItem({ ...newItem, packingType: e.target.value })}
+                                className="w-full py-2.5 px-1.5 bg-[#F2F4F6] border-none rounded-lg text-[11px] font-bold appearance-none"
+                            >
+                                {ALLOWED_PACKING_TYPES.map(type => (
+                                    <option key={type} value={type}>{type}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                    <div className="h-5">
+                        {formErrors.quantity && (
+                            <p className="text-xs text-red-600 flex items-center mt-0.5">
+                                <AlertCircle size={14} className="mr-1" />{formErrors.quantity}
+                            </p>
+                        )}
+                    </div>
                 </div>
 
                 {/* Rate — col-span-2 */}
@@ -227,15 +253,17 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
                             placeholder="0.00"
                         />
                     </div>
-                    {formErrors.sellingPrice && (
-                        <p className="mt-1 text-xs text-red-600 flex items-center">
-                            <AlertCircle size={14} className="mr-1" />{formErrors.sellingPrice}
-                        </p>
-                    )}
+                    <div className="h-5">
+                        {formErrors.sellingPrice && (
+                            <p className="text-xs text-red-600 flex items-center mt-0.5">
+                                <AlertCircle size={14} className="mr-1" />{formErrors.sellingPrice}
+                            </p>
+                        )}
+                    </div>
                 </div>
 
                 {/* Add Button — col-span-2 */}
-                <div className="col-span-12 md:col-span-2">
+                <div className="col-span-12 md:col-span-2 md:col-start-11">
                     <button
                         onClick={handleAddItem}
                         className="cursor-pointer w-full py-2.5 bg-gradient-to-br from-[#004AC6] to-[#2563EB] text-white font-bold text-sm uppercase rounded-lg shadow-sm hover:opacity-90 transition-all flex items-center justify-center gap-2"
@@ -243,6 +271,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
                         <Plus size={16} />
                         <span>Add Item</span>
                     </button>
+                    <div className="h-5"></div>
                 </div>
             </div>
         </div>
@@ -323,7 +352,23 @@ const CreateQuickSale = () => {
         }
     }, []);
 
-    const formatNumber = (value) => (parseFloat(value) || 0).toFixed(2);
+    const formatNumber = (value) => {
+        const num = parseFloat(value) || 0;
+        if (Number.isInteger(num)) return num.toString();
+        return num.toFixed(2);
+    };
+
+    const formatQty = (val) => {
+        const n = parseFloat(val) || 0;
+        if (Number.isInteger(n)) return n.toString();
+        return n.toFixed(3);
+    };
+
+    const formatIndian = (num) => {
+        const n = Number(num);
+        if (isNaN(n)) return '0';
+        return n.toLocaleString('en-IN');
+    };
 
     const calculateGrandTotal = () => {
         const roundedTotal = Math.round(total);
@@ -407,12 +452,19 @@ const CreateQuickSale = () => {
         setTotal(invoiceItems.reduce((acc, item) => acc + (parseFloat(item.amount) || 0), 0));
     }, [invoiceItems]);
 
-    // Form validation
     const validateForm = () => {
         const errors = {};
         if (!newItem.productName) errors.productName = 'Product is required';
-        if (!newItem.quantity) errors.quantity = 'Quantity is required';
-        if (!newItem.sellingPrice) errors.sellingPrice = 'Price is required';
+        if (!newItem.quantity) {
+            errors.quantity = 'Quantity is required';
+        } else if (parseFloat(newItem.quantity) <= 0) {
+            errors.quantity = 'Please enter valid quantity';
+        }
+        if (!newItem.sellingPrice) {
+            errors.sellingPrice = 'Price is required';
+        } else if (parseFloat(newItem.sellingPrice) <= 0) {
+            errors.sellingPrice = 'Please enter selling price';
+        }
         setFormErrors(errors);
         return Object.keys(errors).length === 0;
     };
@@ -422,8 +474,12 @@ const CreateQuickSale = () => {
         if (!validateForm()) return;
         const quantity = parseFloat(newItem.quantity);
         const sellingPrice = parseFloat(newItem.sellingPrice);
-        if (isNaN(quantity) || isNaN(sellingPrice) || quantity <= 0 || sellingPrice <= 0) {
-            toast.error('Please enter valid quantity and selling price');
+        if (isNaN(quantity) || quantity <= 0) {
+            toast.error('Please enter valid quantity');
+            return;
+        }
+        if (isNaN(sellingPrice) || sellingPrice <= 0) {
+            toast.error('Please enter selling price');
             return;
         }
         const amount = quantity * sellingPrice;
@@ -662,7 +718,7 @@ const CreateQuickSale = () => {
                                             </span>
                                         </td>
                                         <td className="py-4 px-6 text-[#434655] text-center print:py-1 print:px-2 text-xs">{item.size || '-'}</td>
-                                        <td className="py-4 px-6 text-right text-[#191C1E] print:py-1 print:px-2 text-xs">{item.quantity} {item.packingType}</td>
+                                        <td className="py-4 px-6 text-right text-[#191C1E] print:py-1 print:px-2 text-xs">{formatQty(item.quantity)} {item.packingType}</td>
                                         <td className="py-4 px-6 text-right font-medium print:py-1 print:px-2 text-xs">{formatNumber(item.sellingPrice)}</td>
                                         <td className="py-4 px-6 text-right font-bold text-[#004AC6] print:py-1 print:px-2 text-xs">{formatNumber(item.amount)}</td>
                                         <td className="py-4 px-6 text-center print:hidden">
@@ -682,11 +738,7 @@ const CreateQuickSale = () => {
                                 )}
                             </tbody>
                         </table>
-                        {invoiceItems.length > 0 && (
-                            <div className="p-4 bg-[#F2F4F6]/30 border-t border-[#ECEEF0]">
-                                <p className="text-xs text-[#434655] font-medium italic">Showing all {invoiceItems.length} items in current draft.</p>
-                            </div>
-                        )}
+
                     </div>
                 </section>
 
@@ -725,7 +777,7 @@ const CreateQuickSale = () => {
                                     <div className="pt-6 mt-2 border-t border-[#ECEEF0]">
                                         <div className="flex justify-between items-center">
                                             <span className="text-sm font-extrabold text-[#191C1E] uppercase">Grand Total</span>
-                                            <span className="text-2xl font-black text-[#004AC6]">₹ {grandTotal.toFixed(2)}</span>
+                                            <span className="text-2xl font-black text-[#004AC6]">₹ {formatIndian(grandTotal)}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -761,23 +813,24 @@ const CreateQuickSale = () => {
                         </div>
                     </div>
 
-                    {/* Footer Action Buttons */}
+                    {/* Footer Action Buttons — mutually exclusive Save / Print */}
                     <div className="pt-8 border-t border-[#C3C6D7]/10 flex justify-end gap-4 mt-6">
-                        <button
-                            onClick={handlePrint}
-                            disabled={isTranslating}
-                            className={`cursor-pointer px-8 py-3 bg-[#E6E8EA] text-[#191C1E] font-bold text-xs uppercase rounded-xl hover:bg-[#E0E3E5] transition-all flex items-center gap-2 ${isTranslating ? 'opacity-50' : ''}`}
-                        >
-                            <Printer size={18} />
-                            {isTranslating ? 'Translating...' : 'Print Quick Sale'}
-                        </button>
-                        {isDirty && (
+                        {isDirty ? (
                             <button
                                 onClick={handleSave}
                                 className="cursor-pointer px-12 py-3 bg-gradient-to-br from-[#004AC6] to-[#2563EB] text-white font-bold text-xs uppercase rounded-xl shadow-lg shadow-[#004AC6]/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
                             >
                                 <Save size={18} />
                                 Save & Confirm
+                            </button>
+                        ) : (currentQsId || !isNewSale) && (
+                            <button
+                                onClick={handlePrint}
+                                disabled={isTranslating}
+                                className={`cursor-pointer px-8 py-3 bg-[#E6E8EA] text-[#191C1E] font-bold text-xs uppercase rounded-xl hover:bg-[#E0E3E5] transition-all flex items-center gap-2 ${isTranslating ? 'opacity-50' : ''}`}
+                            >
+                                <Printer size={18} />
+                                {isTranslating ? 'Translating...' : 'Print Quick Sale'}
                             </button>
                         )}
                     </div>

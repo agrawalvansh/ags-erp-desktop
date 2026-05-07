@@ -470,9 +470,7 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
       // Refresh items
       db.prepare('DELETE FROM invoice_items WHERE invoice_id = ?').run(invoice_id);
       const insertItem = db.prepare('INSERT INTO invoice_items (invoice_id, product_code, quantity, selling_price) VALUES (?, ?, ?, ?)');
-      const ensureProduct = db.prepare('INSERT OR IGNORE INTO products (code, name) VALUES (?, ?)');
       for (const it of items) {
-        ensureProduct.run(it.product_code, it.product_code);
         insertItem.run(invoice_id, it.product_code, it.quantity, it.selling_price);
       }
 
@@ -826,7 +824,6 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
       return { error: 'Missing required fields' };
     }
 
-    const ensureProductStmt = db.prepare('INSERT OR IGNORE INTO products (code, name) VALUES (?, ?)');
     const insertItemStmt = db.prepare('INSERT INTO invoice_items (invoice_id, product_code, quantity, selling_price) VALUES (?, ?, ?, ?)');
     const createTxn = db.transaction(() => {
       // Generate invoice_id using sequence table with reusable pool
@@ -856,7 +853,6 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
         `).run(invoice_id, customer_id, invoice_date, remark, packing, freight, riksha, grandTotal);
 
       for (const it of items) {
-        ensureProductStmt.run(it.product_code, it.product_code);
         insertItemStmt.run(invoice_id, it.product_code, it.quantity, it.selling_price);
       }
 

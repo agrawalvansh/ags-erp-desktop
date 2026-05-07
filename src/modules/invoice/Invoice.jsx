@@ -8,9 +8,6 @@ import {
   generateProductCode,
   capitalizeWords,
   findProductByNameAndSize,
-  findProductByCode,
-  productCodeExists,
-  normalizeProductCode,
   ALLOWED_PACKING_TYPES,
   DEFAULT_PACKING_TYPE,
   sortProducts
@@ -18,9 +15,17 @@ import {
 
 // Add Item Form Component
 // Improved Add Item Form Component
-const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors, productNameInputRef, onProductSelected, autoSyncPrice, setAutoSyncPrice }) => {
+const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors, productNameInputRef, onProductSelected }) => {
   const [showProdDropdown, setShowProdDropdown] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+
+  // Auto-scroll highlighted item into view
+  useEffect(() => {
+    if (highlightedIndex >= 0 && showProdDropdown) {
+      const el = document.querySelector(`[data-prod-index="${highlightedIndex}"]`);
+      el?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [highlightedIndex, showProdDropdown]);
   const prodWrapperRef = useRef(null);
   const sizeInputRef = useRef(null);
   const quantityInputRef = useRef(null);
@@ -168,6 +173,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
                   filteredProducts.map((p, index) => (
                     <button
                       key={p.code}
+                      data-prod-index={index}
                       role="option"
                       aria-selected={highlightedIndex === index}
                       className={`cursor-pointer w-full text-left px-4 py-3 transition-colors flex items-center justify-between text-sm ${highlightedIndex === index
@@ -182,24 +188,26 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
                         {p.size && <span className="text-xs text-[#434655] mt-0.5">{p.size}</span>}
                       </div>
                       <span className="text-xs font-semibold text-[#434655]">
-                        ₹{(p.selling_price ?? p.sellingPrice ?? 0).toFixed(2)}
+                        ₹{(() => { const v = parseFloat(p.selling_price ?? p.sellingPrice ?? 0); return Number.isInteger(v) ? v.toString() : v.toFixed(2); })()}
                       </span>
                     </button>
                   ))
                 ) : (
                   <div className="px-4 py-3 text-sm text-[#434655]/60 text-center italic">
-                    No products found — will create new
+                    No products found — ad-hoc item
                   </div>
                 )}
               </div>
             )}
           </div>
-          {formErrors.productName && (
-            <p className="mt-1 text-xs text-red-600 flex items-center">
-              <AlertCircle size={14} className="mr-1" />
-              {formErrors.productName}
-            </p>
-          )}
+          <div className="h-5">
+            {formErrors.productName && (
+              <p className="text-xs text-red-600 flex items-center mt-0.5">
+                <AlertCircle size={14} className="mr-1" />
+                {formErrors.productName}
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Size — col-span-2 */}
@@ -213,6 +221,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
             className="w-full py-2.5 px-3 bg-[#F2F4F6] border-none rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all"
             placeholder="e.g. 500g"
           />
+          <div className="h-5"></div>
         </div>
 
         {/* Qty + Unit — col-span-2 */}
@@ -245,12 +254,14 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
               </select>
             </div>
           </div>
-          {formErrors.quantity && (
-            <p className="mt-1 text-xs text-red-600 flex items-center">
-              <AlertCircle size={14} className="mr-1" />
-              {formErrors.quantity}
-            </p>
-          )}
+          <div className="h-5">
+            {formErrors.quantity && (
+              <p className="text-xs text-red-600 flex items-center mt-0.5">
+                <AlertCircle size={14} className="mr-1" />
+                {formErrors.quantity}
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Rate — col-span-2 */}
@@ -270,28 +281,17 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
               placeholder="0.00"
             />
           </div>
-          {formErrors.sellingPrice && (
-            <p className="mt-1 text-xs text-red-600 flex items-center">
-              <AlertCircle size={14} className="mr-1" />
-              {formErrors.sellingPrice}
-            </p>
-          )}
+          <div className="h-5">
+            {formErrors.sellingPrice && (
+              <p className="text-xs text-red-600 flex items-center mt-0.5">
+                <AlertCircle size={14} className="mr-1" />
+                {formErrors.sellingPrice}
+              </p>
+            )}
+          </div>
         </div>
 
-        {/* Price Sync Options */}
-        <div className="col-span-6 md:col-span-2 flex items-center justify-end mb-2 mt-[-10px]">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={autoSyncPrice}
-              onChange={(e) => setAutoSyncPrice(e.target.checked)}
-              className="w-4 h-4 text-[#2563EB] border-gray-300 rounded focus:ring-[#2563EB]"
-            />
-            <span className="text-[12px] font-bold text-[#475569] uppercase">
-              Update Price List
-            </span>
-          </label>
-        </div>
+
 
         {/* Add Button — col-span-2 */}
         <div className="col-span-12 md:col-span-2 md:col-start-11">
@@ -302,6 +302,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
             <Plus size={16} />
             <span>Add Item</span>
           </button>
+          <div className="h-5"></div>
         </div>
       </div>
     </div>
@@ -333,6 +334,7 @@ const Invoice = () => {
   const [customerId, setCustomerId] = useState('');
   const [customers, setCustomers] = useState([]);
   const [showCustDropdown, setShowCustDropdown] = useState(false);
+  const [highlightedCustIndex, setHighlightedCustIndex] = useState(-1);
   const [mobileNo, setMobileNo] = useState('');
   const [address, setAddress] = useState('');
   const [remark, setRemark] = useState('');
@@ -344,7 +346,7 @@ const Invoice = () => {
   const [currentInvoiceId, setCurrentInvoiceId] = useState(invoiceNo || '');
   const [editIndex, setEditIndex] = useState(-1);
   const [showNavigationWarning, setShowNavigationWarning] = useState(false);
-  const [autoSyncPrice, setAutoSyncPrice] = useState(false);
+
 
   // Payment/Advance state
   const [paymentAmount, setPaymentAmount] = useState('');
@@ -431,7 +433,7 @@ const Invoice = () => {
     setIsSaved(true);
     setCurrentInvoiceId('');
     setEditIndex(-1);
-    setAutoSyncPrice(false);
+
     // Reset payment fields
     setPaymentAmount('');
     setPaymentType('Cash');
@@ -452,7 +454,21 @@ const Invoice = () => {
 
   // Helper Functions
   const formatNumber = (value) => {
-    return (parseFloat(value) || 0).toFixed(2);
+    const num = parseFloat(value) || 0;
+    if (Number.isInteger(num)) return num.toString();
+    return num.toFixed(2);
+  };
+
+  const formatQty = (val) => {
+    const n = parseFloat(val) || 0;
+    if (Number.isInteger(n)) return n.toString();
+    return n.toFixed(3);
+  };
+
+  const formatIndian = (num) => {
+    const n = Number(num);
+    if (isNaN(n)) return '0';
+    return n.toLocaleString('en-IN');
   };
 
   const calculateGrandTotal = () => {
@@ -614,11 +630,20 @@ const Invoice = () => {
     const handleClickOutside = (event) => {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
         setShowCustDropdown(false);
+        setHighlightedCustIndex(-1);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Auto-scroll highlighted customer into view
+  useEffect(() => {
+    if (highlightedCustIndex >= 0 && showCustDropdown) {
+      const el = document.querySelector(`[data-inv-cust-index="${highlightedCustIndex}"]`);
+      el?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [highlightedCustIndex, showCustDropdown]);
 
   // Watch for changes in customerId to toggle editing state
   useEffect(() => {
@@ -653,8 +678,16 @@ const Invoice = () => {
   const validateForm = () => {
     const errors = {};
     if (!newItem.productName) errors.productName = 'Product is required';
-    if (!newItem.quantity) errors.quantity = 'Quantity is required';
-    if (!newItem.sellingPrice) errors.sellingPrice = 'Price is required';
+    if (!newItem.quantity) {
+      errors.quantity = 'Quantity is required';
+    } else if (parseFloat(newItem.quantity) <= 0) {
+      errors.quantity = 'Please enter valid quantity';
+    }
+    if (!newItem.sellingPrice) {
+      errors.sellingPrice = 'Price is required';
+    } else if (parseFloat(newItem.sellingPrice) <= 0) {
+      errors.sellingPrice = 'Please enter selling price';
+    }
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -666,8 +699,12 @@ const Invoice = () => {
     const quantity = parseFloat(newItem.quantity);
     const sellingPrice = parseFloat(newItem.sellingPrice);
 
-    if (isNaN(quantity) || isNaN(sellingPrice) || quantity <= 0 || sellingPrice <= 0) {
-      toast.error('Please enter valid quantity and selling price');
+    if (isNaN(quantity) || quantity <= 0) {
+      toast.error('Please enter valid quantity');
+      return;
+    }
+    if (isNaN(sellingPrice) || sellingPrice <= 0) {
+      toast.error('Please enter selling price');
       return;
     }
 
@@ -679,19 +716,16 @@ const Invoice = () => {
     const sizeChanged = originalProduct && (originalProduct.size || '') !== (newItem.size || '');
 
     let productCode = newItem.code;
-    let isNewProduct = !newItem.code;
 
-    // If name or size was changed, treat as new product
+    // If name or size was changed, check if another DB product matches
     if (nameChanged || sizeChanged) {
-      // Check if a product with this new name+size combination exists
       const existingProduct = findProductByNameAndSize(newItem.productName, newItem.size, products);
 
       if (existingProduct) {
         // Use existing product's code
         productCode = existingProduct.code;
-        isNewProduct = false;
 
-        // Check if price is different - sync if needed
+        // Always sync price if different
         const existingPrice = existingProduct.selling_price ?? existingProduct.sellingPrice ?? 0;
         if (existingPrice !== sellingPrice) {
           try {
@@ -704,8 +738,6 @@ const Invoice = () => {
               selling_price: sellingPrice
             });
             toast.success('Price updated in Price List');
-
-            // Refresh products list
             const updatedProducts = await window.api.getProducts();
             setProducts(updatedProducts);
           } catch (err) {
@@ -713,14 +745,13 @@ const Invoice = () => {
           }
         }
       } else {
-        // New product - generate code
+        // No matching DB product — treat as ad-hoc (invoice-only, no product creation)
         productCode = generateProductCode(newItem.productName, newItem.size);
-        isNewProduct = true;
       }
     } else if (newItem.code && originalProduct) {
-      // Using existing product without name change - check if price changed
+      // Using existing DB product without name change — always sync price if different
       const originalPrice = originalProduct.selling_price ?? originalProduct.sellingPrice ?? 0;
-      if (autoSyncPrice && originalPrice !== sellingPrice) {
+      if (originalPrice !== sellingPrice) {
         try {
           await window.api.invoke('products:update', {
             code: newItem.code,
@@ -731,8 +762,6 @@ const Invoice = () => {
             selling_price: sellingPrice
           });
           toast.success('Price updated in Price List');
-
-          // Refresh products list
           const updatedProducts = await window.api.getProducts();
           setProducts(updatedProducts);
         } catch (err) {
@@ -740,38 +769,8 @@ const Invoice = () => {
         }
       }
     } else if (!newItem.code) {
-      // Completely new product typed in
+      // Completely ad-hoc product typed in — no DB creation, just generate a code for invoice
       productCode = generateProductCode(newItem.productName, newItem.size);
-      isNewProduct = true;
-    }
-
-    // Create new product if needed
-    if (isNewProduct) {
-      try {
-        // Check if code already exists
-        if (productCodeExists(productCode, products)) {
-          toast.error('A product with this name and size already exists. Please use a different name or size.');
-          return;
-        }
-
-        await window.api.invoke('products:create', {
-          code: productCode,
-          name: newItem.productName,
-          size: newItem.size || '',
-          packing_type: newItem.packingType,
-          cost_price: 0,
-          selling_price: sellingPrice
-        });
-
-        const updatedProducts = await window.api.getProducts();
-        setProducts(updatedProducts);
-
-        toast.success('New product created and added to invoice');
-      } catch (err) {
-        console.error('Error creating product:', err);
-        toast.error('Error creating product');
-        return;
-      }
     }
 
     const newInvoiceItem = {
@@ -793,9 +792,7 @@ const Invoice = () => {
       toast.success('Item updated successfully');
     } else {
       setInvoiceItems([...invoiceItems, newInvoiceItem]);
-      if (!isNewProduct) {
-        toast.success('Item added successfully');
-      }
+      toast.success('Item added successfully');
     }
     setNewItem({
       code: '',
@@ -847,6 +844,7 @@ const Invoice = () => {
     setAddress(cust.address);
     setMobileNo(cust.mobile);
     setShowCustDropdown(false);
+    setHighlightedCustIndex(-1);
   };
 
   const handleSave = async () => {
@@ -857,6 +855,37 @@ const Invoice = () => {
     if (invoiceItems.length === 0) {
       toast.error('Add at least one item');
       return;
+    }
+
+    // Validate payment amount
+    const payAmt = parseFloat(paymentAmount || 0);
+    if (payAmt < 0) {
+      toast.error('Payment amount must be positive');
+      return;
+    }
+
+    // Update customer details if mobile/address changed
+    if (customerId) {
+      const existingCust = customers.find(c => c.customer_id === customerId);
+      if (existingCust) {
+        const custChanged =
+          (existingCust.mobile || '') !== (mobileNo || '') ||
+          (existingCust.address || '') !== (address || '');
+        if (custChanged) {
+          try {
+            await window.api.invoke('customers:update', {
+              customer_id: customerId,
+              name: buyer,
+              address: address,
+              mobile: mobileNo
+            });
+            const updatedCustomers = await window.api.getCustomers();
+            setCustomers(updatedCustomers);
+          } catch (err) {
+            console.error('Error updating customer:', err);
+          }
+        }
+      }
     }
 
     const { grandTotal } = calculateGrandTotal();
@@ -1056,11 +1085,12 @@ const Invoice = () => {
                 <input
                   type="text"
                   value={buyer}
-                  onFocus={() => setShowCustDropdown(true)}
+                  onFocus={() => { setShowCustDropdown(true); setHighlightedCustIndex(0); }}
                   onChange={(e) => {
                     const name = e.target.value;
                     setBuyer(name);
                     setShowCustDropdown(true);
+                    setHighlightedCustIndex(0);
                     const cust = customers.find(c => c.name.toLowerCase() === name.toLowerCase());
                     if (cust) {
                       setCustomerId(cust.customer_id);
@@ -1070,6 +1100,16 @@ const Invoice = () => {
                       setCustomerId('');
                       setAddress('');
                       setMobileNo('');
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (!showCustDropdown) return;
+                    const filteredCusts = customers.filter(c => c.name.toLowerCase().includes(buyer.toLowerCase()));
+                    switch (e.key) {
+                      case 'ArrowDown': e.preventDefault(); setHighlightedCustIndex(prev => Math.min(prev + 1, filteredCusts.length - 1)); break;
+                      case 'ArrowUp': e.preventDefault(); setHighlightedCustIndex(prev => Math.max(prev - 1, 0)); break;
+                      case 'Enter': e.preventDefault(); if (highlightedCustIndex >= 0 && filteredCusts[highlightedCustIndex]) { handleSelectCustomer(filteredCusts[highlightedCustIndex]); } break;
+                      case 'Escape': e.preventDefault(); setShowCustDropdown(false); setHighlightedCustIndex(-1); break;
                     }
                   }}
                   className="w-full pl-10 pr-10 py-3 bg-[#F2F4F6] border-none rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all"
@@ -1090,11 +1130,13 @@ const Invoice = () => {
                 <ul className="absolute z-50 w-full mt-1 bg-white border border-[#C3C6D7]/30 rounded-lg shadow-lg overflow-y-auto" style={{ maxHeight: '9rem' }}>
                   {customers
                     .filter((c) => c.name.toLowerCase().includes(buyer.toLowerCase()))
-                    .map((c) => (
+                    .map((c, idx) => (
                       <li
                         key={c.customer_id}
-                        className="px-4 py-3 hover:bg-[#EFF6FF] cursor-pointer text-sm transition-colors"
+                        data-inv-cust-index={idx}
+                        className={`px-4 py-3 cursor-pointer text-sm transition-colors ${highlightedCustIndex === idx ? 'bg-[#EFF6FF]' : 'hover:bg-[#EFF6FF]'}`}
                         onClick={() => handleSelectCustomer(c)}
+                        onMouseEnter={() => setHighlightedCustIndex(idx)}
                       >
                         {c.name}
                       </li>
@@ -1142,8 +1184,7 @@ const Invoice = () => {
             formErrors={formErrors}
             productNameInputRef={productNameInputRef}
             onProductSelected={() => { }}
-            autoSyncPrice={autoSyncPrice}
-            setAutoSyncPrice={setAutoSyncPrice}
+
           />
         </div>
 
@@ -1176,7 +1217,7 @@ const Invoice = () => {
                     </td>
                     <td className="px-4 py-3 text-sm text-[#64748B] text-center">{item.size || '-'}</td>
                     <td className="px-4 py-3 text-sm text-[#64748B] text-center">
-                      {item.quantity} {item.packingType}
+                      {formatQty(item.quantity)} {item.packingType}
                     </td>
                     <td className="px-4 py-3 text-sm text-[#64748B] text-right">
                       {formatNumber(item.sellingPrice)}
@@ -1332,7 +1373,7 @@ const Invoice = () => {
                   <div className="pt-6 mt-2 border-t border-[#ECEEF0]">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-extrabold text-[#191C1E] uppercase">Grand Total</span>
-                      <span className="text-2xl font-black text-[#004AC6]">₹ {grandTotal.toFixed(2)}</span>
+                      <span className="text-2xl font-black text-[#004AC6]">₹ {formatIndian(grandTotal)}</span>
                     </div>
                   </div>
 
@@ -1340,7 +1381,7 @@ const Invoice = () => {
                   {parseFloat(paymentAmount || 0) > 0 && (
                     <div className="flex justify-between pt-3 border-t border-dashed border-[#ECEEF0] print:hidden">
                       <span className="text-sm font-semibold text-green-700">Balance Due</span>
-                      <span className="text-sm font-semibold text-green-700">₹ {(grandTotal - parseFloat(paymentAmount || 0)).toFixed(2)}</span>
+                      <span className="text-sm font-semibold text-green-700">₹ {formatIndian(grandTotal - parseFloat(paymentAmount || 0))}</span>
                     </div>
                   )}
                 </div>
@@ -1355,11 +1396,11 @@ const Invoice = () => {
             <div className="border-t border-gray-200 pt-3">
               <div className="flex justify-between mb-2">
                 <span className="text-sm text-gray-600">Payment / Advance Received ({paymentType}):</span>
-                <span className="text-sm font-medium">₹{parseFloat(paymentAmount || 0).toFixed(2)}</span>
+                <span className="text-sm font-medium">₹{formatNumber(parseFloat(paymentAmount || 0))}</span>
               </div>
               <div className="flex justify-between font-semibold text-green-700">
                 <span>Balance Due:</span>
-                <span>₹{(grandTotal - parseFloat(paymentAmount || 0)).toFixed(2)}</span>
+                <span>₹{formatIndian(grandTotal - parseFloat(paymentAmount || 0))}</span>
               </div>
             </div>
           </div>
@@ -1392,23 +1433,24 @@ const Invoice = () => {
             </div>
           </div>
 
-          {/* Footer Action Buttons */}
+          {/* Footer Action Buttons — mutually exclusive Save / Print */}
           <div className="pt-8 border-t border-[#C3C6D7]/10 flex justify-end gap-4 mt-6">
-            <button
-              onClick={handlePrint}
-              disabled={isTranslating}
-              className={`cursor-pointer px-8 py-3 bg-[#E6E8EA] text-[#191C1E] font-bold text-xs uppercase rounded-xl hover:bg-[#E0E3E5] transition-all flex items-center gap-2 ${isTranslating ? 'opacity-50' : ''}`}
-            >
-              <Printer size={18} />
-              {isTranslating ? 'Translating...' : 'Print Estimate'}
-            </button>
-            {isDirty && (
+            {isDirty ? (
               <button
                 onClick={handleSave}
                 className="cursor-pointer px-12 py-3 bg-gradient-to-br from-[#004AC6] to-[#2563EB] text-white font-bold text-xs uppercase rounded-xl shadow-lg shadow-[#004AC6]/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
               >
                 <Save size={18} />
                 Save & Confirm
+              </button>
+            ) : (currentInvoiceId || !isNewInvoice) && (
+              <button
+                onClick={handlePrint}
+                disabled={isTranslating}
+                className={`cursor-pointer px-8 py-3 bg-[#E6E8EA] text-[#191C1E] font-bold text-xs uppercase rounded-xl hover:bg-[#E0E3E5] transition-all flex items-center gap-2 ${isTranslating ? 'opacity-50' : ''}`}
+              >
+                <Printer size={18} />
+                {isTranslating ? 'Translating...' : 'Print Estimate'}
               </button>
             )}
           </div>
