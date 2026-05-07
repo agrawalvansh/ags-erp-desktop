@@ -236,7 +236,7 @@ const PriceList = () => {
                   <th className="py-5 px-6">Code</th>
                   {showCostPrice && (
                     <th
-                      className="py-5 px-6 cursor-pointer hover:text-[#004AC6] transition-colors text-[#434655]/40 italic"
+                      className="py-5 px-6 cursor-pointer hover:text-[#004AC6] transition-colors"
                       onClick={() => handleSort('costPrice')}
                     >
                       <div className="flex items-center gap-1">

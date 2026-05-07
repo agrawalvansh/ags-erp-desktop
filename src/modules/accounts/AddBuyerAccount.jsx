@@ -15,7 +15,7 @@ const AddBuyerAccount = () => {
   const deleteModalRef = useRef(null);
   const [customerId, setCustomerId] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [errors, setErrors] = useState({});
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
@@ -39,7 +39,7 @@ const AddBuyerAccount = () => {
             setAddress(found.address || '');
             setMobile(found.mobile || '');
           } else {
-            setError('Customer not found');
+            setErrors({ general: 'Customer not found' });
           }
         } else {
           const nextNum = data.length + 1;
@@ -47,7 +47,7 @@ const AddBuyerAccount = () => {
         }
       } catch (err) {
         console.error(err);
-        setError(err.message);
+        setErrors({ general: err.message });
         if (!isEdit) setCustomerId('AGS-C-1');
       }
     };
@@ -56,12 +56,14 @@ const AddBuyerAccount = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!name.trim()) {
-      setError('Name is required');
+    const newErrors = {};
+    if (!name.trim()) newErrors.name = 'Name is required';
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
     setLoading(true);
-    setError('');
+    setErrors({});
 
     try {
       const channel = isEdit ? 'customers:update' : 'customers:create';
@@ -73,7 +75,7 @@ const AddBuyerAccount = () => {
       navigate('/accounts/customers');
     } catch (err) {
       toast.error(err.message);
-      setError(err.message);
+      setErrors({ general: err.message });
     } finally {
       setLoading(false);
     }
@@ -88,7 +90,7 @@ const AddBuyerAccount = () => {
       navigate('/accounts/customers');
     } catch (err) {
       toast.error(err.message);
-      setError(err.message);
+      setErrors({ general: err.message });
     } finally {
       setDeleting(false);
     }
@@ -141,12 +143,12 @@ const AddBuyerAccount = () => {
                 <input
                   type="text"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full bg-[#F2F4F6] border-none rounded-lg px-4 py-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none"
+                  onChange={(e) => { setName(e.target.value); if (errors.name) setErrors(prev => ({ ...prev, name: '' })); }}
+                  className={`w-full bg-[#F2F4F6] border-none rounded-lg px-4 py-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none ${errors.name ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
                   placeholder="Enter customer name"
-                  required
                   autoComplete="off"
                 />
+                {errors.name && <p className="text-xs text-[#BA1A1A] ml-1 mt-1">{errors.name}</p>}
               </div>
 
               {/* Address (Textarea) */}
@@ -180,7 +182,7 @@ const AddBuyerAccount = () => {
                 />
               </div>
 
-              {error && <p className="text-[#BA1A1A] text-sm">{error}</p>}
+              {errors.general && <p className="text-[#BA1A1A] text-sm">{errors.general}</p>}
 
               {/* Form Actions */}
               <div className="flex items-center justify-between pt-6 border-t border-[#ECEEF0]">

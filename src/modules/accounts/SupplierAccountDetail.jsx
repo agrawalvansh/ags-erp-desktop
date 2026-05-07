@@ -1,7 +1,9 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Search, Edit, Trash2, Filter, Plus, Phone, MapPin, Building, Save, X, ArrowLeft, Bell, Clock } from 'lucide-react';
+import { Search, Edit, Trash2, Filter, Plus, Phone, MapPin, Building, Save, X, ArrowLeft, Bell, Clock, Download } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 // Utility to parse various date formats to a Date object
 export const parseDate = (dateStr) => {
@@ -187,8 +189,10 @@ const SupplierAccountDetail = () => {
       filtered = filtered.filter(item =>
         (item.maalInvoiceNumber && item.maalInvoiceNumber.toLowerCase().includes(query)) ||
         (item.maalRemark && item.maalRemark.toLowerCase().includes(query)) ||
+        (item.maalAmount && String(item.maalAmount).includes(query)) ||
         (item.jamaTxnType && item.jamaTxnType.toLowerCase().includes(query)) ||
-        (item.jamaRemark && item.jamaRemark.toLowerCase().includes(query))
+        (item.jamaRemark && item.jamaRemark.toLowerCase().includes(query)) ||
+        (item.jamaAmount && String(item.jamaAmount).includes(query))
       );
     }
 
@@ -273,6 +277,99 @@ const SupplierAccountDetail = () => {
         return;
       }
       navigate(`/accounts/suppliers/${slug}/edit/jama/${row.transactionId}`);
+    }
+  };
+
+  // ─── Download Ledger PDF ───
+  const handleDownloadLedger = () => {
+    try {
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 10;
+      const halfWidth = (pageWidth - margin * 3) / 2;
+
+      // Header
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Supplier Ledger', margin, 15);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Supplier: ${supplier.name || '—'}`, margin, 22);
+      doc.text(`ID: ${slug}`, margin, 27);
+      if (supplier.mobile) doc.text(`Mobile: ${supplier.mobile}`, margin + 80, 22);
+      if (supplier.address) doc.text(`Address: ${supplier.address.substring(0, 60)}`, margin + 80, 27);
+
+      const dateRange = [fromDate, toDate].filter(Boolean).join(' to ');
+      if (dateRange) doc.text(`Period: ${dateRange}`, margin, 32);
+
+      const startY = dateRange ? 38 : 33;
+
+      // ─── Maal Table (Left) ───
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Maal (Purchases)', margin, startY);
+
+      autoTable(doc, {
+        startY: startY + 3,
+        margin: { left: margin, right: pageWidth - margin - halfWidth },
+        tableWidth: halfWidth,
+        head: [['Date', 'Invoice', 'Amount (\u20b9)', 'Remark']],
+        body: maalData.map(r => [
+          formatDate(r.maalDate),
+          r.maalInvoiceNumber || '',
+          formatCurrency(r.maalAmount),
+          r.maalRemark || ''
+        ]),
+        foot: [['', 'Total Maal', formatCurrency(maalTotal), '']],
+        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: { fillColor: [0, 74, 198], textColor: 255, fontStyle: 'bold' },
+        footStyles: { fillColor: [242, 244, 246], textColor: [25, 28, 30], fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [247, 249, 251] },
+        columnStyles: { 2: { halign: 'right' } },
+      });
+
+      // ─── Jama Table (Right) ───
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Jama (Payments)', margin + halfWidth + margin, startY);
+
+      autoTable(doc, {
+        startY: startY + 3,
+        margin: { left: margin + halfWidth + margin, right: margin },
+        tableWidth: halfWidth,
+        head: [['Date', 'Type', 'Amount (\u20b9)', 'Remark']],
+        body: jamaData.map(r => [
+          formatDate(r.jamaDate),
+          r.jamaTxnType || '',
+          formatCurrency(r.jamaAmount),
+          r.jamaRemark || ''
+        ]),
+        foot: [['', 'Total Jama', formatCurrency(jamaTotal), '']],
+        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: { fillColor: [5, 150, 105], textColor: 255, fontStyle: 'bold' },
+        footStyles: { fillColor: [242, 244, 246], textColor: [25, 28, 30], fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [247, 249, 251] },
+        columnStyles: { 2: { halign: 'right' } },
+      });
+
+      // Balance footer at bottom
+      const balanceY = pageHeight - 15;
+      doc.setDrawColor(200);
+      doc.line(margin, balanceY - 5, pageWidth - margin, balanceY - 5);
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      const balanceLabel = grandTotal > 0 ? 'Balance Owed' : 'Balance Clear';
+      doc.text(`${balanceLabel}: ${formatBalanceCurrency(grandTotal)}`, margin, balanceY);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Generated on ${new Date().toLocaleDateString('en-IN')}`, pageWidth - margin - 50, balanceY);
+
+      doc.save(`Ledger_${supplier.name || slug}_${new Date().toISOString().split('T')[0]}.pdf`);
+      toast.success('Ledger downloaded successfully');
+    } catch (err) {
+      console.error('PDF generation error:', err);
+      toast.error('Failed to generate ledger PDF');
     }
   };
 
@@ -513,11 +610,9 @@ const SupplierAccountDetail = () => {
                 <p className="text-xs opacity-80">Total ledger entries</p>
               </div>
               <button
-                onClick={() => toast('Download Ledger coming soon!', { icon: '📄' })}
-                title="Coming soon"
-                aria-label="Download Ledger – coming soon"
-                className="mt-6 w-full py-2.5 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-lg text-xs font-bold transition-all uppercase tracking-widest cursor-pointer"
-              >Download Ledger</button>
+                onClick={handleDownloadLedger}
+                className="mt-6 w-full py-2.5 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-lg text-xs font-bold transition-all uppercase tracking-widest cursor-pointer flex items-center justify-center gap-2"
+              ><Download size={14} />Download Ledger</button>
             </div>
           </div>
         </div>

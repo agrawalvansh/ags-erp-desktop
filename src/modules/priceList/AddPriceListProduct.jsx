@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ArrowLeft, Save, Trash2, RefreshCw } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -29,6 +29,14 @@ const AddPriceListProduct = () => {
   const [deleting, setDeleting] = useState(false);
   const [originalCode, setOriginalCode] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  // Refs for tab navigation
+  const productNameRef = useRef(null);
+  const sizeRef = useRef(null);
+  const packingTypeRef = useRef(null);
+  const costPriceRef = useRef(null);
+  const sellingPriceRef = useRef(null);
+  const saveBtnRef = useRef(null);
 
   // Generate product code when productName or size changes
   useEffect(() => {
@@ -129,7 +137,10 @@ const AddPriceListProduct = () => {
         };
         await window.api.createProduct(body);
         toast.success('Product saved successfully');
-        navigate('/price-list', { state: { editedProductCode: formData.code } });
+        // Reset form and focus back to Product Name for rapid entry
+        setFormData({ productName: '', size: '', code: '', packingType: DEFAULT_PACKING_TYPE, costPrice: '', sellingPrice: '' });
+        setErrors({});
+        setTimeout(() => productNameRef.current?.focus(), 50);
         return;
       }
       navigate('/price-list', { state: { editedProductCode: formData.code } });
@@ -220,6 +231,8 @@ const AddPriceListProduct = () => {
                 <input
                   type="text"
                   name="productName"
+                  ref={productNameRef}
+                  tabIndex={1}
                   value={formData.productName}
                   onChange={handleChange}
                   placeholder="e.g. Sri Yantra"
@@ -250,6 +263,23 @@ const AddPriceListProduct = () => {
                 )}
               </div>
 
+              {/* Size / Weight */}
+              <div className="col-span-1">
+                <label className="block text-xs font-bold text-[#434655] uppercase tracking-wider mb-2">
+                  Size / Weight
+                </label>
+                <input
+                  type="text"
+                  name="size"
+                  ref={sizeRef}
+                  tabIndex={2}
+                  value={formData.size}
+                  onChange={handleChange}
+                  placeholder="e.g. 1 No., 500g"
+                  className="w-full bg-[#F2F4F6] border-none rounded-lg py-3 px-4 focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all text-sm placeholder:text-slate-400 outline-none"
+                />
+              </div>
+              
               {/* Packing Type */}
               <div className="col-span-1">
                 <label className="block text-xs font-bold text-[#434655] uppercase tracking-wider mb-2">
@@ -257,6 +287,8 @@ const AddPriceListProduct = () => {
                 </label>
                 <select
                   name="packingType"
+                  ref={packingTypeRef}
+                  tabIndex={3}
                   value={formData.packingType}
                   onChange={handleChange}
                   className="w-full bg-[#F2F4F6] border-none rounded-lg py-3 px-4 focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all text-sm outline-none cursor-pointer"
@@ -266,46 +298,35 @@ const AddPriceListProduct = () => {
                   ))}
                 </select>
               </div>
-
-              {/* Size / Weight */}
-              <div className="col-span-1">
-                <label className="block text-xs font-bold text-[#434655] uppercase tracking-wider mb-2">
-                  Size / Weight
-                </label>
-                <input
-                  type="text"
-                  name="size"
-                  value={formData.size}
-                  onChange={handleChange}
-                  placeholder="e.g. 1 No., 500g"
-                  className="w-full bg-[#F2F4F6] border-none rounded-lg py-3 px-4 focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all text-sm placeholder:text-slate-400 outline-none"
-                />
-              </div>
             </div>
 
             {/* ─── Financials & Margin ─── */}
             <div className="pt-8 border-t border-[#ECEEF0]">
               <h3 className="text-xs font-black text-[#434655] uppercase tracking-[0.2em] mb-6">Financials & Margin</h3>
-              <div className="grid grid-cols-3 gap-6 items-end">
+              <div className="grid grid-cols-3 gap-6 items-start">
                 {/* Cost Price */}
                 <div className="col-span-1">
                   <label className="block text-xs font-bold text-[#434655] uppercase tracking-wider mb-2">
                     Cost Price (₹) <span className="text-[#BA1A1A]">*</span>
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400">₹</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-[#434655]">₹</span>
                     <input
                       type="number"
                       name="costPrice"
+                      ref={costPriceRef}
+                      tabIndex={4}
                       value={formData.costPrice}
                       onChange={handleChange}
                       placeholder="0.00"
                       className={`w-full bg-[#F2F4F6] border-none rounded-lg py-3 pl-8 pr-4 focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all text-sm outline-none ${errors.costPrice ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
                     />
                   </div>
-                  {errors.costPrice && (
-                    <p className="mt-1.5 text-xs text-[#BA1A1A] font-medium">{errors.costPrice}</p>
-                  )}
+                  <div className="h-5">
+                    {errors.costPrice && (
+                      <p className="mt-0.5 text-xs text-[#BA1A1A] font-medium">{errors.costPrice}</p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Selling Price */}
@@ -318,15 +339,19 @@ const AddPriceListProduct = () => {
                     <input
                       type="number"
                       name="sellingPrice"
+                      ref={sellingPriceRef}
+                      tabIndex={5}
                       value={formData.sellingPrice}
                       onChange={handleChange}
                       placeholder="0.00"
                       className={`w-full bg-[#F2F4F6] border-none rounded-lg py-3 pl-8 pr-4 focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all text-sm font-semibold outline-none ${errors.sellingPrice ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
                     />
                   </div>
-                  {errors.sellingPrice && (
-                    <p className="mt-1.5 text-xs text-[#BA1A1A] font-medium">{errors.sellingPrice}</p>
-                  )}
+                  <div className="h-5">
+                    {errors.sellingPrice && (
+                      <p className="mt-0.5 text-xs text-[#BA1A1A] font-medium">{errors.sellingPrice}</p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Profit Margin Card */}
@@ -371,6 +396,8 @@ const AddPriceListProduct = () => {
                 )}
                 <button
                   type="submit"
+                  ref={saveBtnRef}
+                  tabIndex={6}
                   disabled={submitting}
                   className="px-10 py-3 text-white text-sm font-bold rounded-lg shadow-lg shadow-[#004AC6]/20 hover:shadow-xl hover:scale-[1.01] active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
                   style={{ background: 'linear-gradient(135deg, #004AC6 0%, #2563EB 100%)' }}

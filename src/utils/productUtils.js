@@ -11,7 +11,8 @@ export const slugify = (str) => {
     return str
         .toLowerCase()
         .trim()
-        .replace(/\s+/g, '-'); // Replace spaces with hyphens
+        .replace(/\//g, '-')    // Replace forward slashes with hyphens
+        .replace(/\s+/g, '-');  // Replace spaces with hyphens
 };
 
 /**

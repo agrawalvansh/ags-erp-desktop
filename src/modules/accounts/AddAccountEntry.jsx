@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Trash2, Check } from 'lucide-react';
+import { ArrowLeft, Trash2, Check, ChevronDown } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 const AddAccountEntry = () => {
@@ -198,7 +198,6 @@ const AddAccountEntry = () => {
                   value={formData.date}
                   onChange={handleChange}
                   className={`w-full bg-[#F2F4F6] border-none rounded-lg px-4 py-3 text-sm font-medium focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none ${errors.date ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
-                  required
                 />
                 {errors.date && <p className="text-xs text-[#BA1A1A] ml-1">{errors.date}</p>}
               </div>
@@ -215,7 +214,6 @@ const AddAccountEntry = () => {
                     value={formData.invoiceNumber}
                     onChange={handleChange}
                     className={`w-full bg-[#F2F4F6] border-none rounded-lg px-4 py-3 text-sm font-medium focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none ${errors.invoiceNumber ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
-                    required
                     placeholder="Enter invoice number"
                     autoComplete="off"
                   />
@@ -226,12 +224,12 @@ const AddAccountEntry = () => {
                   <label className="block text-[10px] font-bold uppercase text-[#434655] tracking-wider ml-1">
                     Transaction Type <span className="text-[#BA1A1A]">*</span>
                   </label>
+                <div className="relative">
                   <select
                     name="txnType"
                     value={formData.txnType}
                     onChange={handleChange}
-                    className={`w-full bg-[#F2F4F6] border-none rounded-lg px-4 py-3 text-sm font-medium focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none appearance-none ${errors.txnType ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
-                    required
+                    className={`w-full bg-[#F2F4F6] border-none rounded-lg px-4 py-3 pr-10 text-sm font-medium focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none appearance-none cursor-pointer ${errors.txnType ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
                   >
                     <option value="">Select Transaction Type</option>
                     <option value="Cash">Cash</option>
@@ -239,6 +237,8 @@ const AddAccountEntry = () => {
                     <option value="Transfer">Transfer</option>
                     <option value="RTGS">RTGS</option>
                   </select>
+                  <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#434655] pointer-events-none" />
+                </div>
                   {errors.txnType && <p className="text-xs text-[#BA1A1A] ml-1">{errors.txnType}</p>}
                 </div>
               )}
@@ -256,7 +256,6 @@ const AddAccountEntry = () => {
                     value={formData.amount}
                     onChange={handleChange}
                     className={`w-full bg-[#F2F4F6] border-none rounded-lg pl-8 pr-4 py-4 text-2xl font-black text-[#004AC6] focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none placeholder:text-[#C3C6D7] ${errors.amount ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
-                    required
                     placeholder="0.00"
                   />
                 </div>

@@ -346,6 +346,8 @@ const Invoice = () => {
   const [currentInvoiceId, setCurrentInvoiceId] = useState(invoiceNo || '');
   const [editIndex, setEditIndex] = useState(-1);
   const [showNavigationWarning, setShowNavigationWarning] = useState(false);
+  const [showCustUpdateModal, setShowCustUpdateModal] = useState(false);
+  const pendingSaveRef = useRef(false);
 
 
   // Payment/Advance state
@@ -864,30 +866,52 @@ const Invoice = () => {
       return;
     }
 
-    // Update customer details if mobile/address changed
-    if (customerId) {
-      const existingCust = customers.find(c => c.customer_id === customerId);
-      if (existingCust) {
-        const custChanged =
-          (existingCust.mobile || '') !== (mobileNo || '') ||
-          (existingCust.address || '') !== (address || '');
-        if (custChanged) {
-          try {
-            await window.api.invoke('customers:update', {
-              customer_id: customerId,
-              name: buyer,
-              address: address,
-              mobile: mobileNo
-            });
-            const updatedCustomers = await window.api.getCustomers();
-            setCustomers(updatedCustomers);
-          } catch (err) {
-            console.error('Error updating customer:', err);
-          }
-        }
+    // Check if customer details changed — if so, prompt user via styled modal
+    const existingCust = customers.find(c => c.customer_id === customerId);
+    if (existingCust) {
+      const custChanged =
+        (existingCust.mobile || '') !== (mobileNo || '') ||
+        (existingCust.address || '') !== (address || '');
+      if (custChanged) {
+        pendingSaveRef.current = true;
+        setShowCustUpdateModal(true);
+        return; // pause — modal callbacks will continue the save
       }
     }
 
+    await performInvoiceSave();
+  };
+
+  const handleCustUpdateConfirm = async () => {
+    setShowCustUpdateModal(false);
+    try {
+      await window.api.invoke('customers:update', {
+        customer_id: customerId,
+        name: buyer,
+        address: address,
+        mobile: mobileNo
+      });
+      const updatedCustomers = await window.api.getCustomers();
+      setCustomers(updatedCustomers);
+    } catch (err) {
+      console.error('Error updating customer:', err);
+      toast.error('Failed to update customer profile');
+    }
+    if (pendingSaveRef.current) {
+      pendingSaveRef.current = false;
+      await performInvoiceSave();
+    }
+  };
+
+  const handleCustUpdateSkip = async () => {
+    setShowCustUpdateModal(false);
+    if (pendingSaveRef.current) {
+      pendingSaveRef.current = false;
+      await performInvoiceSave();
+    }
+  };
+
+  const performInvoiceSave = async () => {
     const { grandTotal } = calculateGrandTotal();
     const payload = {
       customer_id: customerId,
@@ -1044,6 +1068,39 @@ const Invoice = () => {
                 className="flex-1 px-4 py-2.5 rounded-lg border border-[#E2E8F0] text-[#64748B] font-medium hover:bg-[#F1F5F9] transition-colors cursor-pointer"
               >
                 Leave Without Saving
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Customer Update Confirmation Modal */}
+      {showCustUpdateModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] print:hidden">
+          <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md mx-4">
+            <div className="flex items-center justify-center mb-4">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                <AlertTriangle className="text-[#2563EB]" size={24} />
+              </div>
+            </div>
+            <h2 className="text-xl font-bold text-[#0F172A] text-center mb-2">
+              Update Customer Profile?
+            </h2>
+            <p className="text-[#64748B] text-center mb-6">
+              Customer mobile or address has changed. Save these changes to the customer profile?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleCustUpdateConfirm}
+                className="flex-1 px-4 py-2.5 rounded-lg bg-[#2563EB] text-white font-medium hover:bg-[#1D4ED8] transition-colors cursor-pointer"
+              >
+                Yes, Update
+              </button>
+              <button
+                onClick={handleCustUpdateSkip}
+                className="flex-1 px-4 py-2.5 rounded-lg border border-[#E2E8F0] text-[#64748B] font-medium hover:bg-[#F1F5F9] transition-colors cursor-pointer"
+              >
+                Skip
               </button>
             </div>
           </div>

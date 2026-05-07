@@ -457,11 +457,15 @@ const CreateQuickSale = () => {
         if (!newItem.productName) errors.productName = 'Product is required';
         if (!newItem.quantity) {
             errors.quantity = 'Quantity is required';
+        } else if (isNaN(parseFloat(newItem.quantity))) {
+            errors.quantity = 'Please enter a numeric quantity';
         } else if (parseFloat(newItem.quantity) <= 0) {
             errors.quantity = 'Please enter valid quantity';
         }
         if (!newItem.sellingPrice) {
             errors.sellingPrice = 'Price is required';
+        } else if (isNaN(parseFloat(newItem.sellingPrice))) {
+            errors.sellingPrice = 'Please enter a numeric price';
         } else if (parseFloat(newItem.sellingPrice) <= 0) {
             errors.sellingPrice = 'Please enter selling price';
         }
