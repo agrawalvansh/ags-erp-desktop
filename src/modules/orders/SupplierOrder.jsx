@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Search, ChevronDown, ChevronLeft, ChevronRight, Plus, Edit, Trash2, X } from 'lucide-react';
+import { Search, ChevronDown, Plus, Edit, Trash2, X } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 
@@ -32,8 +32,6 @@ const SupplierOrder = () => {
   useEffect(() => { fetchOrders(); }, []);
 
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
 
   const processedOrders = useMemo(() => {
     let merged = orders.map(o => ({
@@ -66,17 +64,6 @@ const SupplierOrder = () => {
 
     return filtered;
   }, [searchTerm, sortConfig, orders, statusFilter]);
-
-  const totalFiltered = processedOrders.length;
-  const totalPages = Math.ceil(totalFiltered / itemsPerPage);
-
-  useEffect(() => {
-    if (totalPages > 0 && currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [totalPages, currentPage]);
-
-  const paginatedOrders = processedOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const handleSort = (key) => {
     let direction = 'asc';
@@ -137,23 +124,6 @@ const SupplierOrder = () => {
     />
   );
 
-  // Page numbers for pagination
-  const pageNumbers = useMemo(() => {
-    const pages = [];
-    if (totalPages <= 5) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
-    } else {
-      pages.push(1);
-      if (currentPage > 3) pages.push('...');
-      for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
-        pages.push(i);
-      }
-      if (currentPage < totalPages - 2) pages.push('...');
-      pages.push(totalPages);
-    }
-    return pages;
-  }, [currentPage, totalPages]);
-
   // Unique statuses for filter tabs
   const statusTabs = useMemo(() => {
     const statuses = [...new Set(orders.map(o => o.status || 'Placed'))];
@@ -179,11 +149,11 @@ const SupplierOrder = () => {
                 placeholder="Search orders..."
                 className="w-72 bg-white border border-[#C3C6D7]/20 rounded-lg py-2.5 pl-10 pr-10 text-sm focus:border-[#004AC6] focus:ring-4 focus:ring-[#004AC6]/5 transition-all outline-none"
                 value={searchTerm}
-                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
               {searchTerm && (
                 <button
-                  onClick={() => { setSearchTerm(''); setCurrentPage(1); searchInputRef.current?.focus(); }}
+                  onClick={() => { setSearchTerm(''); searchInputRef.current?.focus(); }}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-[#434655] hover:text-[#191C1E] cursor-pointer"
                 >
                   <X size={16} />
@@ -206,7 +176,7 @@ const SupplierOrder = () => {
           {statusTabs.map(tab => (
             <button
               key={tab}
-              onClick={() => { setStatusFilter(tab); setCurrentPage(1); }}
+              onClick={() => setStatusFilter(tab)}
               className={`px-5 py-2 rounded-full text-xs font-bold transition-colors cursor-pointer ${statusFilter === tab
                   ? 'bg-[#004AC6] text-white shadow-sm'
                   : 'bg-white text-[#434655] hover:bg-[#F2F4F6] border border-[#C3C6D7]/10'
@@ -260,14 +230,14 @@ const SupplierOrder = () => {
                 </tr>
               </thead>
               <tbody>
-                {paginatedOrders.length > 0 ? (
-                  paginatedOrders.map((order, index) => (
+                {processedOrders.length > 0 ? (
+                  processedOrders.map((order, index) => (
                     <tr
                       key={order.orderNo || index}
                       className="hover:bg-[#F2F4F6] transition-colors cursor-pointer"
                       onClick={() => handleRowClick(order.orderNo)}
                     >
-                      <td className="py-5 px-6 text-sm text-[#434655]">{(currentPage - 1) * itemsPerPage + index + 1}</td>
+                      <td className="py-5 px-6 text-sm text-[#434655]">{index + 1}</td>
                       <td className="py-5 px-6">
                         <span className="bg-[#E6E8EA] px-2 py-1 rounded text-[10px] font-bold text-[#004AC6]">{order.orderNo}</span>
                       </td>
@@ -306,53 +276,6 @@ const SupplierOrder = () => {
               </tbody>
             </table>
           </div>
-
-          {/* ─── Pagination Footer ─── */}
-          {totalPages > 0 && (
-            <div className="px-8 py-6 flex items-center justify-between bg-[#F2F4F6]/30 border-t border-[#C3C6D7]/10">
-              <p className="text-sm text-[#434655]">
-                Showing <span className="font-bold text-[#191C1E]">{totalFiltered === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}</span> to{' '}
-                <span className="font-bold text-[#191C1E]">{Math.min(currentPage * itemsPerPage, totalFiltered)}</span>{' '}
-                of <span className="font-bold text-[#191C1E]">{totalFiltered}</span> results
-              </p>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
-                  className="flex items-center gap-1 px-4 py-2 text-sm font-bold text-[#434655] hover:text-[#004AC6] hover:bg-white rounded-lg transition-all border border-transparent hover:border-[#C3C6D7]/20 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
-                >
-                  <ChevronLeft size={16} />
-                  Previous
-                </button>
-                <div className="flex items-center gap-1">
-                  {pageNumbers.map((page, i) =>
-                    page === '...' ? (
-                      <span key={`dots-${i}`} className="px-2 text-[#434655]">...</span>
-                    ) : (
-                      <button
-                        key={page}
-                        onClick={() => setCurrentPage(page)}
-                        className={`w-9 h-9 flex items-center justify-center rounded-lg font-bold text-sm transition-colors cursor-pointer ${currentPage === page
-                            ? 'bg-[#004AC6] text-white'
-                            : 'hover:bg-white text-[#434655]'
-                          }`}
-                      >
-                        {page}
-                      </button>
-                    )
-                  )}
-                </div>
-                <button
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages || totalPages === 0}
-                  className="flex items-center gap-1 px-4 py-2 text-sm font-bold text-[#191C1E] hover:text-[#004AC6] hover:bg-white rounded-lg transition-all border border-transparent hover:border-[#C3C6D7]/20 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
-                >
-                  Next
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </section>
 

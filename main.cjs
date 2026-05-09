@@ -28,6 +28,46 @@ setInterval(() => {
 const registerIpcHandlers = require('./ipcHandlers');
 registerIpcHandlers(ipcMain, db);
 
+// ─── PDF Printing via node-pdf-printer ──────────────────
+const NodePdfPrinter = require('node-pdf-printer');
+const fs = require('fs');
+const os = require('os');
+
+ipcMain.handle('print:listPrinters', async () => {
+  try {
+    const printers = await NodePdfPrinter.listPrinter('en-US');
+    return { success: true, printers };
+  } catch (err) {
+    return { success: false, error: err.message, printers: [] };
+  }
+});
+
+ipcMain.handle('print:pdf', async (_event, { pdfBase64, printerName, fileName }) => {
+  try {
+    // Write PDF to temp file
+    const tempDir = os.tmpdir();
+    const tempFile = path.join(tempDir, (fileName || 'invoice') + '.pdf');
+    const buffer = Buffer.from(pdfBase64, 'base64');
+    fs.writeFileSync(tempFile, buffer);
+
+    // Print via node-pdf-printer
+    if (printerName) {
+      await NodePdfPrinter.printFiles([tempFile], printerName);
+    } else {
+      await NodePdfPrinter.printFiles([tempFile]); // default printer
+    }
+
+    // Clean up temp file after a delay
+    setTimeout(() => {
+      try { fs.unlinkSync(tempFile); } catch {}
+    }, 10000);
+
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 // ─── Create the window ─────────────────────────────────
 let mainWindow;
 function createWindow() {

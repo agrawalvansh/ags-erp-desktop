@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Printer, Plus, Trash2, Save, Edit, AlertTriangle, Languages, CircleX } from 'lucide-react';
+import { generateQuickSalePDF } from './generateQuickSalePDF';
 import { useParams, useNavigate, useLocation, useBlocker } from 'react-router-dom';
 import { AlertCircle, Search } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -597,50 +598,140 @@ const CreateQuickSale = () => {
     const [marathiNames, setMarathiNames] = useState({});
     const [isTranslating, setIsTranslating] = useState(false);
 
+    // Printer selection state
+    const [showPrinterModal, setShowPrinterModal] = useState(false);
+    const [printerList, setPrinterList] = useState([]);
+    const [selectedPrinter, setSelectedPrinter] = useState('');
+    const [pendingPDFData, setPendingPDFData] = useState(null);
+    const [isPrinting, setIsPrinting] = useState(false);
+
+    const showPrinterSelection = (pdfResult) => {
+        setPendingPDFData(pdfResult);
+        window.api.invoke('print:listPrinters').then((res) => {
+            setPrinterList(res.success ? res.printers.filter(p => p && p.trim()) : []);
+            setSelectedPrinter('');
+            setShowPrinterModal(true);
+        }).catch(() => {
+            setPrinterList([]);
+            setSelectedPrinter('');
+            setShowPrinterModal(true);
+        });
+    };
+
     const handlePrint = async () => {
+        const { roundOff: ro, grandTotal: gt } = calculateGrandTotal();
+        const buildPDFData = (marathiNamesMap = {}) => ({
+            qsId: customQsId,
+            saleDate,
+            invoiceItems,
+            total,
+            roundOff: ro,
+            grandTotal: gt,
+            remark,
+            printMarathi,
+            marathiNames: marathiNamesMap,
+        });
+
         if (printMarathi) {
-            const codes = invoiceItems.map(i => i.code || i.product_code);
+            setIsTranslating(true);
             try {
-                const { missing } = await window.api.invoke('translate:checkMissing', codes);
-                if (missing.length > 0) {
-                    setIsTranslating(true);
-                    try {
-                        let allTranslated = true;
-                        for (const code of missing) {
-                            const res = await window.api.invoke('translate:toMarathi', code);
-                            if (!res.success) { allTranslated = false; break; }
-                        }
-                        if (!allTranslated) {
-                            toast.error('Marathi names missing. Please connect to internet for translation.');
+                const allNames = {}; // { productCode: marathiName }
+
+                // ─── Part A: Handle DB products via existing translate system ───
+                const allCodes = invoiceItems.map(i => i.code || i.product_code).filter(Boolean);
+                if (allCodes.length > 0) {
+                    // Translate any DB products missing Marathi names
+                    const { missing } = await window.api.invoke('translate:checkMissing', allCodes);
+                    for (const code of missing) {
+                        const res = await window.api.invoke('translate:toMarathi', code);
+                        if (!res.success) {
+                            toast.error('Please connect to the internet to generate Marathi product names.');
+                            setPrintMarathi(false);
                             setIsTranslating(false);
                             return;
                         }
-                        toast.success('Ready to print in Marathi');
-                        setIsTranslating(false);
-                        return;
-                    } catch (err) {
-                        toast.error('Marathi names missing. Please connect to internet for translation.');
+                    }
+
+                    // Fetch all available DB Marathi names
+                    const { names } = await window.api.invoke('translate:getMarathiNames', allCodes);
+                    Object.assign(allNames, names);
+                }
+
+                // ─── Part B: Fallback — translate any items still missing by name ───
+                // Covers ad-hoc items, items not in DB, or items where DB transliteration failed
+                for (const item of invoiceItems) {
+                    const code = item.code || item.product_code;
+                    if (!code || allNames[code]) continue; // already have name
+
+                    const name = item.productName;
+                    if (!name) continue;
+
+                    const res = await window.api.invoke('translate:nameToMarathi', name);
+                    if (!res.success) {
+                        toast.error('Please connect to the internet to generate Marathi product names.');
+                        setPrintMarathi(false);
                         setIsTranslating(false);
                         return;
                     }
+                    allNames[code] = res.marathi_name;
                 }
-                const { names } = await window.api.invoke('translate:getMarathiNames', codes);
-                setMarathiNames(names);
-                setTimeout(() => {
-                    const originalTitle = document.title;
-                    if (customQsId) document.title = `Quick Sale ${customQsId}`;
-                    window.print();
-                    document.title = originalTitle;
-                }, 100);
+
+                // ─── All names ready — generate PDF ───
+                setMarathiNames(allNames);
+                setIsTranslating(false);
+                const result = generateQuickSalePDF(buildPDFData(allNames));
+                showPrinterSelection(result);
             } catch (err) {
-                toast.error('Error checking Marathi translations');
+                toast.error('Please connect to the internet to generate Marathi product names.');
+                setPrintMarathi(false);
+                setIsTranslating(false);
             }
         } else {
-            const originalTitle = document.title;
-            if (customQsId) document.title = `Quick Sale ${customQsId}`;
-            window.print();
-            document.title = originalTitle;
+            const result = generateQuickSalePDF(buildPDFData());
+            showPrinterSelection(result);
         }
+    };
+
+    const handleConfirmPrint = async () => {
+        if (!pendingPDFData) return;
+        setIsPrinting(true);
+        try {
+            const res = await window.api.invoke('print:pdf', {
+                pdfBase64: pendingPDFData.pdfBase64,
+                printerName: selectedPrinter || undefined,
+                fileName: pendingPDFData.fileName,
+            });
+            if (res.success) {
+                toast.success('Print job sent successfully');
+            } else {
+                toast.error(res.error || 'Failed to print');
+            }
+        } catch (err) {
+            toast.error('Print failed: ' + (err.message || 'Unknown error'));
+        } finally {
+            setIsPrinting(false);
+            setShowPrinterModal(false);
+            setPendingPDFData(null);
+        }
+    };
+
+    const handleDownloadPDF = () => {
+        if (!pendingPDFData) return;
+        const byteChars = atob(pendingPDFData.pdfBase64);
+        const byteNumbers = new Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++) {
+            byteNumbers[i] = byteChars.charCodeAt(i);
+        }
+        const blob = new Blob([new Uint8Array(byteNumbers)], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${pendingPDFData.fileName}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success('PDF downloaded');
+        setShowPrinterModal(false);
+        setPendingPDFData(null);
     };
 
     const { roundOff, grandTotal } = calculateGrandTotal();
@@ -661,6 +752,84 @@ const CreateQuickSale = () => {
                         <div className="flex gap-3">
                             <button onClick={() => blocker.reset()} className="flex-1 px-4 py-2.5 rounded-lg bg-[#2563EB] text-white font-medium hover:bg-[#1D4ED8] cursor-pointer">Stay on Page</button>
                             <button onClick={() => blocker.proceed()} className="flex-1 px-4 py-2.5 rounded-lg border border-[#E2E8F0] text-[#64748B] font-medium hover:bg-[#F1F5F9] cursor-pointer">Leave Without Saving</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Printer Selection Modal */}
+            {showPrinterModal && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] print:hidden">
+                    <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md mx-4 w-full">
+                        <div className="flex items-center justify-center mb-4">
+                            <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center">
+                                <Printer className="text-[#2563EB]" size={24} />
+                            </div>
+                        </div>
+                        <h2 className="text-xl font-bold text-[#0F172A] text-center mb-2">
+                            Print Quick Sale
+                        </h2>
+                        <p className="text-[#64748B] text-center mb-4 text-sm">
+                            {pendingPDFData?.fileName || 'Quick Sale'}
+                        </p>
+
+                        <div className="mb-6">
+                            <label className="block text-xs font-bold text-[#434655] uppercase mb-2">Select Printer</label>
+                            <select
+                                value={selectedPrinter}
+                                onChange={(e) => setSelectedPrinter(e.target.value)}
+                                className="w-full py-3 px-4 bg-[#F2F4F6] border border-[#E2E8F0] rounded-lg text-sm font-medium appearance-none cursor-pointer focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB]"
+                            >
+                                <option value="">Default Printer</option>
+                                {printerList.map((printer, idx) => (
+                                    <option key={idx} value={printer}>{printer}</option>
+                                ))}
+                            </select>
+                            {printerList.length === 0 && (
+                                <p className="text-xs text-[#64748B] mt-1">Using system default printer</p>
+                            )}
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={handleConfirmPrint}
+                                disabled={isPrinting}
+                                className={`flex-1 px-4 py-2.5 rounded-lg bg-[#2563EB] text-white font-medium hover:bg-[#1D4ED8] transition-colors cursor-pointer flex items-center justify-center gap-2 ${isPrinting ? 'opacity-50' : ''}`}
+                            >
+                                <Printer size={16} />
+                                {isPrinting ? 'Printing...' : 'Print'}
+                            </button>
+                            <button
+                                onClick={handleDownloadPDF}
+                                className="flex-1 px-4 py-2.5 rounded-lg border border-[#E2E8F0] text-[#434655] font-medium hover:bg-[#F1F5F9] transition-colors cursor-pointer flex items-center justify-center gap-2"
+                            >
+                                <Save size={16} />
+                                Download PDF
+                            </button>
+                        </div>
+
+                        <button
+                            onClick={() => { setShowPrinterModal(false); setPendingPDFData(null); }}
+                            className="w-full mt-3 py-2 text-sm text-[#64748B] hover:text-[#0F172A] transition-colors cursor-pointer"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Full-Screen Marathi Translation Loader */}
+            {isTranslating && (
+                <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center print:hidden" style={{ backdropFilter: 'blur(10px)', backgroundColor: 'rgba(255,255,255,0.85)' }}>
+                    <div className="flex flex-col items-center gap-6">
+                        {/* Spinner */}
+                        <div className="relative w-16 h-16">
+                            <div className="absolute inset-0 rounded-full border-4 border-[#E2E8F0]"></div>
+                            <div className="absolute inset-0 rounded-full border-4 border-t-[#2563EB] animate-spin"></div>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-lg font-bold text-[#0F172A] mb-1">Preparing Marathi print...</p>
+                            <p className="text-sm text-[#64748B]">Translating product names, please wait</p>
                         </div>
                     </div>
                 </div>

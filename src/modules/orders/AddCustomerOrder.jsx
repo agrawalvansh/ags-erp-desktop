@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Printer, Plus, Trash2, Save, Edit, AlertTriangle, X, Search, ArrowLeft, ChevronDown } from 'lucide-react';
+import { generateOrderPDF } from './generateOrderPDF';
 import { useParams, useNavigate, useBlocker } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -134,7 +135,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
                       <span className="text-xs font-bold text-[#434655]">₹{(() => { const v = parseFloat(p.selling_price ?? p.sellingPrice ?? 0); return Number.isInteger(v) ? v.toString() : v.toFixed(2); })()}</span>
                     </button>
                   ))
-                ) : (<div></div>)}
+                ) : (<div className="p-3 text-sm text-[#434655]">No products found</div>)}
               </div>
             )}
           </div>
@@ -250,7 +251,7 @@ const AddCustomerOrder = () => {
   const navigate = useNavigate();
 
   const isDirty = useMemo(() => {
-    if (isNewOrder) return customerId && orderItems.length > 0;
+    if (isNewOrder) return (customerId && orderItems.length > 0) || remark.trim() !== '' || parseFloat(paymentAmount || 0) > 0;
     if (!originalOrderData) return false;
     if (remark !== (originalOrderData.remark || '')) return true;
     if (orderDate !== originalOrderData.order_date) return true;
@@ -273,11 +274,15 @@ const AddCustomerOrder = () => {
   const hasUnsavedChanges = useCallback(() => isDirty, [isDirty]);
   const blocker = useBlocker(({ currentLocation, nextLocation }) => hasUnsavedChanges() && currentLocation.pathname !== nextLocation.pathname);
 
-  const formatNumber = (value) => {
-    const num = parseFloat(value) || 0;
-    if (Number.isInteger(num)) return num.toString();
-    return num.toFixed(2);
-  };
+  // Warn on page refresh / browser close
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (isDirty) { e.preventDefault(); e.returnValue = ''; }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
+
 
   const formatQty = (val) => {
     const n = parseFloat(val) || 0;
@@ -451,11 +456,83 @@ const AddCustomerOrder = () => {
     } catch (err) { console.error('Error deleting order:', err); toast.error('An error occurred while deleting. Please try again.'); }
   };
 
+  // ─── Printer state ───
+  const [showPrinterModal, setShowPrinterModal] = useState(false);
+  const [printerList, setPrinterList] = useState([]);
+  const [selectedPrinter, setSelectedPrinter] = useState('');
+  const [pendingPDFData, setPendingPDFData] = useState(null);
+  const [isPrinting, setIsPrinting] = useState(false);
+
+  const showPrinterSelection = (pdfResult) => {
+    setPendingPDFData(pdfResult);
+    window.api.invoke('print:listPrinters').then((res) => {
+      setPrinterList(res.success ? res.printers.filter(p => p && p.trim()) : []);
+      setSelectedPrinter('');
+      setShowPrinterModal(true);
+    }).catch(() => {
+      setPrinterList([]);
+      setSelectedPrinter('');
+      setShowPrinterModal(true);
+    });
+  };
+
   const handlePrint = () => {
-    const originalTitle = document.title;
-    if (customerId && customorderNo) { document.title = `${customerId} ${customorderNo}`; }
-    window.print();
-    document.title = originalTitle;
+    const result = generateOrderPDF({
+      orderType: 'Customer Order',
+      orderId: customorderNo,
+      orderDate,
+      partyName: buyer,
+      mobileNo,
+      address,
+      status,
+      remark,
+      orderItems,
+      printMarathi: false,
+      marathiNames: {},
+    });
+    showPrinterSelection(result);
+  };
+
+  const handleConfirmPrint = async () => {
+    if (!pendingPDFData) return;
+    setIsPrinting(true);
+    try {
+      const res = await window.api.invoke('print:pdf', {
+        pdfBase64: pendingPDFData.pdfBase64,
+        printerName: selectedPrinter || undefined,
+        fileName: pendingPDFData.fileName,
+      });
+      if (res.success) {
+        toast.success('Print job sent successfully');
+      } else {
+        toast.error(res.error || 'Failed to print');
+      }
+    } catch (err) {
+      toast.error('Print failed: ' + (err.message || 'Unknown error'));
+    } finally {
+      setIsPrinting(false);
+      setShowPrinterModal(false);
+      setPendingPDFData(null);
+    }
+  };
+
+  const handleDownloadPDF = () => {
+    if (!pendingPDFData) return;
+    const byteChars = atob(pendingPDFData.pdfBase64);
+    const byteNumbers = new Array(byteChars.length);
+    for (let i = 0; i < byteChars.length; i++) {
+      byteNumbers[i] = byteChars.charCodeAt(i);
+    }
+    const blob = new Blob([new Uint8Array(byteNumbers)], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${pendingPDFData.fileName}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('PDF downloaded');
+    setShowPrinterModal(false);
+    setPendingPDFData(null);
   };
 
   const getStatusColor = (s) => {
@@ -488,6 +565,40 @@ const AddCustomerOrder = () => {
         </div>
       )}
 
+      {/* ─── Printer Selection Modal ─── */}
+      {showPrinterModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 print:hidden" style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.7)' }}>
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#C3C6D7]/20 p-8">
+            <div className="flex items-center justify-center mb-4">
+              <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center">
+                <Printer className="text-[#2563EB]" size={24} />
+              </div>
+            </div>
+            <h2 className="text-xl font-bold text-[#0F172A] text-center mb-2">Print Customer Order</h2>
+            <p className="text-[#64748B] text-center mb-4 text-sm">{pendingPDFData?.fileName || 'Customer Order'}</p>
+
+            <div className="mb-6">
+              <label className="block text-xs font-bold text-[#434655] uppercase mb-2">Select Printer</label>
+              <select value={selectedPrinter} onChange={(e) => setSelectedPrinter(e.target.value)} className="w-full py-3 px-4 bg-[#F2F4F6] border border-[#E2E8F0] rounded-lg text-sm font-medium appearance-none cursor-pointer focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB]">
+                <option value="">Default Printer</option>
+                {printerList.map((printer, idx) => (<option key={idx} value={printer}>{printer}</option>))}
+              </select>
+              {printerList.length === 0 && <p className="text-xs text-[#64748B] mt-1">Using system default printer</p>}
+            </div>
+
+            <div className="flex gap-3">
+              <button onClick={handleConfirmPrint} disabled={isPrinting} className={`flex-1 px-4 py-2.5 rounded-lg bg-[#2563EB] text-white font-medium hover:bg-[#1D4ED8] transition-colors cursor-pointer flex items-center justify-center gap-2 ${isPrinting ? 'opacity-50' : ''}`}>
+                <Printer size={16} />{isPrinting ? 'Printing...' : 'Print'}
+              </button>
+              <button onClick={handleDownloadPDF} className="flex-1 px-4 py-2.5 rounded-lg border border-[#E2E8F0] text-[#434655] font-medium hover:bg-[#F1F5F9] transition-colors cursor-pointer flex items-center justify-center gap-2">
+                <Save size={16} />Download PDF
+              </button>
+            </div>
+            <button onClick={() => { setShowPrinterModal(false); setPendingPDFData(null); }} className="w-full mt-3 py-2 text-sm text-[#64748B] hover:text-[#0F172A] transition-colors cursor-pointer">Cancel</button>
+          </div>
+        </div>
+      )}
+
       {/* ─── Top App Bar ─── */}
       <header className="bg-[#F7F9FB] flex justify-between items-center px-8 py-5 print:hidden">
         <div className="flex items-center gap-4">
@@ -504,14 +615,15 @@ const AddCustomerOrder = () => {
 
       {/* ─── Main Content ─── */}
       <main className="px-8 pb-12 max-w-7xl mx-auto space-y-6 print:p-0 print:m-0 print:space-y-2">
-        {/* ─── Customer Info Card ─── */}
+        {/* ─── Customer Details ─── */}
         <section className="bg-white p-8 rounded-xl shadow-sm border border-[#C3C6D7]/10 print:shadow-none print:border-none print:p-0 print:m-0" ref={printRef}>
           <div className="hidden print:block text-center mb-2">
             <h1 className="text-2xl font-bold">Customer Order</h1>
             <p className="text-xs text-gray-600">Order No: {customorderNo} | Date: {orderDate}</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-x-8 gap-y-6 print:gap-y-2 print:gap-x-4">
+          <h3 className="text-[0.65rem] font-bold text-[#434655] uppercase tracking-[0.1em] mb-6 print:hidden">Customer Details</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-6 print:gap-y-2 print:gap-x-4">
             {/* Customer Name */}
             <div className="flex flex-col space-y-2 relative" ref={wrapperRef}>
               <label className="text-[0.65rem] font-bold text-[#434655] uppercase tracking-[0.05em]">Customer Name</label>
@@ -534,7 +646,7 @@ const AddCustomerOrder = () => {
                       case 'Escape': e.preventDefault(); setShowCustDropdown(false); setHighlightedCustIndex(-1); break;
                     }
                   }}
-                  className="w-full bg-[#ECEEF0] border-none rounded-lg py-3 px-4 focus:ring-2 focus:ring-[#2563EB]/20 transition-all text-sm font-medium outline-none"
+                  className="w-full bg-white border border-[#C3C6D7]/20 rounded-lg py-3 px-4 focus:ring-2 focus:ring-[#2563EB]/20 transition-all text-sm font-medium outline-none"
                   placeholder="Search customer..."
                 />
                 {buyer ? (
@@ -560,33 +672,42 @@ const AddCustomerOrder = () => {
             {/* Mobile */}
             <div className="flex flex-col space-y-2">
               <label className="text-[0.65rem] font-bold text-[#434655] uppercase tracking-[0.05em]">Mobile Number</label>
-              <input type="text" value={mobileNo} onChange={(e) => setMobileNo(e.target.value)} className="w-full bg-[#ECEEF0] border-none rounded-lg py-3 px-4 text-sm font-medium outline-none focus:ring-2 focus:ring-[#2563EB]/20" placeholder="Mobile number" />
+              <input type="text" value={mobileNo} onChange={(e) => setMobileNo(e.target.value)} className="w-full bg-white border border-[#C3C6D7]/20 rounded-lg py-3 px-4 text-sm font-medium outline-none focus:ring-2 focus:ring-[#2563EB]/20" placeholder="Mobile number" />
             </div>
 
+            {/* Address */}
+            <div className="flex flex-col space-y-2">
+              <label className="text-[0.65rem] font-bold text-[#434655] uppercase tracking-[0.05em]">Address</label>
+              <textarea value={address} onChange={(e) => setAddress(e.target.value)} className="w-full bg-white border border-[#C3C6D7]/20 rounded-lg py-3 px-4 text-sm font-medium outline-none focus:ring-2 focus:ring-[#2563EB]/20 resize-none" placeholder="Address" rows="1" />
+            </div>
+          </div>
+        </section>
+
+        {/* ─── Order Details ─── */}
+        <section className="bg-white p-8 rounded-xl shadow-sm border border-[#C3C6D7]/10 print:hidden">
+          <h3 className="text-[0.65rem] font-bold text-[#434655] uppercase tracking-[0.1em] mb-6 print:hidden">Order Details</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-6 print:gap-y-2 print:gap-x-4">
             {/* Order Date */}
             <div className="flex flex-col space-y-2">
               <label className="text-[0.65rem] font-bold text-[#434655] uppercase tracking-[0.05em]">Order Date</label>
-              <input type="date" value={orderDate} onChange={(e) => setorderDate(e.target.value)} className="w-full bg-[#ECEEF0] border-none rounded-lg py-3 px-4 text-sm font-medium outline-none focus:ring-2 focus:ring-[#2563EB]/20" />
+              <input type="date" value={orderDate} onChange={(e) => setorderDate(e.target.value)} className="w-full bg-white border border-[#C3C6D7]/20 rounded-lg py-3 px-4 text-sm font-medium outline-none focus:ring-2 focus:ring-[#2563EB]/20" />
             </div>
 
             {/* Status */}
             <div className="flex flex-col space-y-2">
               <label className="text-[0.65rem] font-bold text-[#434655] uppercase tracking-[0.05em]">Status</label>
-              <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full bg-[#ECEEF0] border-none rounded-lg py-3 px-4 text-sm font-medium outline-none focus:ring-2 focus:ring-[#2563EB]/20 appearance-none print:bg-transparent">
-                <option>Received</option><option>In Progress</option><option>Waiting for Payment</option><option>Completed</option><option>Shipped</option><option>Delivered</option><option>Cancelled</option>
-              </select>
-            </div>
-
-            {/* Address */}
-            <div className="flex flex-col space-y-2 md:col-span-2">
-              <label className="text-[0.65rem] font-bold text-[#434655] uppercase tracking-[0.05em]">Address</label>
-              <textarea value={address} onChange={(e) => setAddress(e.target.value)} className="w-full bg-[#ECEEF0] border-none rounded-lg py-3 px-4 text-sm font-medium outline-none focus:ring-2 focus:ring-[#2563EB]/20 resize-none" placeholder="Address" rows="2" />
+              <div className="relative">
+                <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full bg-white border border-[#C3C6D7]/20 rounded-lg py-3 px-4 pr-10 text-sm font-medium outline-none focus:ring-2 focus:ring-[#2563EB]/20 appearance-none cursor-pointer print:bg-transparent">
+                  <option>Received</option><option>In Progress</option><option>Waiting for Payment</option><option>Completed</option><option>Shipped</option><option>Delivered</option><option>Cancelled</option>
+                </select>
+                <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#434655] pointer-events-none" />
+              </div>
             </div>
 
             {/* Remark */}
-            <div className="flex flex-col space-y-2 md:col-span-2">
+            <div className="flex flex-col space-y-2">
               <label className="text-[0.65rem] font-bold text-[#434655] uppercase tracking-[0.05em]">Order Remark</label>
-              <input type="text" value={remark} onChange={(e) => setRemark(e.target.value)} className="w-full bg-[#ECEEF0] border-none rounded-lg py-3 px-4 text-sm font-medium outline-none focus:ring-2 focus:ring-[#2563EB]/20" placeholder="Add notes or instructions..." />
+              <input type="text" value={remark} onChange={(e) => setRemark(e.target.value)} className="w-full bg-white border border-[#C3C6D7]/20 rounded-lg py-3 px-4 text-sm font-medium outline-none focus:ring-2 focus:ring-[#2563EB]/20" placeholder="Add notes or instructions..." />
             </div>
           </div>
         </section>
@@ -632,11 +753,6 @@ const AddCustomerOrder = () => {
               </tbody>
             </table>
           </div>
-          {orderItems.length > 0 && (
-            <div className="px-8 py-4 bg-[#F2F4F6]/50">
-              <p className="text-[0.7rem] text-[#434655] italic">Showing {orderItems.length} item{orderItems.length !== 1 ? 's' : ''} in the current order.</p>
-            </div>
-          )}
         </section>
 
         {/* ─── Bottom: Payment + Actions ─── */}
@@ -645,18 +761,21 @@ const AddCustomerOrder = () => {
             <h4 className="text-[0.65rem] font-bold text-[#434655] uppercase tracking-[0.1em]">Payment / Advance Received</h4>
             <div className="space-y-4">
               <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-[#434655]">Date</span>
+                <input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} className="w-40 text-right bg-white border border-[#C3C6D7]/20 rounded-lg py-2 px-3 text-sm font-medium outline-none focus:ring-2 focus:ring-[#2563EB]/20" />
+              </div>
+              <div className="flex justify-between items-center">
                 <span className="text-sm font-medium text-[#434655]">Amount (₹)</span>
-                <input type="number" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} className="w-32 text-right bg-[#ECEEF0] border-none rounded-lg py-2 px-3 text-sm font-medium outline-none focus:ring-2 focus:ring-[#2563EB]/20" placeholder="0.00" min="0" />
+                <input type="number" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} className="w-32 text-right bg-white border border-[#C3C6D7]/20 rounded-lg py-2 px-3 text-sm font-medium outline-none focus:ring-2 focus:ring-[#2563EB]/20" placeholder="0.00" min="0" />
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium text-[#434655]">Type</span>
-                <select value={paymentType} onChange={(e) => setPaymentType(e.target.value)} className="w-28 text-right bg-[#ECEEF0] border-none rounded-lg py-2 px-3 text-sm font-medium outline-none focus:ring-2 focus:ring-[#2563EB]/20 appearance-none">
-                  {PAYMENT_TYPES.map(type => (<option key={type} value={type}>{type}</option>))}
-                </select>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-[#434655]">Date</span>
-                <input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} className="w-40 text-right bg-[#ECEEF0] border-none rounded-lg py-2 px-3 text-sm font-medium outline-none focus:ring-2 focus:ring-[#2563EB]/20" />
+                <div className="relative">
+                  <select value={paymentType} onChange={(e) => setPaymentType(e.target.value)} className="w-32 text-center bg-white border border-[#C3C6D7]/20 rounded-lg py-2 px-3 pr-8 text-sm font-medium outline-none focus:ring-2 focus:ring-[#2563EB]/20 appearance-none cursor-pointer">
+                    {PAYMENT_TYPES.map(type => (<option key={type} value={type}>{type}</option>))}
+                  </select>
+                  <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-[#434655] pointer-events-none" />
+                </div>
               </div>
             </div>
           </div>

@@ -4,6 +4,7 @@ import { useParams, useNavigate, useLocation, useBlocker } from 'react-router-do
 import { AlertCircle } from 'lucide-react';
 import { Search } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { generateInvoicePDF } from './generateInvoicePDF';
 import {
   generateProductCode,
   capitalizeWords,
@@ -192,11 +193,12 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
                       </span>
                     </button>
                   ))
-                ) : (
-                  <div className="px-4 py-3 text-sm text-[#434655]/60 text-center italic">
-                    No products found — ad-hoc item
+                ) : newItem.productName.trim() ? (
+                  <div className="px-4 py-3 text-sm text-[#2563EB] text-center flex items-center justify-center gap-1.5">
+                    <Plus size={14} />
+                    <span className="font-medium">New item — will be added to Price List</span>
                   </div>
-                )}
+                ) : null}
               </div>
             )}
           </div>
@@ -348,6 +350,9 @@ const Invoice = () => {
   const [showNavigationWarning, setShowNavigationWarning] = useState(false);
   const [showCustUpdateModal, setShowCustUpdateModal] = useState(false);
   const pendingSaveRef = useRef(false);
+  const custActionRef = useRef(false); // Prevent new-customer modal when selecting/clearing
+  const [showNewCustModal, setShowNewCustModal] = useState(false);
+  const [similarCustomers, setSimilarCustomers] = useState([]);
 
 
   // Payment/Advance state
@@ -727,52 +732,98 @@ const Invoice = () => {
         // Use existing product's code
         productCode = existingProduct.code;
 
-        // Always sync price if different
+        // Detect price and packing type changes
         const existingPrice = existingProduct.selling_price ?? existingProduct.sellingPrice ?? 0;
-        if (existingPrice !== sellingPrice) {
+        const existingPacking = (existingProduct.packing_type || '').trim().toLowerCase();
+        const formPacking = (newItem.packingType || '').trim().toLowerCase();
+        const priceChanged = existingPrice !== sellingPrice;
+        const packingChanged = existingPacking !== formPacking;
+
+        if (priceChanged || packingChanged) {
           try {
             await window.api.invoke('products:update', {
               code: productCode,
               name: existingProduct.name,
               size: existingProduct.size || '',
-              packing_type: existingProduct.packing_type || newItem.packingType,
+              packing_type: newItem.packingType || existingProduct.packing_type,
               cost_price: existingProduct.cost_price || 0,
               selling_price: sellingPrice
             });
-            toast.success('Price updated in Price List');
+            const updates = [];
+            if (priceChanged) updates.push('price');
+            if (packingChanged) updates.push('packing type');
+            toast.success(`Product ${updates.join(' & ')} updated in Price List`);
             const updatedProducts = await window.api.getProducts();
             setProducts(updatedProducts);
           } catch (err) {
-            console.error('Error updating product price:', err);
+            console.error('Error updating product:', err);
           }
         }
       } else {
-        // No matching DB product — treat as ad-hoc (invoice-only, no product creation)
+        // No matching DB product — create in price list
         productCode = generateProductCode(newItem.productName, newItem.size);
+        try {
+          await window.api.invoke('products:create', {
+            code: productCode,
+            name: newItem.productName,
+            size: newItem.size || '',
+            packing_type: newItem.packingType || DEFAULT_PACKING_TYPE,
+            cost_price: 0,
+            selling_price: sellingPrice
+          });
+          toast.success('New product added to Price List');
+          const updatedProducts = await window.api.getProducts();
+          setProducts(updatedProducts);
+        } catch (err) {
+          console.error('Error creating product:', err);
+        }
       }
     } else if (newItem.code && originalProduct) {
-      // Using existing DB product without name change — always sync price if different
+      // Using existing DB product without name/size change — sync price and/or packing type if different
       const originalPrice = originalProduct.selling_price ?? originalProduct.sellingPrice ?? 0;
-      if (originalPrice !== sellingPrice) {
+      const originalPacking = (originalProduct.packing_type || '').trim().toLowerCase();
+      const formPacking = (newItem.packingType || '').trim().toLowerCase();
+      const priceChanged = originalPrice !== sellingPrice;
+      const packingChanged = originalPacking !== formPacking;
+
+      if (priceChanged || packingChanged) {
         try {
           await window.api.invoke('products:update', {
             code: newItem.code,
             name: originalProduct.name,
             size: originalProduct.size || '',
-            packing_type: originalProduct.packing_type || newItem.packingType,
+            packing_type: newItem.packingType || originalProduct.packing_type,
             cost_price: originalProduct.cost_price || 0,
             selling_price: sellingPrice
           });
-          toast.success('Price updated in Price List');
+          const updates = [];
+          if (priceChanged) updates.push('price');
+          if (packingChanged) updates.push('packing type');
+          toast.success(`Product ${updates.join(' & ')} updated in Price List`);
           const updatedProducts = await window.api.getProducts();
           setProducts(updatedProducts);
         } catch (err) {
-          console.error('Error updating product price:', err);
+          console.error('Error updating product:', err);
         }
       }
     } else if (!newItem.code) {
-      // Completely ad-hoc product typed in — no DB creation, just generate a code for invoice
+      // New product typed in — create in price list
       productCode = generateProductCode(newItem.productName, newItem.size);
+      try {
+        await window.api.invoke('products:create', {
+          code: productCode,
+          name: newItem.productName,
+          size: newItem.size || '',
+          packing_type: newItem.packingType || DEFAULT_PACKING_TYPE,
+          cost_price: 0,
+          selling_price: sellingPrice
+        });
+        toast.success('New product added to Price List');
+        const updatedProducts = await window.api.getProducts();
+        setProducts(updatedProducts);
+      } catch (err) {
+        console.error('Error creating product:', err);
+      }
     }
 
     const newInvoiceItem = {
@@ -841,12 +892,78 @@ const Invoice = () => {
   };
 
   const handleSelectCustomer = (cust) => {
+    custActionRef.current = true;
     setBuyer(cust.name);
     setCustomerId(cust.customer_id);
     setAddress(cust.address);
     setMobileNo(cust.mobile);
     setShowCustDropdown(false);
     setHighlightedCustIndex(-1);
+  };
+
+  // Handle customer input blur — detect unmatched customer name
+  const handleCustomerBlur = () => {
+    const currentBuyer = buyer.trim();
+    const currentCustId = customerId;
+    setTimeout(() => {
+      if (custActionRef.current) {
+        custActionRef.current = false;
+        return;
+      }
+      if (currentBuyer && !currentCustId) {
+        // Word-level fuzzy matching: split into words and check overlap
+        const inputWords = currentBuyer.toLowerCase().split(/\s+/).filter(Boolean);
+        const similar = customers.filter(c => {
+          const custWords = (c.name || '').toLowerCase().split(/\s+/).filter(Boolean);
+          // Match if ANY word from input matches ANY word in customer name
+          return inputWords.some(iw =>
+            custWords.some(cw => cw.includes(iw) || iw.includes(cw))
+          );
+        });
+        setSimilarCustomers(similar);
+        setShowNewCustModal(true);
+        setShowCustDropdown(false);
+      }
+    }, 250);
+  };
+
+  const handleCreateNewCustomer = async () => {
+    const trimmedName = buyer.trim();
+    if (!trimmedName) return;
+    // Use the same AGS-C-{N} auto-number format as the Add Customer page
+    const newCustId = `AGS-C-${customers.length + 1}`;
+    try {
+      await window.api.invoke('customers:create', {
+        customer_id: newCustId,
+        name: trimmedName,
+        address: address || '',
+        mobile: mobileNo || ''
+      });
+      setCustomerId(newCustId);
+      const updatedCustomers = await window.api.getCustomers();
+      setCustomers(updatedCustomers);
+      toast.success(`New customer "${trimmedName}" created`);
+    } catch (err) {
+      console.error('Error creating customer:', err);
+      toast.error('Failed to create customer');
+    }
+    setShowNewCustModal(false);
+    setSimilarCustomers([]);
+  };
+
+  const handleCancelNewCustomer = () => {
+    setBuyer('');
+    setCustomerId('');
+    setAddress('');
+    setMobileNo('');
+    setShowNewCustModal(false);
+    setSimilarCustomers([]);
+  };
+
+  const handleSelectSimilarCustomer = (cust) => {
+    handleSelectCustomer(cust);
+    setShowNewCustModal(false);
+    setSimilarCustomers([]);
   };
 
   const handleSave = async () => {
@@ -980,62 +1097,154 @@ const Invoice = () => {
   const [marathiNames, setMarathiNames] = useState({}); // code -> marathi_name
   const [isTranslating, setIsTranslating] = useState(false);
 
+  // Printer selection state
+  const [showPrinterModal, setShowPrinterModal] = useState(false);
+  const [printerList, setPrinterList] = useState([]);
+  const [selectedPrinter, setSelectedPrinter] = useState('');
+  const [pendingPDFData, setPendingPDFData] = useState(null);
+  const [isPrinting, setIsPrinting] = useState(false);
+
   const handlePrint = async () => {
+    const { roundOff: ro, grandTotal: gt } = calculateGrandTotal();
+    const buildPDFData = (marathiNamesMap = {}) => ({
+      invoiceNo: customInvoiceNo,
+      invoiceDate,
+      buyer,
+      customerId,
+      address,
+      mobileNo,
+      invoiceItems,
+      total,
+      packing,
+      freight,
+      riksha,
+      roundOff: ro,
+      grandTotal: gt,
+      remark,
+      paymentAmount,
+      paymentType,
+      printMarathi,
+      marathiNames: marathiNamesMap,
+    });
+
+    const showPrinterSelection = (pdfResult) => {
+      setPendingPDFData(pdfResult);
+      // Fetch available printers
+      window.api.invoke('print:listPrinters').then((res) => {
+        setPrinterList(res.success ? res.printers.filter(p => p && p.trim()) : []);
+        setSelectedPrinter(''); // default printer
+        setShowPrinterModal(true);
+      }).catch(() => {
+        setPrinterList([]);
+        setSelectedPrinter('');
+        setShowPrinterModal(true);
+      });
+    };
+
     if (printMarathi) {
-      // Validate Marathi names exist for all items
-      const codes = invoiceItems.map(i => i.code || i.product_code);
+      const codes = invoiceItems.map(i => i.code || i.product_code).filter(Boolean);
+      setIsTranslating(true);
       try {
-        const { missing } = await window.api.invoke('translate:checkMissing', codes);
-        if (missing.length > 0) {
-          // Try to translate missing ones
-          setIsTranslating(true);
-          try {
-            let allTranslated = true;
+        const allNames = {};
+
+        // Step 1: Handle products that exist in DB
+        if (codes.length > 0) {
+          const { missing } = await window.api.invoke('translate:checkMissing', codes);
+
+          // Translate missing DB product names
+          if (missing.length > 0) {
             for (const code of missing) {
               const res = await window.api.invoke('translate:toMarathi', code);
               if (!res.success) {
-                allTranslated = false;
-                break;
+                toast.error('Please connect to the internet to generate Marathi product names.');
+                setPrintMarathi(false);
+                setIsTranslating(false);
+                return;
               }
             }
-            if (!allTranslated) {
-              toast.error('Marathi names missing. Please connect to internet for translation.');
-              setIsTranslating(false);
-              return;
-            }
-            toast.success('Ready to print in Marathi');
-            setIsTranslating(false);
-            // Don't auto-print — user must click again
-            return;
-          } catch (err) {
-            toast.error('Marathi names missing. Please connect to internet for translation.');
-            setIsTranslating(false);
-            return;
           }
+
+          // Fetch all DB Marathi names
+          const { names } = await window.api.invoke('translate:getMarathiNames', codes);
+          Object.assign(allNames, names);
         }
-        // All Marathi names exist — fetch them
-        const { names } = await window.api.invoke('translate:getMarathiNames', codes);
-        setMarathiNames(names);
-        // Small delay to let state update before printing
-        setTimeout(() => {
-          const originalTitle = document.title;
-          if (buyer && customInvoiceNo) {
-            document.title = `${buyer} ${customInvoiceNo}`;
+
+        // Step 2: Fallback for items whose codes have no Marathi name yet
+        // (e.g. products not in DB, or DB transliteration failed silently)
+        for (const item of invoiceItems) {
+          const code = item.code || item.product_code;
+          if (!code || allNames[code]) continue; // already have name
+
+          const name = item.productName;
+          if (!name) continue;
+
+          const res = await window.api.invoke('translate:nameToMarathi', name);
+          if (!res.success) {
+            toast.error('Please connect to the internet to generate Marathi product names.');
+            setPrintMarathi(false);
+            setIsTranslating(false);
+            return;
           }
-          window.print();
-          document.title = originalTitle;
-        }, 100);
-      } catch (err) {
-        toast.error('Error checking Marathi translations');
+          allNames[code] = res.marathi_name;
+        }
+
+        // Step 3: All names ready — generate PDF
+        setMarathiNames(allNames);
+        setIsTranslating(false);
+        const result = generateInvoicePDF(buildPDFData(allNames));
+        showPrinterSelection(result);
+      } catch {
+        toast.error('Please connect to the internet to generate Marathi product names.');
+        setPrintMarathi(false);
+        setIsTranslating(false);
       }
     } else {
-      const originalTitle = document.title;
-      if (buyer && customInvoiceNo) {
-        document.title = `${buyer} ${customInvoiceNo}`;
-      }
-      window.print();
-      document.title = originalTitle;
+      const result = generateInvoicePDF(buildPDFData());
+      showPrinterSelection(result);
     }
+  };
+
+  const handleConfirmPrint = async () => {
+    if (!pendingPDFData) return;
+    setIsPrinting(true);
+    try {
+      const res = await window.api.invoke('print:pdf', {
+        pdfBase64: pendingPDFData.pdfBase64,
+        printerName: selectedPrinter || undefined,
+        fileName: pendingPDFData.fileName,
+      });
+      if (res.success) {
+        toast.success('Print job sent successfully');
+      } else {
+        toast.error(res.error || 'Failed to print');
+      }
+    } catch (err) {
+      toast.error('Print failed: ' + (err.message || 'Unknown error'));
+    } finally {
+      setIsPrinting(false);
+      setShowPrinterModal(false);
+      setPendingPDFData(null);
+    }
+  };
+
+  const handleDownloadPDF = () => {
+    if (!pendingPDFData) return;
+    // Convert base64 to blob and download
+    const byteChars = atob(pendingPDFData.pdfBase64);
+    const byteNumbers = new Array(byteChars.length);
+    for (let i = 0; i < byteChars.length; i++) {
+      byteNumbers[i] = byteChars.charCodeAt(i);
+    }
+    const blob = new Blob([new Uint8Array(byteNumbers)], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${pendingPDFData.fileName}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('PDF downloaded');
+    setShowPrinterModal(false);
+    setPendingPDFData(null);
   };
 
   const { roundOff, grandTotal } = calculateGrandTotal();
@@ -1107,6 +1316,148 @@ const Invoice = () => {
         </div>
       )}
 
+      {/* New Customer Modal — shown when typed name doesn't match any DB customer */}
+      {showNewCustModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] print:hidden">
+          <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md mx-4 w-full">
+            <div className="flex items-center justify-center mb-4">
+              <div className="w-12 h-12 bg-amber-50 rounded-full flex items-center justify-center">
+                <AlertTriangle className="text-amber-500" size={24} />
+              </div>
+            </div>
+            <h2 className="text-xl font-bold text-[#0F172A] text-center mb-2">
+              Customer Not Found
+            </h2>
+            <p className="text-[#64748B] text-center mb-1">
+              <span className="font-semibold text-[#0F172A]">&ldquo;{buyer.trim()}&rdquo;</span> is not in the database.
+            </p>
+
+            {similarCustomers.length > 0 && (
+              <div className="mt-4 mb-2">
+                <p className="text-xs font-bold text-[#434655] uppercase tracking-wider mb-2">Did you mean one of these?</p>
+                <div className="max-h-36 overflow-y-auto rounded-lg border border-[#E2E8F0]">
+                  {similarCustomers.map((c) => (
+                    <button
+                      key={c.customer_id}
+                      onClick={() => handleSelectSimilarCustomer(c)}
+                      className="w-full text-left px-4 py-3 text-sm hover:bg-[#EFF6FF] transition-colors flex items-center justify-between border-b border-[#F1F5F9] last:border-b-0 cursor-pointer"
+                    >
+                      <div>
+                        <span className="font-semibold text-[#0F172A] block">{c.name}</span>
+                        {c.mobile && <span className="text-xs text-[#64748B]">{c.mobile}</span>}
+                      </div>
+                      <span className="text-xs font-medium text-[#2563EB]">Use this</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {similarCustomers.length === 0 && (
+              <p className="text-[#64748B] text-center text-sm mt-1 mb-4">
+                No similar customers found. Would you like to create a new one?
+              </p>
+            )}
+
+            <div className={`flex gap-3 ${similarCustomers.length > 0 ? 'mt-4' : ''}`}>
+              <button
+                onClick={handleCreateNewCustomer}
+                className="flex-1 px-4 py-2.5 rounded-lg bg-[#2563EB] text-white font-medium hover:bg-[#1D4ED8] transition-colors cursor-pointer flex items-center justify-center gap-2"
+              >
+                <Plus size={16} />
+                Add New Customer
+              </button>
+              <button
+                onClick={handleCancelNewCustomer}
+                className="flex-1 px-4 py-2.5 rounded-lg border border-[#E2E8F0] text-[#64748B] font-medium hover:bg-[#F1F5F9] transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Printer Selection Modal */}
+      {showPrinterModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] print:hidden">
+          <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md mx-4 w-full">
+            <div className="flex items-center justify-center mb-4">
+              <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center">
+                <Printer className="text-[#2563EB]" size={24} />
+              </div>
+            </div>
+            <h2 className="text-xl font-bold text-[#0F172A] text-center mb-2">
+              Print Invoice
+            </h2>
+            <p className="text-[#64748B] text-center mb-4 text-sm">
+              {pendingPDFData?.fileName || 'Estimate'}
+            </p>
+
+            {/* Printer Selection */}
+            <div className="mb-6">
+              <label className="block text-xs font-bold text-[#434655] uppercase mb-2">Select Printer</label>
+              <select
+                value={selectedPrinter}
+                onChange={(e) => setSelectedPrinter(e.target.value)}
+                className="w-full py-3 px-4 bg-[#F2F4F6] border border-[#E2E8F0] rounded-lg text-sm font-medium appearance-none cursor-pointer focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB]"
+              >
+                <option value="">Default Printer</option>
+                {printerList.map((printer, idx) => (
+                  <option key={idx} value={printer}>{printer}</option>
+                ))}
+              </select>
+              {printerList.length === 0 && (
+                <p className="text-xs text-[#64748B] mt-1">Using system default printer</p>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <button
+                onClick={handleConfirmPrint}
+                disabled={isPrinting}
+                className={`flex-1 px-4 py-2.5 rounded-lg bg-[#2563EB] text-white font-medium hover:bg-[#1D4ED8] transition-colors cursor-pointer flex items-center justify-center gap-2 ${isPrinting ? 'opacity-50' : ''}`}
+              >
+                <Printer size={16} />
+                {isPrinting ? 'Printing...' : 'Print'}
+              </button>
+              <button
+                onClick={handleDownloadPDF}
+                className="flex-1 px-4 py-2.5 rounded-lg border border-[#E2E8F0] text-[#434655] font-medium hover:bg-[#F1F5F9] transition-colors cursor-pointer flex items-center justify-center gap-2"
+              >
+                <Save size={16} />
+                Download PDF
+              </button>
+            </div>
+
+            {/* Cancel */}
+            <button
+              onClick={() => { setShowPrinterModal(false); setPendingPDFData(null); }}
+              className="w-full mt-3 py-2 text-sm text-[#64748B] hover:text-[#0F172A] transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Full-Screen Marathi Translation Loader */}
+      {isTranslating && (
+        <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center print:hidden" style={{ backdropFilter: 'blur(10px)', backgroundColor: 'rgba(255,255,255,0.85)' }}>
+          <div className="flex flex-col items-center gap-6">
+            <div className="relative w-16 h-16">
+              <div className="absolute inset-0 rounded-full border-4 border-[#E2E8F0]"></div>
+              <div className="absolute inset-0 rounded-full border-4 border-t-[#2563EB] animate-spin"></div>
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-bold text-[#0F172A] mb-1">Preparing Marathi print...</p>
+              <p className="text-sm text-[#64748B]">Translating product names, please wait</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div
         ref={printRef}
         className="max-w-[1040px] mx-auto bg-white shadow-sm rounded-xl border border-[#E2E8F0] overflow-hidden print:shadow-none print:rounded-none print:border-none print:w-[210mm] print:min-h-[297mm]"
@@ -1169,6 +1520,7 @@ const Invoice = () => {
                       case 'Escape': e.preventDefault(); setShowCustDropdown(false); setHighlightedCustIndex(-1); break;
                     }
                   }}
+                  onBlur={handleCustomerBlur}
                   className="w-full pl-10 pr-10 py-3 bg-[#F2F4F6] border-none rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all"
                   placeholder="Search customer name..."
                 />
@@ -1176,7 +1528,7 @@ const Invoice = () => {
                   <button
                     type="button"
                     tabIndex={-1}
-                    onClick={() => { setBuyer(''); setCustomerId(''); setAddress(''); setMobileNo(''); }}
+                    onClick={() => { custActionRef.current = true; setBuyer(''); setCustomerId(''); setAddress(''); setMobileNo(''); }}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-[#434655] hover:text-red-500 cursor-pointer transition-colors"
                   >
                     <CircleX size={16} />
@@ -1233,16 +1585,25 @@ const Invoice = () => {
 
         {/* Add New Item Form */}
         <div className="p-4 sm:p-6 print:hidden">
-          <AddItemForm
-            newItem={newItem}
-            setNewItem={setNewItem}
-            handleAddItem={handleAddItem}
-            products={products}
-            formErrors={formErrors}
-            productNameInputRef={productNameInputRef}
-            onProductSelected={() => { }}
-
-          />
+          <div className="relative">
+            {!customerId && (
+              <div className="absolute inset-0 z-10 bg-white/70 backdrop-blur-[2px] rounded-xl flex items-center justify-center cursor-not-allowed">
+                <div className="bg-white px-6 py-3 rounded-lg shadow-md border border-[#E2E8F0] flex items-center gap-2">
+                  <AlertCircle size={16} className="text-[#64748B]" />
+                  <span className="text-sm font-medium text-[#64748B]">Select a customer first to add items</span>
+                </div>
+              </div>
+            )}
+            <AddItemForm
+              newItem={newItem}
+              setNewItem={setNewItem}
+              handleAddItem={handleAddItem}
+              products={products}
+              formErrors={formErrors}
+              productNameInputRef={productNameInputRef}
+              onProductSelected={() => { }}
+            />
+          </div>
         </div>
 
         {/* Items Table */}

@@ -39,12 +39,15 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
       // Split into words, transliterate alphabetic words, keep numbers/special chars
       const words = text.split(/\s+/);
       const result = [];
+      let hasAlphaWords = false;  // tracks if there were words to transliterate
+      let anyTranslated = false;  // tracks if at least one word was successfully transliterated
       for (const word of words) {
         // If the word is purely numeric or special chars, keep as-is
         if (/^[^a-zA-Z]+$/.test(word)) {
           result.push(word);
           continue;
         }
+        hasAlphaWords = true;
         const url = `https://inputtools.google.com/request?text=${encodeURIComponent(word)}&itc=mr-t-i0-und&num=1`;
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 5000);
@@ -56,14 +59,19 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
           // Response: ["SUCCESS",[["word",["transliterated",...]]]]
           if (data[0] === 'SUCCESS' && data[1] && data[1][0] && data[1][0][1] && data[1][0][1][0]) {
             result.push(data[1][0][1][0]);
+            anyTranslated = true;
           } else {
             result.push(word); // fallback to original
           }
         } catch (fetchErr) {
           clearTimeout(timeout);
-          result.push(word); // fallback on abort/network error
+          // Network error / abort — signal offline failure
+          result.push(word);
+          // Don't continue silently — this is likely a connectivity issue
         }
       }
+      // If there were words to transliterate but NONE succeeded, it means no internet
+      if (hasAlphaWords && !anyTranslated) return null;
       return result.join(' ');
     } catch (err) {
       console.error('Transliteration error:', err.message);
@@ -1644,6 +1652,14 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     const marathiName = await transliterateToMarathi(prod.name);
     if (!marathiName) return { error: 'Transliteration failed — check internet connection' };
     db.prepare("UPDATE products SET marathi_name = ?, marathi_status = 'transliterated' WHERE code = ?").run(marathiName, code);
+    return { success: true, marathi_name: marathiName };
+  }));
+
+  // Transliterate a raw product name string (no DB lookup — for ad-hoc/temporary items)
+  ipcMain.handle('translate:nameToMarathi', wrap(async (name) => {
+    if (!name || !name.trim()) return { error: 'Product name required' };
+    const marathiName = await transliterateToMarathi(name.trim());
+    if (!marathiName) return { error: 'Transliteration failed — check internet connection' };
     return { success: true, marathi_name: marathiName };
   }));
 
