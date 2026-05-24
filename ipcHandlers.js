@@ -465,15 +465,16 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
 
   ipcMain.handle('invoices:update', wrap((invoice) => {
     const { id: invoice_id, customer_id, invoice_date, remark = '', packing = 0, freight = 0, riksha = 0, items,
-      payment_amount = 0, payment_type = 'Cash', payment_date = null } = invoice;
+      payment_amount = 0, payment_type = 'Cash', payment_date = null,
+      invoice_time = null, is_private_note = 0 } = invoice;
     if (!invoice_id || !customer_id || !invoice_date || !Array.isArray(items) || items.length === 0) {
       return { error: 'Missing required fields' };
     }
     const updateTxn = db.transaction(() => {
       const itemsTotal = items.reduce((s, it) => s + it.quantity * it.selling_price, 0);
       const grandTotal = itemsTotal + parseFloat(packing) + parseFloat(freight) + parseFloat(riksha);
-      db.prepare(`UPDATE invoices SET customer_id = ?, invoice_date = ?, remark = ?, packing = ?, freight = ?, riksha = ?, grand_total = ? WHERE invoice_id = ?`)
-        .run(customer_id, invoice_date, remark, packing, freight, riksha, grandTotal, invoice_id);
+      db.prepare(`UPDATE invoices SET customer_id = ?, invoice_date = ?, remark = ?, packing = ?, freight = ?, riksha = ?, grand_total = ?, invoice_time = ?, is_private_note = ? WHERE invoice_id = ?`)
+        .run(customer_id, invoice_date, remark, packing, freight, riksha, grandTotal, invoice_time, is_private_note ? 1 : 0, invoice_id);
 
       // Refresh items
       db.prepare('DELETE FROM invoice_items WHERE invoice_id = ?').run(invoice_id);
@@ -482,9 +483,10 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
         insertItem.run(invoice_id, it.product_code, it.quantity, it.selling_price);
       }
 
-      // Keep maal mirror row in sync
+      // Keep maal mirror row in sync — hide remark if marked private
+      const publicRemark = is_private_note ? '' : remark;
       db.prepare(`UPDATE customer_maal_account SET customer_id = ?, maal_date = ?, maal_amount = ?, maal_remark = ? WHERE maal_invoice_no = ?`)
-        .run(customer_id, invoice_date, grandTotal, remark, invoice_id);
+        .run(customer_id, invoice_date, grandTotal, publicRemark, invoice_id);
 
       // Handle payment/advance (Jama entry management)
       const paymentRemark = `Invoice ${invoice_id}`;
@@ -827,7 +829,8 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
 
   ipcMain.handle('invoices:create', wrap((data) => {
     const { customer_id, invoice_date, remark = '', packing = 0, freight = 0, riksha = 0, items,
-      payment_amount = 0, payment_type = 'Cash', payment_date = null } = data;
+      payment_amount = 0, payment_type = 'Cash', payment_date = null,
+      invoice_time = null, is_private_note = 0 } = data;
     if (!customer_id || !invoice_date || !Array.isArray(items) || items.length === 0) {
       return { error: 'Missing required fields' };
     }
@@ -856,18 +859,19 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
       const grandTotal = itemsTotal + parseFloat(packing) + parseFloat(freight) + parseFloat(riksha);
 
       db.prepare(`
-          INSERT INTO invoices (invoice_id, customer_id, invoice_date, remark, packing, freight, riksha, grand_total)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(invoice_id, customer_id, invoice_date, remark, packing, freight, riksha, grandTotal);
+          INSERT INTO invoices (invoice_id, customer_id, invoice_date, remark, packing, freight, riksha, grand_total, invoice_time, is_private_note)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(invoice_id, customer_id, invoice_date, remark, packing, freight, riksha, grandTotal, invoice_time, is_private_note ? 1 : 0);
 
       for (const it of items) {
         insertItemStmt.run(invoice_id, it.product_code, it.quantity, it.selling_price);
       }
 
-      // Create Maal entry (existing behavior)
+      // Create Maal entry — hide remark if marked private
+      const publicRemark = is_private_note ? '' : remark;
       db.prepare(`INSERT INTO customer_maal_account (customer_id, maal_date, maal_invoice_no, maal_amount, maal_remark)
                     VALUES (?, ?, ?, ?, ?)`)
-        .run(customer_id, invoice_date, invoice_id, grandTotal, remark);
+        .run(customer_id, invoice_date, invoice_id, grandTotal, publicRemark);
 
       // Create Jama entry if payment amount > 0
       const paymentAmt = parseFloat(payment_amount) || 0;
@@ -966,7 +970,7 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
 
   // Create quick sale (consumes sequence or reusable)
   ipcMain.handle('quickSales:create', wrap((data) => {
-    const { qs_date, remark = '', items } = data;
+    const { qs_date, remark = '', items, qs_time = null, is_private_note = 0 } = data;
     if (!qs_date || !Array.isArray(items) || items.length === 0) return { error: 'Missing required fields' };
 
     const insertItemStmt = db.prepare('INSERT INTO quick_sale_items (qs_id, product_code, product_name, product_size, packing_type, quantity, selling_price, is_temporary) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
@@ -987,7 +991,7 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
 
       const itemsTotal = items.reduce((s, it) => s + (it.quantity * it.selling_price), 0);
       const roundedTotal = Math.round(itemsTotal);
-      db.prepare('INSERT INTO quick_sales (qs_id, qs_date, total, remark) VALUES (?, ?, ?, ?)').run(qs_id, qs_date, roundedTotal, remark);
+      db.prepare('INSERT INTO quick_sales (qs_id, qs_date, total, remark, qs_time, is_private_note) VALUES (?, ?, ?, ?, ?, ?)').run(qs_id, qs_date, roundedTotal, remark, qs_time, is_private_note ? 1 : 0);
 
       for (const it of items) {
         insertItemStmt.run(
@@ -1034,14 +1038,14 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
 
   // Update quick sale (header + items)
   ipcMain.handle('quickSales:update', wrap((data) => {
-    const { qs_id, qs_date, remark = '', items } = data;
+    const { qs_id, qs_date, remark = '', items, qs_time = null, is_private_note = 0 } = data;
     if (!qs_id || !qs_date || !Array.isArray(items) || items.length === 0) return { error: 'Missing required fields' };
 
     const updateTxn = db.transaction(() => {
       const itemsTotal = items.reduce((s, it) => s + (it.quantity * it.selling_price), 0);
       const roundedTotal = Math.round(itemsTotal);
-      const res = db.prepare('UPDATE quick_sales SET qs_date = ?, total = ?, remark = ? WHERE qs_id = ?')
-        .run(qs_date, roundedTotal, remark, qs_id);
+      const res = db.prepare('UPDATE quick_sales SET qs_date = ?, total = ?, remark = ?, qs_time = ?, is_private_note = ? WHERE qs_id = ?')
+        .run(qs_date, roundedTotal, remark, qs_time, is_private_note ? 1 : 0, qs_id);
 
       if (!res.changes) return 0;
 

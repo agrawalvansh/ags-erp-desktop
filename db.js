@@ -87,6 +87,10 @@ db.prepare(`
   )
 `).run();
 
+// Migration: add time and private note columns to invoices (safe to re-run)
+try { db.prepare('ALTER TABLE invoices ADD COLUMN invoice_time TEXT DEFAULT NULL').run(); } catch (e) { /* column already exists */ }
+try { db.prepare('ALTER TABLE invoices ADD COLUMN is_private_note INTEGER DEFAULT 0').run(); } catch (e) { /* column already exists */ }
+
 // Invoice line items
 db.prepare(`
   CREATE TABLE IF NOT EXISTS invoice_items (
@@ -370,6 +374,10 @@ db.prepare(`
     remark     TEXT
   )
 `).run();
+
+// Migration: add time and private note columns to quick_sales (safe to re-run)
+try { db.prepare('ALTER TABLE quick_sales ADD COLUMN qs_time TEXT DEFAULT NULL').run(); } catch (e) { /* column already exists */ }
+try { db.prepare('ALTER TABLE quick_sales ADD COLUMN is_private_note INTEGER DEFAULT 0').run(); } catch (e) { /* column already exists */ }
 
 // Quick Sale line items
 db.prepare(`

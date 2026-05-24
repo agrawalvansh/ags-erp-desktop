@@ -57,7 +57,8 @@ export function generateQuickSalePDF(data) {
   const {
     qsId, saleDate, invoiceItems, total,
     roundOff, grandTotal, remark,
-    printMarathi, marathiNames
+    printMarathi, marathiNames,
+    isPrivateNote
   } = data;
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -128,8 +129,8 @@ export function generateQuickSalePDF(data) {
     { header: 'Size', dataKey: 'size' },
     { header: 'Qty', dataKey: 'qty' },
     { header: 'Unit', dataKey: 'unit' },
-    { header: 'Rate (Rs.)', dataKey: 'rate' },
-    { header: 'Amount (Rs.)', dataKey: 'amount' },
+    { header: 'Rate', dataKey: 'rate' },
+    { header: 'Amount', dataKey: 'amount' },
   ];
 
   const tableRows = invoiceItems.map((item, index) => {
@@ -188,10 +189,10 @@ export function generateQuickSalePDF(data) {
       0: { halign: 'center', cellWidth: 8, font: 'helvetica' },
       1: { halign: 'left', cellWidth: 'auto' },
       2: { halign: 'center', cellWidth: 20, font: 'helvetica' },
-      3: { halign: 'right', cellWidth: 16, font: 'helvetica' },
+      3: { halign: 'center', cellWidth: 16, font: 'helvetica' },
       4: { halign: 'center', cellWidth: 14, font: 'helvetica' },
-      5: { halign: 'right', cellWidth: 22, font: 'helvetica' },
-      6: { halign: 'right', cellWidth: 26, font: 'helvetica' },
+      5: { halign: 'center', cellWidth: 22, font: 'helvetica' },
+      6: { halign: 'center', cellWidth: 26, font: 'helvetica' },
     },
     margin: { left: margin, right: margin },
     tableWidth: contentWidth,
@@ -201,6 +202,7 @@ export function generateQuickSalePDF(data) {
       }
       if (hookData.section === 'head') {
         hookData.cell.styles.font = 'helvetica';
+        hookData.cell.styles.halign = 'center';
       }
       if (hookData.section === 'body' && hookData.column.index !== 1) {
         hookData.cell.styles.font = 'helvetica';
@@ -216,8 +218,8 @@ export function generateQuickSalePDF(data) {
   const totalsValueX = pageWidth - margin;
   let totalsY = y;
 
-  // LEFT: Remark
-  if (remark && remark.trim()) {
+  // LEFT: Remark (skip if private note is checked)
+  if (remark && remark.trim() && !isPrivateNote) {
     setDefaultFont('bold');
     doc.setFontSize(8);
     doc.setTextColor(...medGray);

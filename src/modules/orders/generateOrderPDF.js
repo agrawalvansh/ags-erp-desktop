@@ -247,6 +247,7 @@ export function generateOrderPDF(data) {
       doc.text(line, margin, remarkY);
       remarkY += 3.5;
     });
+    y = remarkY + 2; // advance y past the remark block
   }
 
   // ─── Total items count ───

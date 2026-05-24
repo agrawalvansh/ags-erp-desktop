@@ -143,7 +143,7 @@ const AddPriceListProduct = () => {
         setTimeout(() => productNameRef.current?.focus(), 50);
         return;
       }
-      navigate('/price-list', { state: { editedProductCode: formData.code } });
+      navigate('/price-list', { state: { editedProductCode: formData.code, focusNext: true } });
     } catch (error) {
       toast.error(error.message);
       console.error('Error saving product:', error);

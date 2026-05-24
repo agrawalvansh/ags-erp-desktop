@@ -42,30 +42,6 @@ const PriceList = () => {
     fetchProducts();
   }, []);
 
-  // Auto-scroll to edited product when returning from edit page
-  useEffect(() => {
-    if (location.state?.editedProductCode && products.length > 0) {
-      const code = location.state.editedProductCode;
-      setHighlightedCode(code);
-
-      // Wait for render then scroll
-      setTimeout(() => {
-        const rowElement = rowRefs.current[code];
-        if (rowElement) {
-          rowElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-
-        // Remove highlight after 2 seconds
-        setTimeout(() => {
-          setHighlightedCode(null);
-        }, 2000);
-      }, 100);
-
-      // Clear location state
-      window.history.replaceState({}, document.title);
-    }
-  }, [location.state, products]);
-
   // Get filtered and sorted products (no pagination)
   const filteredProducts = useMemo(() => {
     let filtered = products.filter(item =>
@@ -101,6 +77,42 @@ const PriceList = () => {
 
     return filtered;
   }, [products, searchTerm, sortConfig]);
+
+  // Auto-scroll to edited product (or next row if focusNext) when returning from edit page
+  useEffect(() => {
+    if (location.state?.editedProductCode && products.length > 0) {
+      const code = location.state.editedProductCode;
+      const focusNext = location.state.focusNext;
+
+      // Determine which code to highlight
+      let targetCode = code;
+      if (focusNext) {
+        const idx = filteredProducts.findIndex(p => p.code === code);
+        if (idx >= 0 && idx < filteredProducts.length - 1) {
+          targetCode = filteredProducts[idx + 1].code;
+        }
+        // If last item, stay on the edited one
+      }
+
+      setHighlightedCode(targetCode);
+
+      // Wait for render then scroll
+      setTimeout(() => {
+        const rowElement = rowRefs.current[targetCode];
+        if (rowElement) {
+          rowElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // Remove highlight after 2 seconds
+        setTimeout(() => {
+          setHighlightedCode(null);
+        }, 2000);
+      }, 100);
+
+      // Clear location state
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, products, filteredProducts]);
 
   const handleSort = (key) => {
     let direction = 'asc';

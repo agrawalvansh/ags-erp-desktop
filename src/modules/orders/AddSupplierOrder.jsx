@@ -479,20 +479,25 @@ const AddSupplierOrder = () => {
   };
 
   const handlePrint = () => {
-    const result = generateOrderPDF({
-      orderType: 'Supplier Order',
-      orderId: customorderNo,
-      orderDate,
-      partyName: buyer,
-      mobileNo,
-      address,
-      status,
-      remark,
-      orderItems,
-      printMarathi: false,
-      marathiNames: {},
-    });
-    showPrinterSelection(result);
+    try {
+      const result = generateOrderPDF({
+        orderType: 'Supplier Order',
+        orderId: customorderNo,
+        orderDate,
+        partyName: buyer,
+        mobileNo,
+        address,
+        status,
+        remark,
+        orderItems,
+        printMarathi: false,
+        marathiNames: {},
+      });
+      showPrinterSelection(result);
+    } catch (err) {
+      console.error('PDF generation failed:', err);
+      toast.error('Failed to generate PDF: ' + (err.message || 'Unknown error'));
+    }
   };
 
   const handleConfirmPrint = async () => {
@@ -530,8 +535,9 @@ const AddSupplierOrder = () => {
     const a = document.createElement('a');
     a.href = url;
     a.download = `${pendingPDFData.fileName}.pdf`;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
     toast.success('PDF downloaded');
     setShowPrinterModal(false);
     setPendingPDFData(null);

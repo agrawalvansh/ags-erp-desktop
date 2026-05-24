@@ -70,7 +70,8 @@ export function generateInvoicePDF(data) {
     invoiceItems, total,
     packing, freight, riksha, roundOff, grandTotal,
     remark, paymentAmount, paymentType,
-    printMarathi, marathiNames
+    printMarathi, marathiNames,
+    isPrivateNote
   } = data;
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -188,8 +189,8 @@ export function generateInvoicePDF(data) {
     { header: 'Size', dataKey: 'size' },
     { header: 'Qty', dataKey: 'qty' },
     { header: 'Unit', dataKey: 'unit' },
-    { header: 'Rate (Rs.)', dataKey: 'rate' },
-    { header: 'Amount (Rs.)', dataKey: 'amount' },
+    { header: 'Rate', dataKey: 'rate' },
+    { header: 'Amount', dataKey: 'amount' },
   ];
 
   const tableRows = invoiceItems.map((item, index) => {
@@ -249,10 +250,10 @@ export function generateInvoicePDF(data) {
       0: { halign: 'center', cellWidth: 8, font: 'helvetica' },
       1: { halign: 'left', cellWidth: 'auto' },   // Product — uses Marathi font if needed
       2: { halign: 'center', cellWidth: 20, font: 'helvetica' },
-      3: { halign: 'right', cellWidth: 16, font: 'helvetica' },
+      3: { halign: 'center', cellWidth: 16, font: 'helvetica' },
       4: { halign: 'center', cellWidth: 14, font: 'helvetica' },
-      5: { halign: 'right', cellWidth: 22, font: 'helvetica' },
-      6: { halign: 'right', cellWidth: 26, font: 'helvetica' },
+      5: { halign: 'center', cellWidth: 22, font: 'helvetica' },
+      6: { halign: 'center', cellWidth: 26, font: 'helvetica' },
     },
     margin: { left: margin, right: margin },
     tableWidth: contentWidth,
@@ -261,9 +262,10 @@ export function generateInvoicePDF(data) {
       if (hasMarathiRows && hookData.section === 'body' && hookData.column.index === 1) {
         hookData.cell.styles.font = 'NotoSansDevanagari';
       }
-      // Keep header always in helvetica
+      // Keep header always in helvetica and center-aligned
       if (hookData.section === 'head') {
         hookData.cell.styles.font = 'helvetica';
+        hookData.cell.styles.halign = 'center';
       }
       // Keep number columns in helvetica
       if (hookData.section === 'body' && hookData.column.index !== 1) {
@@ -280,8 +282,8 @@ export function generateInvoicePDF(data) {
   const totalsValueX = pageWidth - margin;
   let totalsY = y;
 
-  // LEFT SIDE: Note/Remark
-  if (remark && remark.trim()) {
+  // LEFT SIDE: Note/Remark (skip if private note is checked)
+  if (remark && remark.trim() && !isPrivateNote) {
     setDefaultFont('bold');
     doc.setFontSize(8);
     doc.setTextColor(...medGray);

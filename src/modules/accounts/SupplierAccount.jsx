@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { Plus, Search, ChevronDown, Edit, Trash2, CircleX, AlertTriangle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
 // List of suppliers (copy of BuyerAccount but using suppliers endpoints)
@@ -11,13 +11,16 @@ const SupplierAccount = () => {
   const itemsPerPage = 10;
   const deleteModalRef = useRef(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const searchInputRef = useRef(null);
+  const rowRefs = useRef({});
 
   const [suppliers, setSuppliers] = useState([]);
   const [loadingSuppliers, setLoadingSuppliers] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
+  const [highlightedId, setHighlightedId] = useState(null);
 
   // Focus the delete modal when it opens
   useEffect(() => {
@@ -45,16 +48,18 @@ const SupplierAccount = () => {
     fetchSuppliers();
   }, []);
 
+  const filteredSuppliers = useMemo(() => {
+    const term = searchTerm.toLowerCase();
+    return suppliers.filter((u) =>
+      u.id.toLowerCase().includes(term) ||
+      u.name.toLowerCase().includes(term) ||
+      u.phone.toLowerCase().includes(term) ||
+      u.address.toLowerCase().includes(term)
+    );
+  }, [searchTerm, suppliers]);
+
   const processedSuppliers = useMemo(() => {
-    let filtered = suppliers.filter((u) => {
-      const term = searchTerm.toLowerCase();
-      return (
-        u.id.toLowerCase().includes(term) ||
-        u.name.toLowerCase().includes(term) ||
-        u.phone.toLowerCase().includes(term) ||
-        u.address.toLowerCase().includes(term)
-      );
-    });
+    let filtered = [...filteredSuppliers];
 
     if (sortConfig.key) {
       filtered.sort((a, b) => {
@@ -66,14 +71,33 @@ const SupplierAccount = () => {
 
     const start = (currentPage - 1) * itemsPerPage;
     return filtered.slice(start, start + itemsPerPage);
-  }, [searchTerm, sortConfig, currentPage, suppliers]);
+  }, [filteredSuppliers, sortConfig, currentPage]);
 
-  const totalPages = Math.ceil(
-    suppliers.filter((u) => {
-      const term = searchTerm.toLowerCase();
-      return u.id.toLowerCase().includes(term) || u.name.toLowerCase().includes(term);
-    }).length / itemsPerPage
-  );
+  const totalPages = Math.ceil(filteredSuppliers.length / itemsPerPage);
+
+  // Auto-scroll and highlight when returning from supplier detail
+  useEffect(() => {
+    if (location.state?.returnedFromAccount && suppliers.length > 0) {
+      const returnedId = location.state.returnedFromAccount;
+      setHighlightedId(returnedId);
+
+      const globalIndex = filteredSuppliers.findIndex(s => s.slug === returnedId);
+      if (globalIndex >= 0) {
+        const targetPage = Math.floor(globalIndex / itemsPerPage) + 1;
+        setCurrentPage(targetPage);
+      }
+
+      setTimeout(() => {
+        const rowElement = rowRefs.current[returnedId];
+        if (rowElement) {
+          rowElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        setTimeout(() => setHighlightedId(null), 2000);
+      }, 150);
+
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, suppliers, filteredSuppliers]);
 
   const handleSort = (key) => {
     let direction = 'asc';
@@ -244,7 +268,8 @@ const SupplierAccount = () => {
                   processedSuppliers.map((supplier, index) => (
                     <tr
                       key={supplier.id}
-                      className="group hover:bg-[#F2F4F6]/30 transition-colors cursor-pointer"
+                      ref={(el) => { rowRefs.current[supplier.slug] = el; }}
+                      className={`group hover:bg-[#F2F4F6]/30 transition-colors cursor-pointer ${highlightedId === supplier.slug ? 'bg-[#EFF6FF] ring-1 ring-[#2563EB]/30' : ''}`}
                       onClick={() => handleRowClick(supplier.slug)}
                     >
                       <td className="py-5 px-6 text-sm font-medium text-[#434655]">{String((currentPage - 1) * itemsPerPage + index + 1).padStart(2, '0')}</td>

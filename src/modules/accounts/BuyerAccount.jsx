@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, ChevronDown, Plus, Edit, Trash2, CircleX, AlertTriangle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
 const BuyerAccount = () => {
@@ -11,13 +11,16 @@ const BuyerAccount = () => {
   const deleteModalRef = useRef(null);
 
   const navigate = useNavigate();
+  const location = useLocation();
   const searchInputRef = useRef(null);
+  const rowRefs = useRef({});
 
   const [buyers, setBuyers] = useState([]);
   const [loadingBuyers, setLoadingBuyers] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
+  const [highlightedId, setHighlightedId] = useState(null);
 
   // Focus the delete modal when it opens
   useEffect(() => {
@@ -62,6 +65,31 @@ const BuyerAccount = () => {
       String(u.panNumber || '').toLowerCase().includes(term)
     );
   }, [searchTerm, buyers]);
+
+  // Auto-scroll and highlight when returning from account detail
+  useEffect(() => {
+    if (location.state?.returnedFromAccount && buyers.length > 0) {
+      const returnedId = location.state.returnedFromAccount;
+      setHighlightedId(returnedId);
+
+      // Calculate which page the returned account is on and navigate there
+      const globalIndex = filteredBuyers.findIndex(b => b.slug === returnedId);
+      if (globalIndex >= 0) {
+        const targetPage = Math.floor(globalIndex / itemsPerPage) + 1;
+        setCurrentPage(targetPage);
+      }
+
+      setTimeout(() => {
+        const rowElement = rowRefs.current[returnedId];
+        if (rowElement) {
+          rowElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        setTimeout(() => setHighlightedId(null), 2000);
+      }, 150);
+
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, buyers, filteredBuyers]);
 
   const filteredCount = filteredBuyers.length;
   const totalPages = Math.ceil(filteredCount / itemsPerPage);
@@ -249,7 +277,8 @@ const BuyerAccount = () => {
                   processedBuyers.map((buyer, index) => (
                     <tr
                       key={buyer.id}
-                      className="group hover:bg-[#F2F4F6]/30 transition-colors cursor-pointer"
+                      ref={(el) => { rowRefs.current[buyer.slug] = el; }}
+                      className={`group hover:bg-[#F2F4F6]/30 transition-colors cursor-pointer ${highlightedId === buyer.slug ? 'bg-[#EFF6FF] ring-1 ring-[#2563EB]/30' : ''}`}
                       onClick={() => handleRowClick(buyer.slug)}
                     >
                       <td className="py-5 px-6 text-sm font-medium text-[#434655]">{String((currentPage - 1) * itemsPerPage + index + 1).padStart(2, '0')}</td>

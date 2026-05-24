@@ -101,11 +101,18 @@ const NavBar = () => {
     setExpandedDropdowns(prev => ({ ...prev, [title]: !prev[title] }));
   };
 
+  // Paths that should trigger "new document" behavior when clicked while already on that page
+  const forceNewPaths = ['/invoice', '/quick-sales/create'];
+
   const handleNavClick = (path) => {
     if (path === '/logout') {
       logout();
       navigate('/login');
       toast.success('Logged out successfully');
+    } else if (forceNewPaths.includes(path) && location.pathname.startsWith(path)) {
+      // Already on Invoice or Quick Sale create page — signal a "new document" request
+      // The target component will check for unsaved changes before resetting
+      navigate(path, { state: { forceNew: true, _ts: Date.now() }, replace: true });
     } else {
       navigate(path);
     }

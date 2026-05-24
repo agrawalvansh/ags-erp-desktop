@@ -44,11 +44,13 @@ ipcMain.handle('print:listPrinters', async () => {
 
 ipcMain.handle('print:pdf', async (_event, { pdfBase64, printerName, fileName }) => {
   try {
-    // Write PDF to temp file
+    if (!pdfBase64) return { success: false, error: 'No PDF data provided' };
+
+    // Write PDF to temp file (async to avoid blocking UI)
     const tempDir = os.tmpdir();
     const tempFile = path.join(tempDir, (fileName || 'invoice') + '.pdf');
     const buffer = Buffer.from(pdfBase64, 'base64');
-    fs.writeFileSync(tempFile, buffer);
+    await fs.promises.writeFile(tempFile, buffer);
 
     // Print via node-pdf-printer
     if (printerName) {
@@ -57,10 +59,12 @@ ipcMain.handle('print:pdf', async (_event, { pdfBase64, printerName, fileName })
       await NodePdfPrinter.printFiles([tempFile]); // default printer
     }
 
-    // Clean up temp file after a delay
+    // Clean up temp file after a longer delay (printer may still be reading)
     setTimeout(() => {
-      try { fs.unlinkSync(tempFile); } catch {}
-    }, 10000);
+      fs.unlink(tempFile, (err) => {
+        if (err) console.warn(`[print:pdf] Failed to clean up temp file ${tempFile}:`, err.message);
+      });
+    }, 30000);
 
     return { success: true };
   } catch (err) {

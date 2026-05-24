@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Printer, Plus, Trash2, Save, Edit, AlertTriangle, Languages, CircleX } from 'lucide-react';
+import { Printer, Plus, Trash2, Save, Edit, AlertTriangle, Languages, CircleX, ArrowLeft, Calculator } from 'lucide-react';
 import { useParams, useNavigate, useLocation, useBlocker } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
 import { Search } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { generateInvoicePDF } from './generateInvoicePDF';
+import WeightCalculator from '../../utils/WeightCalculator';
 import {
   generateProductCode,
   capitalizeWords,
@@ -19,6 +20,7 @@ import {
 const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors, productNameInputRef, onProductSelected }) => {
   const [showProdDropdown, setShowProdDropdown] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [showWeightCalc, setShowWeightCalc] = useState(false);
 
   // Auto-scroll highlighted item into view
   useEffect(() => {
@@ -231,6 +233,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
           <div className="flex gap-1">
             <div className="w-2/3">
               <label className="block text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Qty</label>
+              <div className="relative">
               <input
                 ref={quantityInputRef}
                 type="number"
@@ -239,9 +242,29 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
                 value={newItem.quantity}
                 onChange={(e) => setNewItem({ ...newItem, quantity: e.target.value })}
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddItem(); } }}
-                className={`w-full py-2.5 px-3 bg-[#F2F4F6] border-none rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all ${formErrors.quantity ? 'ring-2 ring-red-500' : ''}`}
+                className={`w-full py-2.5 px-3 pr-8 bg-[#F2F4F6] border-none rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all ${formErrors.quantity ? 'ring-2 ring-red-500' : ''}`}
                 placeholder="0"
               />
+              {/* Weight Calculator trigger */}
+              <button
+                type="button"
+                onClick={() => setShowWeightCalc(true)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-[#E6E8EA] text-[#434655] hover:text-[#004AC6] transition-colors cursor-pointer"
+                title="Multi-weight calculator"
+              >
+                <Calculator size={14} />
+              </button>
+              <WeightCalculator
+                isOpen={showWeightCalc}
+                onClose={() => setShowWeightCalc(false)}
+                initialValue={newItem.quantity}
+                onComplete={(total) => {
+                  setNewItem({ ...newItem, quantity: String(total) });
+                  setShowWeightCalc(false);
+                  setTimeout(() => quantityInputRef.current?.focus(), 50);
+                }}
+              />
+              </div>
             </div>
             <div className="w-1/3">
               <label className="block text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Unit</label>
@@ -361,6 +384,15 @@ const Invoice = () => {
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
   const PAYMENT_TYPES = ['Cash', 'UPI', 'Transfer', 'RTGS'];
 
+  // Time field state
+  const [invoiceTime, setInvoiceTime] = useState(new Date().toTimeString().slice(0, 5));
+
+  // Private note checkbox state
+  const [isPrivateNote, setIsPrivateNote] = useState(false);
+
+  // ForceNew modal state (when user clicks nav to create new while current has unsaved changes)
+  const [showForceNewModal, setShowForceNewModal] = useState(false);
+
   // Original invoice data for dirty state detection (when editing existing invoice)
   const [originalInvoiceData, setOriginalInvoiceData] = useState(null);
   const [isNewInvoice, setIsNewInvoice] = useState(true);
@@ -387,6 +419,8 @@ const Invoice = () => {
     if (parseFloat(paymentAmount || 0) !== parseFloat(originalInvoiceData.payment_amount || 0)) return true;
     if (paymentType !== (originalInvoiceData.payment_type || 'Cash')) return true;
     if (paymentDate !== (originalInvoiceData.payment_date || originalInvoiceData.invoice_date)) return true;
+    if (invoiceTime !== (originalInvoiceData.invoice_time || '')) return true;
+    if ((isPrivateNote ? 1 : 0) !== (originalInvoiceData.is_private_note || 0)) return true;
 
     // Compare items (simplified - check count and basic values)
     if (invoiceItems.length !== originalInvoiceData.items.length) return true;
@@ -400,7 +434,7 @@ const Invoice = () => {
     }
 
     return false;
-  }, [isNewInvoice, customerId, invoiceItems, originalInvoiceData, remark, invoiceDate, packing, freight, riksha, paymentAmount, paymentType, paymentDate]);
+  }, [isNewInvoice, customerId, invoiceItems, originalInvoiceData, remark, invoiceDate, packing, freight, riksha, paymentAmount, paymentType, paymentDate, invoiceTime, isPrivateNote]);
 
   // Backward compatibility - keep hasUnsavedChanges for navigation blocker
   const hasUnsavedChanges = useCallback(() => {
@@ -445,6 +479,9 @@ const Invoice = () => {
     setPaymentAmount('');
     setPaymentType('Cash');
     setPaymentDate(new Date().toISOString().split('T')[0]);
+    // Reset time and private note
+    setInvoiceTime(new Date().toTimeString().slice(0, 5));
+    setIsPrivateNote(false);
     // Reset dirty state tracking
     setOriginalInvoiceData(null);
     setIsNewInvoice(true);
@@ -496,6 +533,26 @@ const Invoice = () => {
       resetInvoiceState();
     }
   }, [invoiceNo, location.pathname, resetInvoiceState]);
+
+  // Scroll to top when opening an invoice (e.g. from account page)
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [invoiceNo, location.pathname]);
+
+  // Handle forceNew: when user clicks Estimate in nav while already on invoice page
+  useEffect(() => {
+    if (location.state?.forceNew) {
+      // Clear the forceNew flag from navigation state to prevent re-triggering
+      window.history.replaceState({}, '');
+      if (isDirty) {
+        // Show confirmation modal
+        setShowForceNewModal(true);
+      } else {
+        // No unsaved changes — just reset to new invoice
+        resetInvoiceState();
+      }
+    }
+  }, [location.state?.forceNew, location.state?._ts]);
 
   // Sync local state when route param changes
   useEffect(() => {
@@ -583,6 +640,10 @@ const Invoice = () => {
           setPacking(inv.packing || '');
           setFreight(inv.freight || '');
           setRiksha(inv.riksha || '');
+
+          // Load time and private note
+          setInvoiceTime(inv.invoice_time || '');
+          setIsPrivateNote(inv.is_private_note === 1);
 
           // Load payment info if exists
           if (inv.payment_amount && inv.payment_amount > 0) {
@@ -733,7 +794,7 @@ const Invoice = () => {
         productCode = existingProduct.code;
 
         // Detect price and packing type changes
-        const existingPrice = existingProduct.selling_price ?? existingProduct.sellingPrice ?? 0;
+        const existingPrice = parseFloat(existingProduct.selling_price ?? existingProduct.sellingPrice ?? 0) || 0;
         const existingPacking = (existingProduct.packing_type || '').trim().toLowerCase();
         const formPacking = (newItem.packingType || '').trim().toLowerCase();
         const priceChanged = existingPrice !== sellingPrice;
@@ -780,7 +841,7 @@ const Invoice = () => {
       }
     } else if (newItem.code && originalProduct) {
       // Using existing DB product without name/size change — sync price and/or packing type if different
-      const originalPrice = originalProduct.selling_price ?? originalProduct.sellingPrice ?? 0;
+      const originalPrice = parseFloat(originalProduct.selling_price ?? originalProduct.sellingPrice ?? 0) || 0;
       const originalPacking = (originalProduct.packing_type || '').trim().toLowerCase();
       const formPacking = (newItem.packingType || '').trim().toLowerCase();
       const priceChanged = originalPrice !== sellingPrice;
@@ -930,8 +991,12 @@ const Invoice = () => {
   const handleCreateNewCustomer = async () => {
     const trimmedName = buyer.trim();
     if (!trimmedName) return;
-    // Use the same AGS-C-{N} auto-number format as the Add Customer page
-    const newCustId = `AGS-C-${customers.length + 1}`;
+    // Derive next ID from max existing numeric suffix to avoid collisions after deletions
+    const maxNum = customers.reduce((max, c) => {
+      const m = c.customer_id?.match(/^AGS-C-(\d+)$/);
+      return m ? Math.max(max, parseInt(m[1], 10)) : max;
+    }, 0);
+    const newCustId = `AGS-C-${maxNum + 1}`;
     try {
       await window.api.invoke('customers:create', {
         customer_id: newCustId,
@@ -1029,6 +1094,9 @@ const Invoice = () => {
   };
 
   const performInvoiceSave = async () => {
+    // Always stamp current time on save
+    const currentTime = new Date().toTimeString().slice(0, 5);
+    setInvoiceTime(currentTime);
     const { grandTotal } = calculateGrandTotal();
     const payload = {
       customer_id: customerId,
@@ -1046,7 +1114,10 @@ const Invoice = () => {
       // Payment/Advance fields
       payment_amount: parseFloat(paymentAmount || 0),
       payment_type: paymentType,
-      payment_date: paymentDate || invoiceDate
+      payment_date: paymentDate || invoiceDate,
+      // Time and private note
+      invoice_time: currentTime,
+      is_private_note: isPrivateNote ? 1 : 0
     };
 
     try {
@@ -1076,6 +1147,8 @@ const Invoice = () => {
       setOriginalInvoiceData({
         ...payload,
         invoice_id: savedInvoiceId,
+        invoice_time: currentTime,
+        is_private_note: isPrivateNote ? 1 : 0,
         items: invoiceItems.map(i => ({
           product_code: i.code || i.product_code,
           quantity: parseFloat(i.quantity),
@@ -1091,6 +1164,22 @@ const Invoice = () => {
       // Keep data, do NOT clear or navigate
     }
   };
+
+  // Ctrl+S save shortcut (ref-based to avoid stale closure)
+  const handleSaveRef = useRef(handleSave);
+  handleSaveRef.current = handleSave;
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        // Don't save if a modal/popup requiring input is active
+        if (showForceNewModal || showNavigationWarning || showNewCustModal || showCustUpdateModal) return;
+        handleSaveRef.current();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [showForceNewModal, showNavigationWarning, showNewCustModal, showCustUpdateModal]);
 
   // Marathi print state
   const [printMarathi, setPrintMarathi] = useState(false);
@@ -1125,6 +1214,7 @@ const Invoice = () => {
       paymentType,
       printMarathi,
       marathiNames: marathiNamesMap,
+      isPrivateNote,
     });
 
     const showPrinterSelection = (pdfResult) => {
@@ -1240,8 +1330,9 @@ const Invoice = () => {
     const a = document.createElement('a');
     a.href = url;
     a.download = `${pendingPDFData.fileName}.pdf`;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
     toast.success('PDF downloaded');
     setShowPrinterModal(false);
     setPendingPDFData(null);
@@ -1277,6 +1368,39 @@ const Invoice = () => {
                 className="flex-1 px-4 py-2.5 rounded-lg border border-[#E2E8F0] text-[#64748B] font-medium hover:bg-[#F1F5F9] transition-colors cursor-pointer"
               >
                 Leave Without Saving
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Force New Invoice Modal — shown when clicking Estimate in nav with unsaved changes */}
+      {showForceNewModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] print:hidden">
+          <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md mx-4">
+            <div className="flex items-center justify-center mb-4">
+              <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
+                <AlertTriangle className="text-yellow-600" size={24} />
+              </div>
+            </div>
+            <h2 className="text-xl font-bold text-[#0F172A] text-center mb-2">
+              Unsaved Changes
+            </h2>
+            <p className="text-[#64748B] text-center mb-6">
+              This invoice has unsaved changes. Creating a new one will discard them.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowForceNewModal(false)}
+                className="flex-1 px-4 py-2.5 rounded-lg bg-[#2563EB] text-white font-medium hover:bg-[#1D4ED8] transition-colors cursor-pointer"
+              >
+                Keep Editing
+              </button>
+              <button
+                onClick={() => { setShowForceNewModal(false); resetInvoiceState(); }}
+                className="flex-1 px-4 py-2.5 rounded-lg border border-[#E2E8F0] text-[#64748B] font-medium hover:bg-[#F1F5F9] transition-colors cursor-pointer"
+              >
+                Discard & New
               </button>
             </div>
           </div>
@@ -1462,10 +1586,20 @@ const Invoice = () => {
         ref={printRef}
         className="max-w-[1040px] mx-auto bg-white shadow-sm rounded-xl border border-[#E2E8F0] overflow-hidden print:shadow-none print:rounded-none print:border-none print:w-[210mm] print:min-h-[297mm]"
       >
-        {/* Top Bar — Estimate ID / Title / Date */}
+        {/* Top Bar — Estimate ID / Title / Date / Time */}
         <div className="px-4 sm:px-6 py-4 border-b border-[#E2E8F0] bg-[#F8FAFC] print:bg-white print:py-3">
           <div className="flex items-center justify-between">
             <div>
+              {/* Back button — shown when opened from an account page */}
+              {location.state?.fromAccount && (
+                <button
+                  onClick={() => navigate(location.state.fromAccount)}
+                  className="mb-2 flex items-center gap-1 text-xs font-medium text-[#64748B] hover:text-[#004AC6] transition-colors cursor-pointer print:hidden"
+                >
+                  <ArrowLeft size={14} />
+                  Back to Account
+                </button>
+              )}
               <p className="text-xs font-medium text-[#64748B] uppercase tracking-wider">Reference</p>
               <p className="text-sm font-bold text-[#2563EB]">{customInvoiceNo || '...'}</p>
             </div>
@@ -1476,6 +1610,13 @@ const Invoice = () => {
                 type="date"
                 value={invoiceDate}
                 onChange={(e) => setInvoiceDate(e.target.value)}
+                className="text-sm font-semibold text-[#0F172A] border border-[#E2E8F0] rounded-md px-2 py-1 focus:ring-2 focus:ring-[#2563EB] focus:border-transparent print:border-none print:bg-transparent print:p-0"
+              />
+              <p className="text-xs font-medium text-[#64748B] uppercase tracking-wider mt-2">Time</p>
+              <input
+                type="time"
+                value={invoiceTime}
+                onChange={(e) => setInvoiceTime(e.target.value)}
                 className="text-sm font-semibold text-[#0F172A] border border-[#E2E8F0] rounded-md px-2 py-1 focus:ring-2 focus:ring-[#2563EB] focus:border-transparent print:border-none print:bg-transparent print:p-0"
               />
             </div>
@@ -1721,7 +1862,18 @@ const Invoice = () => {
 
               {/* Remarks / Notes */}
               <div>
-                <label className="block text-xs font-bold text-[#434655] uppercase mb-2 ml-1">Remarks / Notes</label>
+                <div className="flex items-center justify-between mb-2 ml-1">
+                  <label className="block text-xs font-bold text-[#434655] uppercase">Remarks / Notes</label>
+                  <label className="flex items-center gap-2 cursor-pointer print:hidden">
+                    <input
+                      type="checkbox"
+                      checked={isPrivateNote}
+                      onChange={(e) => setIsPrivateNote(e.target.checked)}
+                      className="w-4 h-4 rounded border-[#C3C6D7] text-[#004AC6] focus:ring-[#004AC6]/20 cursor-pointer"
+                    />
+                    <span className="text-xs font-medium text-[#434655]">Private Note — hidden in PDF</span>
+                  </label>
+                </div>
                 <textarea
                   value={remark}
                   onChange={(e) => setRemark(e.target.value)}
@@ -1833,7 +1985,7 @@ const Invoice = () => {
               <label className="block text-xs font-bold text-[#434655] uppercase mb-2 ml-1">Output Preferences</label>
               <div className="bg-white p-6 rounded-xl border border-[#C3C6D7]/10 flex items-start gap-4 shadow-sm">
                 <div className="bg-[#004AC6] text-white p-2 rounded-lg shrink-0">
-                  <Languages size={20} />
+                  <Languages size={16} />
                 </div>
                 <div className="flex-1">
                   <label className="flex items-center gap-3 cursor-pointer group mb-1">
@@ -1845,7 +1997,6 @@ const Invoice = () => {
                     />
                     <span className="text-sm font-medium text-[#434655] group-hover:text-[#191C1E] transition-colors">Print Product Names in Marathi</span>
                   </label>
-                  <p className="text-[11px] text-[#434655]/70 leading-relaxed">System will automatically fetch translated names from the catalog if available.</p>
                 </div>
               </div>
             </div>

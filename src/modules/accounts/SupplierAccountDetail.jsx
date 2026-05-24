@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Search, Edit, Trash2, Filter, Plus, Phone, MapPin, Building, Save, X, ArrowLeft, Bell, Clock, Download } from 'lucide-react';
+import { Search, Edit, Trash2, Filter, Plus, Phone, MapPin, Building, Save, X, ArrowLeft, Bell, Clock, Download, Printer } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -40,6 +40,13 @@ const SupplierAccountDetail = () => {
   const lastSavedReminderDaysRef = useRef(1);
   const deleteModalRef = useRef(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Printer modal state
+  const [showPrinterModal, setShowPrinterModal] = useState(false);
+  const [printerList, setPrinterList] = useState([]);
+  const [selectedPrinter, setSelectedPrinter] = useState('');
+  const [pendingPDFData, setPendingPDFData] = useState(null);
+  const [isPrinting, setIsPrinting] = useState(false);
 
   // Focus the delete modal when it opens
   useEffect(() => {
@@ -280,97 +287,167 @@ const SupplierAccountDetail = () => {
     }
   };
 
-  // ─── Download Ledger PDF ───
+  // ─── PDF number formatter (no currency symbol) ───
+  const formatIndian = (num) => {
+    const n = Number(num) || 0;
+    return n.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  };
+
+  // ─── Generate Ledger PDF (B&W, A4 Landscape) ───
+  const generateLedgerPDF = () => {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 10;
+    const halfWidth = (pageWidth - margin * 3) / 2;
+    const black = [0, 0, 0];
+    const darkGray = [60, 60, 60];
+    const borderGray = [180, 180, 180];
+    const white = [255, 255, 255];
+
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...black);
+    doc.text('Supplier Ledger', margin, 15);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...darkGray);
+    doc.text(`Supplier: ${supplier.name || '—'}`, margin, 22);
+    doc.text(`ID: ${slug}`, margin, 27);
+    if (supplier.mobile) doc.text(`Mobile: ${supplier.mobile}`, margin + 90, 22);
+    if (supplier.address) doc.text(`Address: ${supplier.address.substring(0, 70)}`, margin + 90, 27);
+
+    const dateRange = [fromDate, toDate].filter(Boolean).join(' to ');
+    if (dateRange) {
+      doc.setTextColor(...darkGray);
+      doc.text(`Period: ${dateRange}`, margin, 32);
+    }
+    const startY = dateRange ? 38 : 33;
+
+    const tableStyle = {
+      styles: { fontSize: 8, cellPadding: 2, textColor: black, lineColor: borderGray, lineWidth: 0.2, fillColor: white },
+      headStyles: { fillColor: white, textColor: black, fontStyle: 'bold', lineColor: borderGray, lineWidth: 0.2 },
+      footStyles: { fillColor: white, textColor: black, fontStyle: 'bold', lineColor: borderGray, lineWidth: 0.2 },
+      alternateRowStyles: { fillColor: white },
+      theme: 'grid',
+    };
+
+    // ─── Purchases Table (Left) ───
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...black);
+    doc.text('Purchases', margin, startY);
+
+    autoTable(doc, {
+      ...tableStyle,
+      startY: startY + 3,
+      margin: { left: margin, right: pageWidth - margin - halfWidth },
+      tableWidth: halfWidth,
+      head: [['Date', 'Invoice', 'Amount']],
+      body: maalData.map(r => [
+        formatDate(r.maalDate),
+        r.maalInvoiceNumber || '',
+        formatIndian(r.maalAmount),
+      ]),
+      foot: [['', 'Total', formatIndian(maalTotal)]],
+      columnStyles: { 2: { halign: 'left' } },
+    });
+
+    // ─── Payments Table (Right) ───
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...black);
+    doc.text('Payments', margin + halfWidth + margin, startY);
+
+    autoTable(doc, {
+      ...tableStyle,
+      startY: startY + 3,
+      margin: { left: margin + halfWidth + margin, right: margin },
+      tableWidth: halfWidth,
+      head: [['Date', 'Type', 'Amount']],
+      body: jamaData.map(r => [
+        formatDate(r.jamaDate),
+        r.jamaTxnType || '',
+        formatIndian(r.jamaAmount),
+      ]),
+      foot: [['', 'Total', formatIndian(jamaTotal)]],
+      columnStyles: { 2: { halign: 'left' } },
+    });
+
+    const balanceY = pageHeight - 15;
+    doc.setDrawColor(...borderGray);
+    doc.line(margin, balanceY - 5, pageWidth - margin, balanceY - 5);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...black);
+    const balanceLabel = grandTotal > 0 ? 'Balance Payable' : 'Balance Clear';
+    doc.text(`${balanceLabel}: ${formatIndian(Math.abs(grandTotal))}`, margin, balanceY);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...darkGray);
+    doc.text(`Generated on ${new Date().toLocaleDateString('en-IN')}`, pageWidth - margin, balanceY, { align: 'right' });
+
+    const pdfBase64 = doc.output('datauristring').split(',')[1];
+    const safeName = (supplier.name || slug || '').replace(/[^a-zA-Z0-9 ]/g, '').trim();
+    const fileName = `Ledger_${safeName}_${new Date().toISOString().split('T')[0]}`;
+    return { pdfBase64, fileName };
+  };
+
   const handleDownloadLedger = () => {
     try {
-      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      const margin = 10;
-      const halfWidth = (pageWidth - margin * 3) / 2;
-
-      // Header
-      doc.setFontSize(16);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Supplier Ledger', margin, 15);
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Supplier: ${supplier.name || '—'}`, margin, 22);
-      doc.text(`ID: ${slug}`, margin, 27);
-      if (supplier.mobile) doc.text(`Mobile: ${supplier.mobile}`, margin + 80, 22);
-      if (supplier.address) doc.text(`Address: ${supplier.address.substring(0, 60)}`, margin + 80, 27);
-
-      const dateRange = [fromDate, toDate].filter(Boolean).join(' to ');
-      if (dateRange) doc.text(`Period: ${dateRange}`, margin, 32);
-
-      const startY = dateRange ? 38 : 33;
-
-      // ─── Maal Table (Left) ───
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Maal (Purchases)', margin, startY);
-
-      autoTable(doc, {
-        startY: startY + 3,
-        margin: { left: margin, right: pageWidth - margin - halfWidth },
-        tableWidth: halfWidth,
-        head: [['Date', 'Invoice', 'Amount (\u20b9)', 'Remark']],
-        body: maalData.map(r => [
-          formatDate(r.maalDate),
-          r.maalInvoiceNumber || '',
-          formatCurrency(r.maalAmount),
-          r.maalRemark || ''
-        ]),
-        foot: [['', 'Total Maal', formatCurrency(maalTotal), '']],
-        styles: { fontSize: 8, cellPadding: 2 },
-        headStyles: { fillColor: [0, 74, 198], textColor: 255, fontStyle: 'bold' },
-        footStyles: { fillColor: [242, 244, 246], textColor: [25, 28, 30], fontStyle: 'bold' },
-        alternateRowStyles: { fillColor: [247, 249, 251] },
-        columnStyles: { 2: { halign: 'right' } },
+      const result = generateLedgerPDF();
+      setPendingPDFData(result);
+      window.api.invoke('print:listPrinters').then(res => {
+        setPrinterList(res.success ? res.printers.filter(p => p && p.trim()) : []);
+        setSelectedPrinter('');
+        setShowPrinterModal(true);
+      }).catch(() => {
+        setPrinterList([]);
+        setSelectedPrinter('');
+        setShowPrinterModal(true);
       });
-
-      // ─── Jama Table (Right) ───
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Jama (Payments)', margin + halfWidth + margin, startY);
-
-      autoTable(doc, {
-        startY: startY + 3,
-        margin: { left: margin + halfWidth + margin, right: margin },
-        tableWidth: halfWidth,
-        head: [['Date', 'Type', 'Amount (\u20b9)', 'Remark']],
-        body: jamaData.map(r => [
-          formatDate(r.jamaDate),
-          r.jamaTxnType || '',
-          formatCurrency(r.jamaAmount),
-          r.jamaRemark || ''
-        ]),
-        foot: [['', 'Total Jama', formatCurrency(jamaTotal), '']],
-        styles: { fontSize: 8, cellPadding: 2 },
-        headStyles: { fillColor: [5, 150, 105], textColor: 255, fontStyle: 'bold' },
-        footStyles: { fillColor: [242, 244, 246], textColor: [25, 28, 30], fontStyle: 'bold' },
-        alternateRowStyles: { fillColor: [247, 249, 251] },
-        columnStyles: { 2: { halign: 'right' } },
-      });
-
-      // Balance footer at bottom
-      const balanceY = pageHeight - 15;
-      doc.setDrawColor(200);
-      doc.line(margin, balanceY - 5, pageWidth - margin, balanceY - 5);
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      const balanceLabel = grandTotal > 0 ? 'Balance Owed' : 'Balance Clear';
-      doc.text(`${balanceLabel}: ${formatBalanceCurrency(grandTotal)}`, margin, balanceY);
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Generated on ${new Date().toLocaleDateString('en-IN')}`, pageWidth - margin - 50, balanceY);
-
-      doc.save(`Ledger_${supplier.name || slug}_${new Date().toISOString().split('T')[0]}.pdf`);
-      toast.success('Ledger downloaded successfully');
     } catch (err) {
       console.error('PDF generation error:', err);
       toast.error('Failed to generate ledger PDF');
     }
+  };
+
+  const handleConfirmPrint = async () => {
+    if (!pendingPDFData) return;
+    setIsPrinting(true);
+    try {
+      const res = await window.api.invoke('print:pdf', {
+        pdfBase64: pendingPDFData.pdfBase64,
+        printerName: selectedPrinter || undefined,
+        fileName: pendingPDFData.fileName,
+      });
+      if (res.success) toast.success('Print job sent successfully');
+      else toast.error(res.error || 'Failed to print');
+    } catch (err) {
+      toast.error('Print failed: ' + (err.message || 'Unknown error'));
+    } finally {
+      setIsPrinting(false);
+      setShowPrinterModal(false);
+      setPendingPDFData(null);
+    }
+  };
+
+  const handleDownloadPDF = () => {
+    if (!pendingPDFData) return;
+    const byteChars = atob(pendingPDFData.pdfBase64);
+    const byteNumbers = new Array(byteChars.length);
+    for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
+    const blob = new Blob([new Uint8Array(byteNumbers)], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${pendingPDFData.fileName}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+    toast.success('PDF downloaded');
+    setShowPrinterModal(false);
+    setPendingPDFData(null);
   };
 
   const handleSaveEdit = async (rowId) => {
@@ -448,11 +525,68 @@ const SupplierAccountDetail = () => {
 
   return (
     <div className="min-h-screen bg-[#F7F9FB]">
+      {/* ─── Printer Selection Modal (Invoice-style) ─── */}
+      {showPrinterModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] print:hidden">
+          <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md mx-4 w-full">
+            <div className="flex items-center justify-center mb-4">
+              <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center">
+                <Printer className="text-[#2563EB]" size={24} />
+              </div>
+            </div>
+            <h2 className="text-xl font-bold text-[#0F172A] text-center mb-2">
+              Print Ledger
+            </h2>
+            <p className="text-[#64748B] text-center mb-4 text-sm">
+              {pendingPDFData?.fileName || 'Supplier Ledger'}
+            </p>
+            <div className="mb-6">
+              <label className="block text-xs font-bold text-[#434655] uppercase mb-2">Select Printer</label>
+              <select
+                value={selectedPrinter}
+                onChange={(e) => setSelectedPrinter(e.target.value)}
+                className="w-full py-3 px-4 bg-[#F2F4F6] border border-[#E2E8F0] rounded-lg text-sm font-medium appearance-none cursor-pointer focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB]"
+              >
+                <option value="">Default Printer</option>
+                {printerList.map((printer, idx) => (
+                  <option key={idx} value={printer}>{printer}</option>
+                ))}
+              </select>
+              {printerList.length === 0 && (
+                <p className="text-xs text-[#64748B] mt-1">Using system default printer</p>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={handleConfirmPrint}
+                disabled={isPrinting}
+                className={`flex-1 px-4 py-2.5 rounded-lg bg-[#2563EB] text-white font-medium hover:bg-[#1D4ED8] transition-colors cursor-pointer flex items-center justify-center gap-2 ${isPrinting ? 'opacity-50' : ''}`}
+              >
+                <Printer size={16} />
+                {isPrinting ? 'Printing...' : 'Print'}
+              </button>
+              <button
+                onClick={handleDownloadPDF}
+                className="flex-1 px-4 py-2.5 rounded-lg border border-[#E2E8F0] text-[#434655] font-medium hover:bg-[#F1F5F9] transition-colors cursor-pointer flex items-center justify-center gap-2"
+              >
+                <Download size={16} />
+                Download PDF
+              </button>
+            </div>
+            <button
+              onClick={() => { setShowPrinterModal(false); setPendingPDFData(null); }}
+              className="w-full mt-3 py-2 text-sm text-[#64748B] hover:text-[#0F172A] transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
       {/* ─── Stitch TopAppBar ─── */}
       <header className="w-full h-16 sticky top-0 z-40 bg-[#F7F9FB] flex items-center justify-between px-8 border-b border-[#C3C6D7]/10">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate('/accounts/suppliers')}
+            onClick={() => navigate('/accounts/suppliers', { state: { returnedFromAccount: slug } })}
             className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[#F2F4F6] transition-colors cursor-pointer"
           >
             <ArrowLeft size={20} className="text-[#434655]" />

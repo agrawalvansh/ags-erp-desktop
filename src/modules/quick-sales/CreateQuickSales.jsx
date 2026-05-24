@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Printer, Plus, Trash2, Save, Edit, AlertTriangle, Languages, CircleX } from 'lucide-react';
+import { Printer, Plus, Trash2, Save, Edit, AlertTriangle, Languages, CircleX, Calculator } from 'lucide-react';
 import { generateQuickSalePDF } from './generateQuickSalePDF';
 import { useParams, useNavigate, useLocation, useBlocker } from 'react-router-dom';
 import { AlertCircle, Search } from 'lucide-react';
@@ -15,21 +15,23 @@ import {
     DEFAULT_PACKING_TYPE,
     sortProducts
 } from '../../utils/productUtils';
+import WeightCalculator from '../../utils/WeightCalculator';
 
 // Add Item Form Component (shared with Invoice)
 const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors, productNameInputRef }) => {
     const [showProdDropdown, setShowProdDropdown] = useState(false);
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
+    const [showWeightCalc, setShowWeightCalc] = useState(false);
     const prodWrapperRef = useRef(null);
     const sizeInputRef = useRef(null);
     const quantityInputRef = useRef(null);
 
     // Auto-scroll highlighted item into view
     useEffect(() => {
-      if (highlightedIndex >= 0 && showProdDropdown) {
-        const el = document.querySelector(`[data-qs-prod-index="${highlightedIndex}"]`);
-        el?.scrollIntoView({ block: 'nearest' });
-      }
+        if (highlightedIndex >= 0 && showProdDropdown) {
+            const el = document.querySelector(`[data-qs-prod-index="${highlightedIndex}"]`);
+            el?.scrollIntoView({ block: 'nearest' });
+        }
     }, [highlightedIndex, showProdDropdown]);
 
     const filteredProducts = useMemo(() => {
@@ -155,11 +157,11 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
                                 {filteredProducts.length > 0 ? (
                                     filteredProducts.map((p, index) => (
                                         <button
-                                        key={p.code}
-                                        data-qs-prod-index={index}
-                                        role="option"
-                                        aria-selected={highlightedIndex === index}
-                                        className={`cursor-pointer w-full text-left px-4 py-3 transition-colors flex items-center justify-between text-sm ${highlightedIndex === index ? 'bg-[#EFF6FF]' : 'hover:bg-[#F2F4F6]'} ${index === 0 ? 'rounded-t-lg' : ''} ${index === filteredProducts.length - 1 ? 'rounded-b-lg' : ''}`}
+                                            key={p.code}
+                                            data-qs-prod-index={index}
+                                            role="option"
+                                            aria-selected={highlightedIndex === index}
+                                            className={`cursor-pointer w-full text-left px-4 py-3 transition-colors flex items-center justify-between text-sm ${highlightedIndex === index ? 'bg-[#EFF6FF]' : 'hover:bg-[#F2F4F6]'} ${index === 0 ? 'rounded-t-lg' : ''} ${index === filteredProducts.length - 1 ? 'rounded-b-lg' : ''}`}
                                             onClick={() => handleProductSelect(p)}
                                             onMouseEnter={() => setHighlightedIndex(index)}
                                         >
@@ -168,8 +170,8 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
                                                 {p.size && <span className="text-xs text-[#434655] mt-0.5">{p.size}</span>}
                                             </div>
                                             <span className="text-xs font-semibold text-[#434655]">
-                                            ₹{(() => { const v = parseFloat(p.selling_price ?? p.sellingPrice ?? 0); return Number.isInteger(v) ? v.toString() : v.toFixed(2); })()}
-                                        </span>
+                                                ₹{(() => { const v = parseFloat(p.selling_price ?? p.sellingPrice ?? 0); return Number.isInteger(v) ? v.toString() : v.toFixed(2); })()}
+                                            </span>
                                         </button>
                                     ))
                                 ) : (
@@ -208,15 +210,36 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
                     <div className="flex gap-1">
                         <div className="w-2/3">
                             <label className="block text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Qty</label>
+                            <div className="relative">
                             <input
                                 ref={quantityInputRef}
                                 type="number" min="0.001" step="0.001"
                                 value={newItem.quantity}
                                 onChange={(e) => setNewItem({ ...newItem, quantity: e.target.value })}
                                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddItem(); } }}
-                                className={`w-full py-2.5 px-3 bg-[#F2F4F6] border-none rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all ${formErrors.quantity ? 'ring-2 ring-red-500' : ''}`}
+                                className={`w-full py-2.5 px-3 pr-8 bg-[#F2F4F6] border-none rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all ${formErrors.quantity ? 'ring-2 ring-red-500' : ''}`}
                                 placeholder="0"
                             />
+                            {/* Weight Calculator trigger */}
+                            <button
+                                type="button"
+                                onClick={() => setShowWeightCalc(true)}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-[#E6E8EA] text-[#434655] hover:text-[#004AC6] transition-colors cursor-pointer"
+                                title="Multi-weight calculator"
+                            >
+                                <Calculator size={14} />
+                            </button>
+                            <WeightCalculator
+                                isOpen={showWeightCalc}
+                                onClose={() => setShowWeightCalc(false)}
+                                initialValue={newItem.quantity}
+                                onComplete={(total) => {
+                                    setNewItem({ ...newItem, quantity: String(total) });
+                                    setShowWeightCalc(false);
+                                    setTimeout(() => quantityInputRef.current?.focus(), 50);
+                                }}
+                            />
+                            </div>
                         </div>
                         <div className="w-1/3">
                             <label className="block text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Unit</label>
@@ -307,12 +330,23 @@ const CreateQuickSale = () => {
     const [isNewSale, setIsNewSale] = useState(true);
     const [remark, setRemark] = useState('');
 
+    // Time field state
+    const [saleTime, setSaleTime] = useState(new Date().toTimeString().slice(0, 5));
+
+    // Private note checkbox state
+    const [isPrivateNote, setIsPrivateNote] = useState(false);
+
+    // ForceNew modal state
+    const [showForceNewModal, setShowForceNewModal] = useState(false);
+
     // Dirty state detection
     const isDirty = useMemo(() => {
         if (isNewSale) return invoiceItems.length > 0;
         if (!originalData) return false;
         if (saleDate !== originalData.qs_date) return true;
         if (remark !== (originalData.remark || '')) return true;
+        if (saleTime !== (originalData.qs_time || '')) return true;
+        if ((isPrivateNote ? 1 : 0) !== (originalData.is_private_note || 0)) return true;
         if (invoiceItems.length !== originalData.items.length) return true;
         for (let i = 0; i < invoiceItems.length; i++) {
             const curr = invoiceItems[i];
@@ -323,7 +357,7 @@ const CreateQuickSale = () => {
             if (parseFloat(curr.sellingPrice) !== parseFloat(orig.selling_price)) return true;
         }
         return false;
-    }, [isNewSale, invoiceItems, originalData, saleDate, remark]);
+    }, [isNewSale, invoiceItems, originalData, saleDate, remark, saleTime, isPrivateNote]);
 
     const hasUnsavedChanges = useCallback(() => isDirty, [isDirty]);
 
@@ -339,6 +373,8 @@ const CreateQuickSale = () => {
         setTotal(0);
         setSaleDate(new Date().toISOString().split('T')[0]);
         setRemark('');
+        setSaleTime(new Date().toTimeString().slice(0, 5));
+        setIsPrivateNote(false);
         setFormErrors({});
         setIsSaved(true);
         setCurrentQsId('');
@@ -381,6 +417,18 @@ const CreateQuickSale = () => {
     useEffect(() => {
         if (!qsId && location.pathname === '/quick-sales/create') resetState();
     }, [qsId, location.pathname, resetState]);
+
+    // Handle forceNew: when user clicks New Quick Sale in nav while already on QS page
+    useEffect(() => {
+        if (location.state?.forceNew) {
+            window.history.replaceState({}, '');
+            if (isDirty) {
+                setShowForceNewModal(true);
+            } else {
+                resetState();
+            }
+        }
+    }, [location.state?.forceNew, location.state?._ts]);
 
     useEffect(() => { setCurrentQsId(qsId || ''); }, [qsId]);
 
@@ -440,6 +488,8 @@ const CreateQuickSale = () => {
                 setCurrentQsId(qs.qs_id);
                 setSaleDate(qs.qs_date);
                 setRemark(qs.remark || '');
+                setSaleTime(qs.qs_time || '');
+                setIsPrivateNote(qs.is_private_note === 1);
                 setOriginalData(qs);
                 setIsNewSale(false);
                 setIsSaved(true);
@@ -543,9 +593,15 @@ const CreateQuickSale = () => {
     const handleSave = async () => {
         if (invoiceItems.length === 0) { toast.error('Add at least one item'); return; }
 
+        // Always stamp current time on save
+        const currentTime = new Date().toTimeString().slice(0, 5);
+        setSaleTime(currentTime);
+
         const payload = {
             qs_date: saleDate,
             remark,
+            qs_time: currentTime,
+            is_private_note: isPrivateNote ? 1 : 0,
             items: invoiceItems.map(i => ({
                 product_code: i.code || i.product_code || null,
                 product_name: i.productName || '',
@@ -579,6 +635,8 @@ const CreateQuickSale = () => {
             }
             setOriginalData({
                 ...payload, qs_id: savedId, qs_date: saleDate,
+                qs_time: currentTime,
+                is_private_note: isPrivateNote ? 1 : 0,
                 items: invoiceItems.map(i => ({
                     product_code: i.code || i.product_code,
                     quantity: parseFloat(i.quantity),
@@ -592,6 +650,21 @@ const CreateQuickSale = () => {
             toast.error('An error occurred while saving.');
         }
     };
+
+    // Ctrl+S save shortcut (ref-based to avoid stale closure)
+    const handleSaveRef = useRef(handleSave);
+    handleSaveRef.current = handleSave;
+    useEffect(() => {
+        const onKeyDown = (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                if (showForceNewModal) return;
+                handleSaveRef.current();
+            }
+        };
+        document.addEventListener('keydown', onKeyDown);
+        return () => document.removeEventListener('keydown', onKeyDown);
+    }, [showForceNewModal]);
 
     // Marathi print state
     const [printMarathi, setPrintMarathi] = useState(false);
@@ -630,6 +703,7 @@ const CreateQuickSale = () => {
             remark,
             printMarathi,
             marathiNames: marathiNamesMap,
+            isPrivateNote,
         });
 
         if (printMarathi) {
@@ -727,8 +801,9 @@ const CreateQuickSale = () => {
         const a = document.createElement('a');
         a.href = url;
         a.download = `${pendingPDFData.fileName}.pdf`;
+        document.body.appendChild(a);
         a.click();
-        URL.revokeObjectURL(url);
+        setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
         toast.success('PDF downloaded');
         setShowPrinterModal(false);
         setPendingPDFData(null);
@@ -752,6 +827,31 @@ const CreateQuickSale = () => {
                         <div className="flex gap-3">
                             <button onClick={() => blocker.reset()} className="flex-1 px-4 py-2.5 rounded-lg bg-[#2563EB] text-white font-medium hover:bg-[#1D4ED8] cursor-pointer">Stay on Page</button>
                             <button onClick={() => blocker.proceed()} className="flex-1 px-4 py-2.5 rounded-lg border border-[#E2E8F0] text-[#64748B] font-medium hover:bg-[#F1F5F9] cursor-pointer">Leave Without Saving</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Force New Quick Sale Modal */}
+            {showForceNewModal && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] print:hidden">
+                    <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md mx-4">
+                        <div className="flex items-center justify-center mb-4">
+                            <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
+                                <AlertTriangle className="text-yellow-600" size={24} />
+                            </div>
+                        </div>
+                        <h2 className="text-xl font-bold text-[#0F172A] text-center mb-2">Unsaved Changes</h2>
+                        <p className="text-[#64748B] text-center mb-6">This quick sale has unsaved changes. Creating a new one will discard them.</p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setShowForceNewModal(false)}
+                                className="flex-1 px-4 py-2.5 rounded-lg bg-[#2563EB] text-white font-medium hover:bg-[#1D4ED8] cursor-pointer"
+                            >Keep Editing</button>
+                            <button
+                                onClick={() => { setShowForceNewModal(false); resetState(); }}
+                                className="flex-1 px-4 py-2.5 rounded-lg border border-[#E2E8F0] text-[#64748B] font-medium hover:bg-[#F1F5F9] cursor-pointer"
+                            >Discard & New</button>
                         </div>
                     </div>
                 </div>
@@ -836,7 +936,7 @@ const CreateQuickSale = () => {
             )}
 
             <div ref={printRef} className="max-w-[1040px] mx-auto bg-white shadow-sm rounded-xl border border-[#E2E8F0] overflow-hidden print:shadow-none print:rounded-none print:border-none print:w-[100%] print:m-0">
-                {/* Top Bar — Reference / Title / Date */}
+                {/* Top Bar — Reference / Title / Date / Time */}
                 <div className="px-4 sm:px-6 py-4 border-b border-[#E2E8F0] bg-[#F8FAFC] print:bg-white print:py-3">
                     <div className="flex items-center justify-between">
                         <div>
@@ -849,6 +949,12 @@ const CreateQuickSale = () => {
                             <input
                                 type="date" value={saleDate}
                                 onChange={(e) => setSaleDate(e.target.value)}
+                                className="text-sm font-semibold text-[#0F172A] border border-[#E2E8F0] rounded-md px-2 py-1 focus:ring-2 focus:ring-[#2563EB] focus:border-transparent print:border-none print:bg-transparent print:p-0"
+                            />
+                            <p className="text-xs font-medium text-[#64748B] uppercase tracking-wider mt-2">Time</p>
+                            <input
+                                type="time" value={saleTime}
+                                onChange={(e) => setSaleTime(e.target.value)}
                                 className="text-sm font-semibold text-[#0F172A] border border-[#E2E8F0] rounded-md px-2 py-1 focus:ring-2 focus:ring-[#2563EB] focus:border-transparent print:border-none print:bg-transparent print:p-0"
                             />
                         </div>
@@ -922,7 +1028,18 @@ const CreateQuickSale = () => {
                         <div className="col-span-12 md:col-span-7 space-y-6">
                             {/* Remarks / Notes */}
                             <div>
-                                <label className="block text-xs font-bold text-[#434655] uppercase mb-2 ml-1">Remarks / Notes</label>
+                                <div className="flex items-center justify-between mb-2 ml-1">
+                                    <label className="block text-xs font-bold text-[#434655] uppercase">Remarks / Notes</label>
+                                    <label className="flex items-center gap-2 cursor-pointer print:hidden">
+                                        <input
+                                            type="checkbox"
+                                            checked={isPrivateNote}
+                                            onChange={(e) => setIsPrivateNote(e.target.checked)}
+                                            className="w-4 h-4 rounded border-[#C3C6D7] text-[#004AC6] focus:ring-[#004AC6]/20 cursor-pointer"
+                                        />
+                                        <span className="text-xs font-medium text-[#434655]">Private Note — hidden in PDF</span>
+                                    </label>
+                                </div>
                                 <textarea
                                     value={remark}
                                     onChange={(e) => setRemark(e.target.value)}
@@ -968,7 +1085,7 @@ const CreateQuickSale = () => {
                             <label className="block text-xs font-bold text-[#434655] uppercase mb-2 ml-1">Output Preferences</label>
                             <div className="bg-white p-6 rounded-xl border border-[#C3C6D7]/10 flex items-start gap-4 shadow-sm">
                                 <div className="bg-[#004AC6] text-white p-2 rounded-lg shrink-0">
-                                    <Languages size={20} />
+                                    <Languages size={16} />
                                 </div>
                                 <div className="flex-1">
                                     <label className="flex items-center gap-3 cursor-pointer group mb-1">
@@ -980,7 +1097,6 @@ const CreateQuickSale = () => {
                                         />
                                         <span className="text-sm font-medium text-[#434655] group-hover:text-[#191C1E] transition-colors">Print Product Names in Marathi</span>
                                     </label>
-                                    <p className="text-[11px] text-[#434655]/70 leading-relaxed">System will automatically fetch translated names from the catalog master if available.</p>
                                 </div>
                             </div>
                         </div>
