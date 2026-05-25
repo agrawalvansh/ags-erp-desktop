@@ -40,6 +40,11 @@ const SupplierAccountDetail = () => {
   const lastSavedReminderDaysRef = useRef(1);
   const deleteModalRef = useRef(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteAlsoPayment, setDeleteAlsoPayment] = useState(false);
+
+  // Bulk delete state
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   // Printer modal state
   const [showPrinterModal, setShowPrinterModal] = useState(false);
@@ -142,15 +147,20 @@ const SupplierAccountDetail = () => {
 
   // Data processing functions
   const accountData = useMemo(() => {
-    const maalEntries = invoices.map((inv) => ({
-      type: 'maal',
-      id: `M-${inv.id ?? inv.invoice_id}`,
-      maalDbId: inv.id,
-      maalDate: inv.invoice_date ?? inv.maal_date,
-      maalInvoiceNumber: inv.invoice_id ?? inv.maal_invoice_no,
-      maalAmount: inv.grand_total ?? inv.maal_amount,
-      maalRemark: inv.remark ?? inv.maal_remark ?? '',
-    }));
+    const maalEntries = invoices.map((inv) => {
+      const remark = inv.remark ?? inv.maal_remark ?? '';
+      const isLinkedToOrder = remark.startsWith('Order ');
+      return {
+        type: 'maal',
+        id: `M-${inv.id ?? inv.invoice_id}`,
+        maalDbId: inv.id,
+        isLinkedToOrder,
+        maalDate: inv.invoice_date ?? inv.maal_date,
+        maalInvoiceNumber: inv.invoice_id ?? inv.maal_invoice_no,
+        maalAmount: inv.grand_total ?? inv.maal_amount,
+        maalRemark: remark,
+      };
+    });
 
     const jamaEntries = transactions.map((t) => {
       const txnId = t.transaction_id ?? t.id ?? t.txnId;
@@ -243,7 +253,14 @@ const SupplierAccountDetail = () => {
       const entryType = row.type;
       let result;
       if (entryType === 'maal') {
-        result = await window.api.invoke('suppliersMaal:delete', row.maalDbId || row.maalInvoiceNumber);
+        if (row.isLinkedToOrder) {
+          result = await window.api.invoke('supOrders:delete', {
+            order_id: row.maalInvoiceNumber,
+            deletePayment: deleteAlsoPayment,
+          });
+        } else {
+          result = await window.api.invoke('suppliersMaal:delete', row.maalDbId || row.maalInvoiceNumber);
+        }
       } else {
         result = await window.api.invoke('suppliers:txnDelete', row.transactionId);
       }
@@ -251,13 +268,56 @@ const SupplierAccountDetail = () => {
         toast.error(result?.error || 'Failed to delete entry.');
         return false;
       }
-      toast.success('Entry deleted successfully');
+      toast.success(
+        entryType === 'maal' && row.isLinkedToOrder
+          ? (deleteAlsoPayment ? 'Entry & linked payment deleted' : 'Entry deleted (payment kept in ledger)')
+          : 'Entry deleted successfully'
+      );
+      setDeleteAlsoPayment(false);
       fetchInvoices();
       fetchTransactions();
       return true;
     } catch (err) {
       toast.error('Error deleting entry: ' + err.message);
       return false;
+    }
+  };
+
+  // Bulk delete all currently filtered entries
+  const handleBulkDelete = async () => {
+    setIsBulkDeleting(true);
+    try {
+      // 1. Delete order-linked rows individually via order delete contract
+      const orderLinkedRows = maalData.filter(r => r.isLinkedToOrder);
+      for (const row of orderLinkedRows) {
+        const orderResult = await window.api.invoke('supOrders:delete', {
+          order_id: row.maalInvoiceNumber,
+          deletePayment: false // Payment deletion logic handled separately or by jama filter
+        });
+        if (!orderResult || orderResult.success === false) {
+          throw new Error(orderResult?.error || `Failed to delete linked order: ${row.maalInvoiceNumber}`);
+        }
+      }
+
+      // 2. Bulk delete remaining non-order ledger entries
+      const nonOrderMaalData = maalData.filter(r => !r.isLinkedToOrder);
+      const maalIds = nonOrderMaalData.map(r => r.maalDbId).filter(Boolean);
+      const maalInvoiceNos = nonOrderMaalData.filter(r => !r.maalDbId && r.maalInvoiceNumber).map(r => r.maalInvoiceNumber);
+      const jamaIds = jamaData.map(r => r.transactionId).filter(Boolean);
+      
+      const result = await window.api.invoke('suppliers:bulkDeleteEntries', { maalIds, maalInvoiceNos, jamaIds });
+      if (!result || result.success === false) {
+        toast.error(result?.error || 'Bulk delete failed.');
+        return;
+      }
+      toast.success(`Deleted ${result.deletedCount + orderLinkedRows.length} entries successfully.`);
+      setShowBulkDeleteModal(false);
+      fetchInvoices();
+      fetchTransactions();
+    } catch (err) {
+      toast.error('Bulk delete failed: ' + err.message);
+    } finally {
+      setIsBulkDeleting(false);
     }
   };
 
@@ -710,7 +770,7 @@ const SupplierAccountDetail = () => {
                       onBlur={saveReminderDays}
                       className="w-20 px-3 py-1.5 text-sm font-semibold text-[#191C1E] border border-[#C3C6D7]/30 rounded-lg focus:ring-2 focus:ring-[#004AC6]/20 focus:border-[#004AC6] outline-none text-center"
                     />
-                    <span className="text-xs font-semibold text-[#434655]">days if balance is zero</span>
+                    <span className="text-xs font-semibold text-[#434655]">days if balance is not Zero</span>
                   </div>
                 )}
               </div>
@@ -786,29 +846,41 @@ const SupplierAccountDetail = () => {
           {/* Date Filter Panel */}
           {isFiltering && (
             <div className="px-8 pb-5 border-t border-[#F2F4F6] pt-4">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <label className="text-[11px] font-bold text-[#434655] uppercase tracking-wider">From</label>
-                  <input
-                    type="date"
-                    className="px-3 py-1.5 bg-[#F2F4F6] border-none rounded-lg text-xs focus:ring-2 focus:ring-[#004AC6]/20 outline-none"
-                    value={fromDate}
-                    onChange={(e) => setFromDate(e.target.value)}
-                  />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <label className="text-[11px] font-bold text-[#434655] uppercase tracking-wider">From</label>
+                    <input
+                      type="date"
+                      className="px-3 py-1.5 bg-[#F2F4F6] border-none rounded-lg text-xs focus:ring-2 focus:ring-[#004AC6]/20 outline-none"
+                      value={fromDate}
+                      onChange={(e) => setFromDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-[11px] font-bold text-[#434655] uppercase tracking-wider">To</label>
+                    <input
+                      type="date"
+                      className="px-3 py-1.5 bg-[#F2F4F6] border-none rounded-lg text-xs focus:ring-2 focus:ring-[#004AC6]/20 outline-none"
+                      value={toDate}
+                      onChange={(e) => setToDate(e.target.value)}
+                    />
+                  </div>
+                  <button
+                    onClick={() => { setFromDate(''); setToDate(''); setSearchQuery(''); }}
+                    className="px-3 py-1.5 text-xs font-semibold text-[#434655] bg-[#F2F4F6] rounded-lg hover:bg-[#E6E8EA] transition cursor-pointer"
+                  >Clear</button>
                 </div>
-                <div className="flex items-center gap-2">
-                  <label className="text-[11px] font-bold text-[#434655] uppercase tracking-wider">To</label>
-                  <input
-                    type="date"
-                    className="px-3 py-1.5 bg-[#F2F4F6] border-none rounded-lg text-xs focus:ring-2 focus:ring-[#004AC6]/20 outline-none"
-                    value={toDate}
-                    onChange={(e) => setToDate(e.target.value)}
-                  />
-                </div>
-                <button
-                  onClick={() => { setFromDate(''); setToDate(''); setSearchQuery(''); }}
-                  className="px-3 py-1.5 text-xs font-semibold text-[#434655] bg-[#F2F4F6] rounded-lg hover:bg-[#E6E8EA] transition cursor-pointer"
-                >Clear</button>
+                {(maalData.length > 0 || jamaData.length > 0) && (
+                  <button
+                    onClick={() => setShowBulkDeleteModal(true)}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors cursor-pointer text-xs font-bold border border-red-200"
+                    title="Delete all filtered entries"
+                  >
+                    <Trash2 size={16} />
+                    Delete Filtered
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -975,13 +1047,42 @@ const SupplierAccountDetail = () => {
             <div className="w-12 h-12 rounded-full bg-red-100/50 flex items-center justify-center text-red-600 mb-6">
               <Trash2 size={28} />
             </div>
-            <h2 id="delete-entry-heading" className="text-2xl font-extrabold text-[#0F172A] tracking-tight mb-3">Delete Entry?</h2>
+            <h2 id="delete-entry-heading" className="text-2xl font-extrabold text-[#0F172A] tracking-tight mb-3">
+              {deleteTarget?.type === 'maal' && deleteTarget?.isLinkedToOrder ? 'Delete Order Entry?' : 'Delete Entry?'}
+            </h2>
             <p className="text-[#434655] leading-relaxed mb-8">
-              Are you sure you want to delete this <span className="font-bold text-[#191C1E]">{deleteTarget?.type === 'maal' ? 'maal' : 'jama'}</span> entry? This action cannot be undone.
+              {deleteTarget?.type === 'maal' && deleteTarget?.isLinkedToOrder ? (
+                <>Are you sure you want to permanently delete order entry <span className="font-bold text-[#191C1E]">"{deleteTarget.maalRemark}"</span>? This action cannot be undone.</>
+              ) : (
+                <>Are you sure you want to delete this <span className="font-bold text-[#191C1E]">{deleteTarget?.type === 'maal' ? 'maal' : 'jama'}</span> entry? This action cannot be undone.</>
+              )}
             </p>
+            {/* Show payment checkbox for order-linked maal entries */}
+            {deleteTarget?.type === 'maal' && deleteTarget?.isLinkedToOrder && (() => {
+              const linkedPayment = transactions.find(t => (t.remark || '') === deleteTarget.maalRemark);
+              if (linkedPayment) {
+                return (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={deleteAlsoPayment}
+                        onChange={(e) => setDeleteAlsoPayment(e.target.checked)}
+                        className="w-5 h-5 mt-0.5 rounded border-amber-300 text-red-600 focus:ring-red-500/20 cursor-pointer shrink-0"
+                      />
+                      <div>
+                        <span className="text-sm font-bold text-amber-800 block">Also delete ₹{Number(linkedPayment.amount || 0).toLocaleString('en-IN')} linked payment from ledger (Jama)</span>
+                        <span className="text-xs text-amber-600 mt-1 block">If unchecked, only this entry will be deleted. The payment will remain in the ledger.</span>
+                      </div>
+                    </label>
+                  </div>
+                );
+              }
+              return null;
+            })()}
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setDeleteTarget(null)}
+                onClick={() => { setDeleteTarget(null); setDeleteAlsoPayment(false); }}
                 className="flex-1 px-6 py-3 bg-[#E6E8EA] text-[#191C1E] font-bold rounded-xl hover:bg-[#E0E3E5] transition-all text-sm cursor-pointer"
               >Cancel</button>
               <button
@@ -990,7 +1091,7 @@ const SupplierAccountDetail = () => {
                   setIsDeleting(true);
                   try {
                     const success = await handleDeleteEntry(target);
-                    if (success) setDeleteTarget(null);
+                    if (success) { setDeleteTarget(null); setDeleteAlsoPayment(false); }
                   } finally {
                     setIsDeleting(false);
                   }
@@ -998,6 +1099,47 @@ const SupplierAccountDetail = () => {
                 disabled={isDeleting}
                 className="flex-1 px-6 py-3 bg-red-600 text-white font-bold rounded-xl shadow-lg shadow-red-600/20 hover:bg-red-700 hover:scale-[1.02] active:scale-95 transition-all text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >{isDeleting ? 'Deleting...' : 'Delete'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Bulk Delete Confirmation Modal ─── */}
+      {showBulkDeleteModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 outline-none"
+          style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.7)' }}
+          role="dialog" aria-modal="true"
+          onClick={(e) => { if (e.target === e.currentTarget && !isBulkDeleting) setShowBulkDeleteModal(false); }}
+        >
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#C3C6D7]/20 p-8">
+            <div className="w-12 h-12 rounded-full bg-red-100/50 flex items-center justify-center text-red-600 mb-6">
+              <Trash2 size={28} />
+            </div>
+            <h2 className="text-2xl font-extrabold text-[#0F172A] tracking-tight mb-3">Delete Filtered Entries?</h2>
+            <p className="text-[#434655] leading-relaxed mb-4">
+              This will permanently delete all currently visible entries. This action cannot be undone.
+            </p>
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 space-y-1">
+              {maalData.length > 0 && (
+                <p className="text-sm text-red-700"><span className="font-bold">{maalData.length}</span> maal entr{maalData.length === 1 ? 'y' : 'ies'}</p>
+              )}
+              {jamaData.length > 0 && (
+                <p className="text-sm text-red-700"><span className="font-bold">{jamaData.length}</span> payment entr{jamaData.length === 1 ? 'y' : 'ies'}</p>
+              )}
+              <p className="text-xs font-bold text-red-800 pt-1 border-t border-red-200">Total: {maalData.length + jamaData.length} entries</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowBulkDeleteModal(false)}
+                disabled={isBulkDeleting}
+                className="flex-1 px-6 py-3 bg-[#E6E8EA] text-[#191C1E] font-bold rounded-xl hover:bg-[#E0E3E5] transition-all text-sm cursor-pointer disabled:opacity-50"
+              >Cancel</button>
+              <button
+                onClick={handleBulkDelete}
+                disabled={isBulkDeleting}
+                className="flex-1 px-6 py-3 bg-red-600 text-white font-bold rounded-xl shadow-lg shadow-red-600/20 hover:bg-red-700 hover:scale-[1.02] active:scale-95 transition-all text-sm cursor-pointer disabled:opacity-50"
+              >{isBulkDeleting ? 'Deleting...' : 'Confirm Delete'}</button>
             </div>
           </div>
         </div>

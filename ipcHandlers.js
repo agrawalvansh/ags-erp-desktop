@@ -286,6 +286,38 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     return res.changes ? { success: true } : { error: 'Customer not found' };
   }));
 
+  // Bulk delete filtered maal + jama entries for a customer
+  ipcMain.handle('customers:bulkDeleteEntries', wrap((data) => {
+    const { maalRows = [], jamaIds = [] } = data;
+    // maalRows: [{ id (maal db id), invoiceId, isLinkedToInvoice }]
+    // jamaIds: [transactionId]
+    const run = db.transaction(() => {
+      let count = 0;
+      for (const row of maalRows) {
+        if (row.isLinkedToInvoice && row.invoiceId) {
+          // Cascade: remove invoice items, then the invoice, then the maal ledger row
+          db.prepare('DELETE FROM invoice_items WHERE invoice_id = ?').run(row.invoiceId);
+          db.prepare('DELETE FROM invoices WHERE invoice_id = ?').run(row.invoiceId);
+        }
+        // Delete the maal ledger row (identified by invoiceId for customer_maal_account)
+        if (row.invoiceId) {
+          const res = db.prepare('DELETE FROM customer_maal_account WHERE maal_invoice_no = ?').run(row.invoiceId);
+          count += res.changes;
+        } else if (row.id) {
+          const res = db.prepare('DELETE FROM customer_maal_account WHERE id = ?').run(row.id);
+          count += res.changes;
+        }
+      }
+      for (const jId of jamaIds) {
+        const res = db.prepare('DELETE FROM customer_jama_account WHERE id = ?').run(jId);
+        count += res.changes;
+      }
+      return count;
+    });
+    const deleted = run();
+    return { success: true, deletedCount: deleted };
+  }));
+
   // Additional: list invoices / transactions for a customer ---------
   ipcMain.handle('customers:listInvoices', wrap((customer_id) => {
     const rows = db.prepare(`
@@ -419,17 +451,7 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
 
 
   // Helper to get next invoice id - ONLY PREVIEWS, does NOT consume the number
-  // The actual number consumption happens in invoices:create
   ipcMain.handle('invoices:getNextId', wrap(() => {
-    // Step 1: Check if there's a reusable number (just peek, don't remove)
-    const reusable = db.prepare('SELECT invoice_number FROM reusable_invoice_numbers ORDER BY invoice_number ASC LIMIT 1').get();
-
-    if (reusable) {
-      // Preview this number (will be consumed in invoices:create)
-      return { next_id: `E-${reusable.invoice_number}` };
-    }
-
-    // Step 2: No reusable number - preview next sequence number (don't increment yet)
     const seq = db.prepare("SELECT last_number FROM document_sequences WHERE doc_type = 'invoice'").get();
     return { next_id: `E-${(seq.last_number || 0) + 1}` };
   }));
@@ -562,18 +584,6 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
       if (entry) invoiceIdToRecycle = entry.maal_invoice_no;
       const res = db.prepare('DELETE FROM customer_maal_account WHERE id = ?').run(Number(identifier));
       if (res.changes) {
-        // Add number to reusable pool
-        if (invoiceIdToRecycle) {
-          let invoiceNum = null;
-          if (invoiceIdToRecycle.startsWith('E-')) {
-            invoiceNum = parseInt(invoiceIdToRecycle.substring(2), 10);
-          } else if (invoiceIdToRecycle.startsWith('AGS-I-')) {
-            invoiceNum = parseInt(invoiceIdToRecycle.substring(6), 10);
-          }
-          if (invoiceNum && !isNaN(invoiceNum)) {
-            db.prepare('INSERT OR IGNORE INTO reusable_invoice_numbers (invoice_number) VALUES (?)').run(invoiceNum);
-          }
-        }
         return { success: true };
       }
     }
@@ -583,18 +593,6 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
       db.prepare('DELETE FROM invoice_items WHERE invoice_id = ?').run(identifier);
       const res1 = db.prepare('DELETE FROM customer_maal_account WHERE maal_invoice_no = ?').run(identifier);
       db.prepare('DELETE FROM invoices WHERE invoice_id = ?').run(identifier);
-
-      // Add number to reusable pool
-      let invoiceNum = null;
-      if (identifier.startsWith && identifier.startsWith('E-')) {
-        invoiceNum = parseInt(identifier.substring(2), 10);
-      } else if (identifier.startsWith && identifier.startsWith('AGS-I-')) {
-        invoiceNum = parseInt(identifier.substring(6), 10);
-      }
-      if (invoiceNum && !isNaN(invoiceNum)) {
-        db.prepare('INSERT OR IGNORE INTO reusable_invoice_numbers (invoice_number) VALUES (?)').run(invoiceNum);
-      }
-
       return res1.changes;
     });
     const changes = txn();
@@ -605,19 +603,9 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     const { customer_id, invoice_number, date, amount, remark } = data;
     let newInvoiceId = invoice_number;
     if (!newInvoiceId) {
-      // Step 1: Try to reuse a deleted number from the pool
-      const reusable = db.prepare('SELECT invoice_number FROM reusable_invoice_numbers ORDER BY invoice_number ASC LIMIT 1').get();
-
-      if (reusable) {
-        // Use this number and remove it from the pool
-        db.prepare('DELETE FROM reusable_invoice_numbers WHERE invoice_number = ?').run(reusable.invoice_number);
-        newInvoiceId = `E-${reusable.invoice_number}`;
-      } else {
-        // Step 2: No reusable number - increment sequence counter
-        db.prepare("UPDATE document_sequences SET last_number = last_number + 1 WHERE doc_type = 'invoice'").run();
-        const seq = db.prepare("SELECT last_number FROM document_sequences WHERE doc_type = 'invoice'").get();
-        newInvoiceId = `E-${seq.last_number}`;
-      }
+      db.prepare("UPDATE document_sequences SET last_number = last_number + 1 WHERE doc_type = 'invoice'").run();
+      const seq = db.prepare("SELECT last_number FROM document_sequences WHERE doc_type = 'invoice'").get();
+      newInvoiceId = `E-${seq.last_number}`;
     }
     db.prepare(`INSERT INTO customer_maal_account (customer_id, maal_date, maal_invoice_no, maal_amount, maal_remark)
                   VALUES (?, ?, ?, ?, ?)`).run(customer_id, date, newInvoiceId, amount, remark || '');
@@ -653,9 +641,7 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
   }));
 
   ipcMain.handle('cusOrders:getNextId', wrap(() => {
-    // Preview next ID (reusable pool first, then sequence)
-    const reusable = db.prepare('SELECT order_number FROM reusable_customer_order_numbers ORDER BY order_number ASC LIMIT 1').get();
-    if (reusable) return { next_id: `O-C-${reusable.order_number}` };
+    // Preview next ID (sequence only)
     const seq = db.prepare("SELECT last_number FROM document_sequences WHERE doc_type = 'customer_order'").get();
     return { next_id: `O-C-${(seq ? seq.last_number : 0) + 1}` };
   }));
@@ -669,17 +655,10 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
 
     const ensureProduct = db.prepare('INSERT OR IGNORE INTO products (code, name) VALUES (?, ?)');
     const createTxn = db.transaction(() => {
-      // Generate order ID using reusable pool + sequence (same as invoices)
-      const reusable = db.prepare('SELECT order_number FROM reusable_customer_order_numbers ORDER BY order_number ASC LIMIT 1').get();
-      let orderNum;
-      if (reusable) {
-        db.prepare('DELETE FROM reusable_customer_order_numbers WHERE order_number = ?').run(reusable.order_number);
-        orderNum = reusable.order_number;
-      } else {
-        db.prepare("UPDATE document_sequences SET last_number = last_number + 1 WHERE doc_type = 'customer_order'").run();
-        const seq = db.prepare("SELECT last_number FROM document_sequences WHERE doc_type = 'customer_order'").get();
-        orderNum = seq.last_number;
-      }
+      // Generate order ID: always increment sequence
+      db.prepare("UPDATE document_sequences SET last_number = last_number + 1 WHERE doc_type = 'customer_order'").run();
+      const seq = db.prepare("SELECT last_number FROM document_sequences WHERE doc_type = 'customer_order'").get();
+      const orderNum = seq.last_number;
       const newOrderId = `O-C-${orderNum}`;
 
       db.prepare('INSERT INTO customer_orders (order_id, customer_id, order_date, remark, status) VALUES (?, ?, ?, ?, ?)')
@@ -802,19 +781,20 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     return { success: true, order_id: orderId };
   }));
 
-  ipcMain.handle('cusOrders:delete', wrap((order_id) => {
+  ipcMain.handle('cusOrders:delete', wrap((data) => {
+    // Support both string (order_id) and object { order_id, deletePayment }
+    const order_id = typeof data === 'string' ? data : data.order_id;
+    const deletePayment = typeof data === 'object' ? !!data.deletePayment : false;
+
     const txn = db.transaction(() => {
       db.prepare('DELETE FROM customer_order_items WHERE order_id = ?').run(order_id);
-      // NOTE: Do NOT delete Jama entry - advance payment must remain in books per accounting rules
-      const res = db.prepare('DELETE FROM customer_orders WHERE order_id = ?').run(order_id);
-
-      // Add order number to reusable pool
-      if (order_id && order_id.startsWith('O-C-')) {
-        const orderNum = parseInt(order_id.substring(4), 10);
-        if (orderNum && !isNaN(orderNum)) {
-          db.prepare('INSERT OR IGNORE INTO reusable_customer_order_numbers (order_number) VALUES (?)').run(orderNum);
-        }
+      // Conditionally delete linked Jama entry (payment associated with this order)
+      if (deletePayment) {
+        const paymentRemark = `Order ${order_id}`;
+        db.prepare('DELETE FROM customer_jama_account WHERE jama_remark = ?').run(paymentRemark);
       }
+      // Delete the order header
+      const res = db.prepare('DELETE FROM customer_orders WHERE order_id = ?').run(order_id);
 
       return res.changes;
     });
@@ -837,21 +817,10 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
 
     const insertItemStmt = db.prepare('INSERT INTO invoice_items (invoice_id, product_code, quantity, selling_price) VALUES (?, ?, ?, ?)');
     const createTxn = db.transaction(() => {
-      // Generate invoice_id using sequence table with reusable pool
-      // Step 1: Try to consume a deleted number from the pool
-      const reusable = db.prepare('SELECT invoice_number FROM reusable_invoice_numbers ORDER BY invoice_number ASC LIMIT 1').get();
-      let invoiceNum;
-
-      if (reusable) {
-        // Consume this number (remove from pool)
-        db.prepare('DELETE FROM reusable_invoice_numbers WHERE invoice_number = ?').run(reusable.invoice_number);
-        invoiceNum = reusable.invoice_number;
-      } else {
-        // Step 2: No reusable number - increment sequence counter and use it
-        db.prepare("UPDATE document_sequences SET last_number = last_number + 1 WHERE doc_type = 'invoice'").run();
-        const seq = db.prepare("SELECT last_number FROM document_sequences WHERE doc_type = 'invoice'").get();
-        invoiceNum = seq.last_number;
-      }
+      // Generate invoice_id: always last_number + 1
+      db.prepare("UPDATE document_sequences SET last_number = last_number + 1 WHERE doc_type = 'invoice'").run();
+      const seq = db.prepare("SELECT last_number FROM document_sequences WHERE doc_type = 'invoice'").get();
+      const invoiceNum = seq.last_number;
 
       const invoice_id = `E-${invoiceNum}`;
 
@@ -917,9 +886,11 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     return rows;
   }));
 
-  // Hard delete invoice with all related data (invoice_items, customer_maal_account, linked Jama entry)
-  // Also adds the invoice number to the reusable pool for future reuse
-  ipcMain.handle('invoices:delete', wrap((invoice_id) => {
+  // Hard delete invoice with all related data (invoice_items, customer_maal_account, optionally linked Jama entry)
+  ipcMain.handle('invoices:delete', wrap((data) => {
+    // Support both string (invoice_id) and object { invoice_id, deletePayment }
+    const invoice_id = typeof data === 'string' ? data : data.invoice_id;
+    const deletePayment = typeof data === 'object' ? !!data.deletePayment : true; // default true for backward compat
     if (!invoice_id) return { error: 'Invoice ID is required' };
 
     const deleteTxn = db.transaction(() => {
@@ -929,25 +900,15 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
       // Step 2: Delete related maal entry (matches by maal_invoice_no = invoice_id)
       db.prepare('DELETE FROM customer_maal_account WHERE maal_invoice_no = ?').run(invoice_id);
 
-      // Step 3: Delete linked Jama entry (payment associated with this invoice)
-      const paymentRemark = `Invoice ${invoice_id}`;
-      db.prepare('DELETE FROM customer_jama_account WHERE jama_remark = ?')
-        .run(paymentRemark);
+      // Step 3: Conditionally delete linked Jama entry (payment associated with this invoice)
+      if (deletePayment) {
+        const paymentRemark = `Invoice ${invoice_id}`;
+        db.prepare('DELETE FROM customer_jama_account WHERE jama_remark = ?')
+          .run(paymentRemark);
+      }
 
       // Step 4: Delete the invoice header
       const res = db.prepare('DELETE FROM invoices WHERE invoice_id = ?').run(invoice_id);
-
-      // Step 5: Extract number and add to reusable pool
-      // Supports formats: E-15, AGS-I-15
-      let invoiceNum = null;
-      if (invoice_id.startsWith('E-')) {
-        invoiceNum = parseInt(invoice_id.substring(2), 10);
-      } else if (invoice_id.startsWith('AGS-I-')) {
-        invoiceNum = parseInt(invoice_id.substring(6), 10);
-      }
-      if (invoiceNum && !isNaN(invoiceNum)) {
-        db.prepare('INSERT OR IGNORE INTO reusable_invoice_numbers (invoice_number) VALUES (?)').run(invoiceNum);
-      }
 
       return res.changes;
     });
@@ -962,8 +923,6 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
 
   // Preview next quick sale id (does not consume)
   ipcMain.handle('quickSales:getNextId', wrap(() => {
-    const reusable = db.prepare('SELECT qs_number FROM reusable_quick_sale_numbers ORDER BY qs_number ASC LIMIT 1').get();
-    if (reusable) return { next_id: `QS-${reusable.qs_number}` };
     const seq = db.prepare("SELECT last_number FROM document_sequences WHERE doc_type = 'quick_sale'").get();
     return { next_id: `QS-${(seq.last_number || 0) + 1}` };
   }));
@@ -976,17 +935,10 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     const insertItemStmt = db.prepare('INSERT INTO quick_sale_items (qs_id, product_code, product_name, product_size, packing_type, quantity, selling_price, is_temporary) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
 
     const createTxn = db.transaction(() => {
-      // consume reusable number or increment sequence
-      const reusable = db.prepare('SELECT qs_number FROM reusable_quick_sale_numbers ORDER BY qs_number ASC LIMIT 1').get();
-      let num;
-      if (reusable) {
-        db.prepare('DELETE FROM reusable_quick_sale_numbers WHERE qs_number = ?').run(reusable.qs_number);
-        num = reusable.qs_number;
-      } else {
-        db.prepare("UPDATE document_sequences SET last_number = last_number + 1 WHERE doc_type = 'quick_sale'").run();
-        const seq = db.prepare("SELECT last_number FROM document_sequences WHERE doc_type = 'quick_sale'").get();
-        num = seq.last_number;
-      }
+      // Always increment sequence
+      db.prepare("UPDATE document_sequences SET last_number = last_number + 1 WHERE doc_type = 'quick_sale'").run();
+      const seq = db.prepare("SELECT last_number FROM document_sequences WHERE doc_type = 'quick_sale'").get();
+      const num = seq.last_number;
       const qs_id = `QS-${num}`;
 
       const itemsTotal = items.reduce((s, it) => s + (it.quantity * it.selling_price), 0);
@@ -1070,26 +1022,39 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     return changed ? { success: true } : { error: 'Quick sale not found' };
   }));
 
-  // Delete quick sale (hard delete items + header), add number to reusable pool
+  // Delete quick sale (hard delete items + header)
   ipcMain.handle('quickSales:delete', wrap((qs_id) => {
     if (!qs_id) return { error: 'QS id required' };
     const deleteTxn = db.transaction(() => {
       db.prepare('DELETE FROM quick_sale_items WHERE qs_id = ?').run(qs_id);
       const res = db.prepare('DELETE FROM quick_sales WHERE qs_id = ?').run(qs_id);
-
-      // extract numeric part and add to reusable pool
-      let num = null;
-      if (qs_id && qs_id.startsWith('QS-')) {
-        num = parseInt(qs_id.substring(3), 10);
-      }
-      if (num && !isNaN(num)) {
-        db.prepare('INSERT OR IGNORE INTO reusable_quick_sale_numbers (qs_number) VALUES (?)').run(num);
-      }
       return res.changes;
     });
 
     const changes = deleteTxn();
     return changes ? { success: true } : { error: 'Quick sale not found' };
+  }));
+
+  // Auto-cleanup quick sales older than N days (items + header)
+  ipcMain.handle('quickSales:cleanupOld', wrap((days) => {
+    const maxDays = parseInt(days) || 30;
+    const cleanupTxn = db.transaction(() => {
+      // Find IDs of quick sales older than maxDays
+      const oldSales = db.prepare(
+        `SELECT qs_id FROM quick_sales WHERE date(qs_date) < date('now', '-' || ? || ' days')`
+      ).all(maxDays);
+
+      if (oldSales.length === 0) return 0;
+
+      const ids = oldSales.map(r => r.qs_id);
+      for (const id of ids) {
+        db.prepare('DELETE FROM quick_sale_items WHERE qs_id = ?').run(id);
+        db.prepare('DELETE FROM quick_sales WHERE qs_id = ?').run(id);
+      }
+      return ids.length;
+    });
+    const deleted = cleanupTxn();
+    return { success: true, deletedCount: deleted };
   }));
 
   // -----------------------
@@ -1114,18 +1079,9 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     }
     let newInvoiceId = invoice_number;
     if (!newInvoiceId) {
-      // Use same reusable pool / sequence system as invoices:create
-      const reusable = db.prepare('SELECT invoice_number FROM reusable_invoice_numbers ORDER BY invoice_number ASC LIMIT 1').get();
-      let invoiceNum;
-      if (reusable) {
-        db.prepare('DELETE FROM reusable_invoice_numbers WHERE invoice_number = ?').run(reusable.invoice_number);
-        invoiceNum = reusable.invoice_number;
-      } else {
-        db.prepare("UPDATE document_sequences SET last_number = last_number + 1 WHERE doc_type = 'invoice'").run();
-        const seq = db.prepare("SELECT last_number FROM document_sequences WHERE doc_type = 'invoice'").get();
-        invoiceNum = seq.last_number;
-      }
-      newInvoiceId = `E-${invoiceNum}`;
+      db.prepare("UPDATE document_sequences SET last_number = last_number + 1 WHERE doc_type = 'invoice'").run();
+      const seq = db.prepare("SELECT last_number FROM document_sequences WHERE doc_type = 'invoice'").get();
+      newInvoiceId = `E-${seq.last_number}`;
     }
     db.prepare(`INSERT INTO customer_maal_account (customer_id, maal_date, maal_invoice_no, maal_amount, maal_remark)
                   VALUES (?, ?, ?, ?, ?)`)
@@ -1215,14 +1171,22 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
   }));
 
   ipcMain.handle('customers:txnDelete', wrap((id) => {
-    // Guard: block deletion if linked to an invoice or order payment
+    // Guard: block deletion only if the linked invoice or order still exists
     const row = db.prepare('SELECT jama_remark FROM customer_jama_account WHERE id = ?').get(id);
     if (row && row.jama_remark) {
       if (row.jama_remark.startsWith('Invoice ')) {
-        return { success: false, error: 'Cannot delete: this payment is linked to an invoice.' };
+        const invoiceId = row.jama_remark.replace('Invoice ', '');
+        const invoiceExists = db.prepare('SELECT 1 FROM invoices WHERE invoice_id = ?').get(invoiceId);
+        if (invoiceExists) {
+          return { success: false, error: 'Cannot delete: this payment is linked to an existing invoice. Delete the invoice first.' };
+        }
       }
       if (row.jama_remark.startsWith('Order ')) {
-        return { success: false, error: 'Cannot delete: this payment is linked to an order.' };
+        const orderId = row.jama_remark.replace('Order ', '');
+        const orderExists = db.prepare('SELECT 1 FROM customer_orders WHERE order_id = ?').get(orderId);
+        if (orderExists) {
+          return { success: false, error: 'Cannot delete: this payment is linked to an existing order. Delete the order first.' };
+        }
       }
     }
     const res = db.prepare('DELETE FROM customer_jama_account WHERE id = ?').run(id);
@@ -1248,8 +1212,7 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
   // Supplier Orders
   // -----------------------
   ipcMain.handle('supOrders:getNextId', wrap(() => {
-    const reusable = db.prepare('SELECT order_number FROM reusable_supplier_order_numbers ORDER BY order_number ASC LIMIT 1').get();
-    if (reusable) return { next_id: `O-S-${reusable.order_number}` };
+    // Preview next ID (sequence only)
     const seq = db.prepare("SELECT last_number FROM document_sequences WHERE doc_type = 'supplier_order'").get();
     return { next_id: `O-S-${(seq ? seq.last_number : 0) + 1}` };
   }));
@@ -1282,16 +1245,10 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
 
     const ensureProduct = db.prepare('INSERT OR IGNORE INTO products (code, name) VALUES (?, ?)');
     const createTxn = db.transaction(() => {
-      const reusable = db.prepare('SELECT order_number FROM reusable_supplier_order_numbers ORDER BY order_number ASC LIMIT 1').get();
-      let orderNum;
-      if (reusable) {
-        db.prepare('DELETE FROM reusable_supplier_order_numbers WHERE order_number = ?').run(reusable.order_number);
-        orderNum = reusable.order_number;
-      } else {
-        db.prepare("UPDATE document_sequences SET last_number = last_number + 1 WHERE doc_type = 'supplier_order'").run();
-        const seq = db.prepare("SELECT last_number FROM document_sequences WHERE doc_type = 'supplier_order'").get();
-        orderNum = seq.last_number;
-      }
+      // Generate order ID: always increment sequence
+      db.prepare("UPDATE document_sequences SET last_number = last_number + 1 WHERE doc_type = 'supplier_order'").run();
+      const seq = db.prepare("SELECT last_number FROM document_sequences WHERE doc_type = 'supplier_order'").get();
+      const orderNum = seq.last_number;
       const newOrderId = `O-S-${orderNum}`;
 
       db.prepare('INSERT INTO supplier_orders (order_id, supplier_id, order_date, remark, status) VALUES (?, ?, ?, ?, ?)')
@@ -1409,19 +1366,20 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     return { success: true, order_id: orderId };
   }));
 
-  ipcMain.handle('supOrders:delete', wrap((order_id) => {
+  ipcMain.handle('supOrders:delete', wrap((data) => {
+    // Support both string (order_id) and object { order_id, deletePayment }
+    const order_id = typeof data === 'string' ? data : data.order_id;
+    const deletePayment = typeof data === 'object' ? !!data.deletePayment : false;
+
     const txn = db.transaction(() => {
       db.prepare('DELETE FROM supplier_order_items WHERE order_id = ?').run(order_id);
-      // NOTE: Do NOT delete Jama entry - advance payment must remain in books per accounting rules
-      const res = db.prepare('DELETE FROM supplier_orders WHERE order_id = ?').run(order_id);
-
-      // Add order number to reusable pool
-      if (order_id && order_id.startsWith('O-S-')) {
-        const orderNum = parseInt(order_id.substring(4), 10);
-        if (orderNum && !isNaN(orderNum)) {
-          db.prepare('INSERT OR IGNORE INTO reusable_supplier_order_numbers (order_number) VALUES (?)').run(orderNum);
-        }
+      // Conditionally delete linked Jama entry (payment associated with this order)
+      if (deletePayment) {
+        const paymentRemark = `Order ${order_id}`;
+        db.prepare('DELETE FROM supplier_jama_account WHERE jama_remark = ?').run(paymentRemark);
       }
+      // Delete the order header
+      const res = db.prepare('DELETE FROM supplier_orders WHERE order_id = ?').run(order_id);
 
       return res.changes;
     });
@@ -1466,6 +1424,32 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
   ipcMain.handle('suppliers:delete', wrap((supplier_id) => {
     const res = db.prepare('DELETE FROM suppliers WHERE supplier_id = ?').run(supplier_id);
     return res.changes ? { success: true } : { error: 'Supplier not found' };
+  }));
+
+  // Bulk delete filtered maal + jama entries for a supplier
+  ipcMain.handle('suppliers:bulkDeleteEntries', wrap((data) => {
+    const { maalIds = [], maalInvoiceNos = [], jamaIds = [] } = data;
+    // maalIds: array of supplier_maal_account.id values
+    // maalInvoiceNos: array of supplier_maal_account.maal_invoice_no values (additional delete by invoice number)
+    // jamaIds: array of supplier_jama_account.id values
+    const run = db.transaction(() => {
+      let count = 0;
+      for (const id of maalIds) {
+        const res = db.prepare('DELETE FROM supplier_maal_account WHERE id = ?').run(id);
+        count += res.changes;
+      }
+      for (const invoiceNo of maalInvoiceNos) {
+        const res = db.prepare('DELETE FROM supplier_maal_account WHERE maal_invoice_no = ?').run(invoiceNo);
+        count += res.changes;
+      }
+      for (const id of jamaIds) {
+        const res = db.prepare('DELETE FROM supplier_jama_account WHERE id = ?').run(id);
+        count += res.changes;
+      }
+      return count;
+    });
+    const deleted = run();
+    return { success: true, deletedCount: deleted };
   }));
 
   // Aliases expected by renderer ------------------------------------
@@ -1588,6 +1572,42 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
   ipcMain.handle('suppliers:txnList', wrap((supplier_id) => {
     const rows = db.prepare(`SELECT id AS transaction_id, jama_date AS date, jama_txn_type AS txn_type, jama_amount AS amount, jama_remark AS remark FROM supplier_jama_account WHERE supplier_id = ? ORDER BY jama_date DESC, id DESC`).all(supplier_id);
     return rows;
+  }));
+
+  // -----------------------
+  // Notifications CRUD
+  // -----------------------
+  ipcMain.handle('notifications:getAll', wrap(() => {
+    return db.prepare('SELECT * FROM notifications ORDER BY created_at DESC').all();
+  }));
+
+  ipcMain.handle('notifications:getUnreadCount', wrap(() => {
+    const row = db.prepare('SELECT COUNT(*) AS count FROM notifications WHERE is_read = 0').get();
+    return { count: row.count };
+  }));
+
+  ipcMain.handle('notifications:markRead', wrap((id) => {
+    const res = db.prepare('UPDATE notifications SET is_read = 1 WHERE id = ?').run(id);
+    if (res.changes === 0) {
+      const exists = db.prepare('SELECT id FROM notifications WHERE id = ?').get(id);
+      if (!exists) return { error: 'Notification not found' };
+    }
+    return { success: true };
+  }));
+
+  ipcMain.handle('notifications:markAllRead', wrap(() => {
+    db.prepare('UPDATE notifications SET is_read = 1 WHERE is_read = 0').run();
+    return { success: true };
+  }));
+
+  ipcMain.handle('notifications:delete', wrap((id) => {
+    const res = db.prepare('DELETE FROM notifications WHERE id = ?').run(id);
+    return res.changes ? { success: true } : { error: 'Notification not found' };
+  }));
+
+  ipcMain.handle('notifications:deleteAll', wrap(() => {
+    db.prepare('DELETE FROM notifications').run();
+    return { success: true };
   }));
 
   // -----------------------

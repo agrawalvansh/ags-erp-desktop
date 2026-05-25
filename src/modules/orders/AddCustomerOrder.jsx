@@ -213,6 +213,7 @@ const AddCustomerOrder = () => {
   const [customerId, setCustomerId] = useState('');
   const [customers, setCustomers] = useState([]);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteAlsoPayment, setDeleteAlsoPayment] = useState(false);
   const deleteModalRef = useRef(null);
 
   // Focus the delete modal when it opens
@@ -448,13 +449,29 @@ const AddCustomerOrder = () => {
   const handleDelete = async () => {
     if (!currentorderId) { toast.error('No order to delete'); return; }
     try {
-      const result = await window.api.invoke('cusOrders:delete', currentorderId);
+      const result = await window.api.invoke('cusOrders:delete', { order_id: currentorderId, deletePayment: deleteAlsoPayment });
       if (!result || result.error || result.success === false) { toast.error(result?.error || 'An error occurred while deleting. Please try again.'); return; }
       setShowDeleteModal(false);
-      toast.success('Order deleted successfully');
+      setDeleteAlsoPayment(false);
+      toast.success(deleteAlsoPayment ? 'Order & payment entry deleted' : 'Order deleted (payment kept in ledger)');
       setTimeout(() => { navigate('/orders/customers'); }, 500);
     } catch (err) { console.error('Error deleting order:', err); toast.error('An error occurred while deleting. Please try again.'); }
   };
+
+  // Ctrl+S save shortcut (ref-based to avoid stale closure)
+  const handleSaveRef = useRef(handleSave);
+  handleSaveRef.current = handleSave;
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        if (showDeleteModal) return;
+        handleSaveRef.current();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [showDeleteModal]);
 
   // ─── Printer state ───
   const [showPrinterModal, setShowPrinterModal] = useState(false);
@@ -815,15 +832,32 @@ const AddCustomerOrder = () => {
           aria-labelledby="delete-order-heading"
           tabIndex={-1}
           ref={deleteModalRef}
-          onKeyDown={(e) => { if (e.key === 'Escape') setShowDeleteModal(false); }}
-          onClick={(e) => { if (e.target === e.currentTarget) setShowDeleteModal(false); }}
+          onKeyDown={(e) => { if (e.key === 'Escape') { setShowDeleteModal(false); setDeleteAlsoPayment(false); } }}
+          onClick={(e) => { if (e.target === e.currentTarget) { setShowDeleteModal(false); setDeleteAlsoPayment(false); } }}
         >
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#C3C6D7]/20 p-8">
             <div className="w-12 h-12 rounded-full bg-red-100/50 flex items-center justify-center text-red-600 mb-6 mx-auto"><Trash2 size={28} /></div>
             <h2 id="delete-order-heading" className="text-2xl font-extrabold text-[#0F172A] tracking-tight mb-3 text-center">Delete Order?</h2>
-            <p className="text-[#434655] leading-relaxed mb-8 text-center">Are you sure you want to delete this order? This action cannot be undone.</p>
+            <p className="text-[#434655] leading-relaxed mb-6 text-center">Are you sure you want to delete this order? This action cannot be undone.</p>
+            {/* Show payment checkbox only when there's a linked payment */}
+            {parseFloat(originalOrderData?.payment_amount || 0) > 0 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={deleteAlsoPayment}
+                    onChange={(e) => setDeleteAlsoPayment(e.target.checked)}
+                    className="w-5 h-5 mt-0.5 rounded border-amber-300 text-red-600 focus:ring-red-500/20 cursor-pointer shrink-0"
+                  />
+                  <div>
+                    <span className="text-sm font-bold text-amber-800 block">Also delete ₹{parseFloat(originalOrderData.payment_amount).toLocaleString('en-IN')} payment from ledger (Jama)</span>
+                    <span className="text-xs text-amber-600 mt-1 block">If unchecked, only the order will be deleted. The payment entry will remain in the customer's account.</span>
+                  </div>
+                </label>
+              </div>
+            )}
             <div className="flex items-center gap-3">
-              <button onClick={() => setShowDeleteModal(false)} className="flex-1 px-6 py-3 bg-[#E6E8EA] text-[#191C1E] font-bold rounded-xl hover:bg-[#E0E3E5] transition-all text-sm cursor-pointer">Cancel</button>
+              <button onClick={() => { setShowDeleteModal(false); setDeleteAlsoPayment(false); }} className="flex-1 px-6 py-3 bg-[#E6E8EA] text-[#191C1E] font-bold rounded-xl hover:bg-[#E0E3E5] transition-all text-sm cursor-pointer">Cancel</button>
               <button onClick={async () => { await handleDelete(); }} className="flex-1 px-6 py-3 bg-red-600 text-white font-bold rounded-xl shadow-lg shadow-red-600/20 hover:bg-red-700 hover:scale-[1.02] active:scale-95 transition-all text-sm cursor-pointer">Delete</button>
             </div>
           </div>

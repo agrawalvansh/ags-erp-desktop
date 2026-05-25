@@ -21,6 +21,7 @@ import SupplierOrder from './orders/SupplierOrder';
 import AddSupplierOrder from './orders/AddSupplierOrder';
 import CreateQuickSale from './quick-sales/CreateQuickSales';
 import ListQuickSales from './quick-sales/ListQuickSales';
+import NotificationsPage from './notifications/NotificationsPage';
 
 const ModulesRouter = () => (
   <div className="ml-0 md:ml-[240px] w-[100vw] md:w-[calc(100vw-240px)]">
@@ -59,6 +60,8 @@ const ModulesRouter = () => (
       <Route path="orders/suppliers" element={<SupplierOrder />} />
       <Route path="orders/suppliers/add" element={<AddSupplierOrder />} />
       <Route path="orders/suppliers/:orderId" element={<AddSupplierOrder />} />
+      {/* Notifications */}
+      <Route path="notifications" element={<NotificationsPage />} />
       {/* Fallback 404 for unmatched module routes */}
       <Route path="*" element={<NotFound />} />
     </Routes>

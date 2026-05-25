@@ -67,6 +67,13 @@ exposed.onTranslateBatchProgress = (callback) => {
 };
 exposed.cancelBatchTransliterate = (operationId) => ipcRenderer.invoke('translate:batchCancel', operationId);
 
+// Notification count updates from main process (after startup scan)
+exposed.onNotificationCountUpdate = (callback) => {
+  const handler = (_event, data) => callback(data);
+  ipcRenderer.on('notifications:countUpdate', handler);
+  return () => ipcRenderer.removeListener('notifications:countUpdate', handler);
+};
+
 if (!('api' in globalThis)) {
   contextBridge.exposeInMainWorld('api', exposed);
 }

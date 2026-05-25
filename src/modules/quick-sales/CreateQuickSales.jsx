@@ -205,82 +205,86 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
                     <div className="h-5"></div>
                 </div>
 
-                {/* Qty + Unit — col-span-2 (matches Invoice layout) */}
-                <div className="col-span-6 md:col-span-2">
-                    <div className="flex gap-1">
-                        <div className="w-2/3">
+                {/* Qty + Unit + Rate — col-span-4 */}
+                <div className="col-span-12 md:col-span-4">
+                    <div className="grid grid-cols-5 gap-2">
+                        {/* Qty (40%) */}
+                        <div className="col-span-2">
                             <label className="block text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Qty</label>
                             <div className="relative">
-                            <input
-                                ref={quantityInputRef}
-                                type="number" min="0.001" step="0.001"
-                                value={newItem.quantity}
-                                onChange={(e) => setNewItem({ ...newItem, quantity: e.target.value })}
-                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddItem(); } }}
-                                className={`w-full py-2.5 px-3 pr-8 bg-[#F2F4F6] border-none rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all ${formErrors.quantity ? 'ring-2 ring-red-500' : ''}`}
-                                placeholder="0"
-                            />
-                            {/* Weight Calculator trigger */}
-                            <button
-                                type="button"
-                                onClick={() => setShowWeightCalc(true)}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-[#E6E8EA] text-[#434655] hover:text-[#004AC6] transition-colors cursor-pointer"
-                                title="Multi-weight calculator"
-                            >
-                                <Calculator size={14} />
-                            </button>
-                            <WeightCalculator
-                                isOpen={showWeightCalc}
-                                onClose={() => setShowWeightCalc(false)}
-                                initialValue={newItem.quantity}
-                                onComplete={(total) => {
-                                    setNewItem({ ...newItem, quantity: String(total) });
-                                    setShowWeightCalc(false);
-                                    setTimeout(() => quantityInputRef.current?.focus(), 50);
-                                }}
-                            />
+                                <input
+                                    ref={quantityInputRef}
+                                    type="number" min="0.001" step="0.001"
+                                    value={newItem.quantity}
+                                    onChange={(e) => setNewItem({ ...newItem, quantity: e.target.value })}
+                                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddItem(); } }}
+                                    className={`w-full py-2.5 px-3 pr-8 bg-[#F2F4F6] border-none rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all ${formErrors.quantity ? 'ring-2 ring-red-500' : ''}`}
+                                    placeholder="0"
+                                />
+                                {/* Weight Calculator trigger */}
+                                <button
+                                    type="button"
+                                    onClick={() => setShowWeightCalc(true)}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-[#E6E8EA] text-[#434655] hover:text-[#004AC6] transition-colors cursor-pointer"
+                                    title="Multi-weight calculator"
+                                >
+                                    <Calculator size={14} />
+                                </button>
+                                <WeightCalculator
+                                    isOpen={showWeightCalc}
+                                    onClose={() => setShowWeightCalc(false)}
+                                    initialValue={newItem.quantity}
+                                    onComplete={(total) => {
+                                        setNewItem({ ...newItem, quantity: String(total) });
+                                        setShowWeightCalc(false);
+                                        setTimeout(() => quantityInputRef.current?.focus(), 50);
+                                    }}
+                                />
                             </div>
                         </div>
-                        <div className="w-1/3">
-                            <label className="block text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Unit</label>
+
+                        {/* Unit (20%) */}
+                        <div className="col-span-1">
+                            <label className="block text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1 truncate">Unit</label>
                             <select
                                 value={newItem.packingType}
                                 onChange={(e) => setNewItem({ ...newItem, packingType: e.target.value })}
-                                className="w-full py-2.5 px-1.5 bg-[#F2F4F6] border-none rounded-lg text-[11px] font-bold appearance-none"
+                                className="w-full py-2.5 px-1 bg-[#F2F4F6] border-none rounded-lg text-[11px] font-bold appearance-none text-center"
                             >
                                 {ALLOWED_PACKING_TYPES.map(type => (
                                     <option key={type} value={type}>{type}</option>
                                 ))}
                             </select>
                         </div>
+
+                        {/* Rate (40%) */}
+                        <div className="col-span-2">
+                            <label className="block text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Rate (₹)</label>
+                            <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#434655] text-xs font-bold">₹</span>
+                                <input
+                                    type="number" min="1" step="1"
+                                    value={newItem.sellingPrice}
+                                    onChange={(e) => setNewItem({ ...newItem, sellingPrice: e.target.value })}
+                                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddItem(); } }}
+                                    className={`w-full pl-7 py-2.5 pr-2 bg-[#F2F4F6] border-none rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all ${formErrors.sellingPrice ? 'ring-2 ring-red-500' : ''}`}
+                                    placeholder="0.00"
+                                />
+                            </div>
+                        </div>
                     </div>
-                    <div className="h-5">
+
+                    <div className="h-5 flex gap-4 mt-0.5">
                         {formErrors.quantity && (
-                            <p className="text-xs text-red-600 flex items-center mt-0.5">
-                                <AlertCircle size={14} className="mr-1" />{formErrors.quantity}
+                            <p className="text-xs text-red-600 flex items-center truncate" title={formErrors.quantity}>
+                                <AlertCircle size={14} className="mr-1 flex-shrink-0" />
+                                <span className="truncate">{formErrors.quantity}</span>
                             </p>
                         )}
-                    </div>
-                </div>
-
-                {/* Rate — col-span-2 */}
-                <div className="col-span-6 md:col-span-2">
-                    <label className="block text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Rate (₹)</label>
-                    <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#434655] text-xs font-bold">₹</span>
-                        <input
-                            type="number" min="1" step="1"
-                            value={newItem.sellingPrice}
-                            onChange={(e) => setNewItem({ ...newItem, sellingPrice: e.target.value })}
-                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddItem(); } }}
-                            className={`w-full pl-7 py-2.5 px-3 bg-[#F2F4F6] border-none rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all ${formErrors.sellingPrice ? 'ring-2 ring-red-500' : ''}`}
-                            placeholder="0.00"
-                        />
-                    </div>
-                    <div className="h-5">
                         {formErrors.sellingPrice && (
-                            <p className="text-xs text-red-600 flex items-center mt-0.5">
-                                <AlertCircle size={14} className="mr-1" />{formErrors.sellingPrice}
+                            <p className="text-xs text-red-600 flex items-center truncate" title={formErrors.sellingPrice}>
+                                <AlertCircle size={14} className="mr-1 flex-shrink-0" />
+                                <span className="truncate">{formErrors.sellingPrice}</span>
                             </p>
                         )}
                     </div>
@@ -432,7 +436,7 @@ const CreateQuickSale = () => {
 
     useEffect(() => { setCurrentQsId(qsId || ''); }, [qsId]);
 
-    // Fetch products + next ID
+    // Fetch products + set ID when editing
     useEffect(() => {
         const init = async () => {
             try {
@@ -440,14 +444,11 @@ const CreateQuickSale = () => {
                 setProducts(productsData);
             } catch (err) { console.error('Error fetching products:', err); }
 
-            if (!qsId) {
-                try {
-                    const data = await window.api.invoke('quickSales:getNextId');
-                    setCustomQsId(data.next_id);
-                } catch (err) { console.error('Error fetching next QS id', err); }
-            } else {
+            // If editing existing quick sale, set the custom ID
+            if (qsId) {
                 setCustomQsId(qsId);
             }
+            // Note: getNextId is handled by resetState() via the pathname effect
         };
         init();
     }, [qsId]);

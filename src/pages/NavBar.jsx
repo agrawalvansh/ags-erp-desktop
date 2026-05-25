@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FileText, List, 
   User, 
-  LogOut, Menu, X, Store, Package, ReceiptIndianRupee, ChevronDown
+  LogOut, Menu, X, Store, Package, ReceiptIndianRupee, ChevronDown, Bell
 } from 'lucide-react';
 
 // Navigation items grouped by section
@@ -78,6 +78,30 @@ const NavBar = () => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [expandedDropdowns, setExpandedDropdowns] = useState({});
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Fetch unread notification count on mount + listen for live updates
+  useEffect(() => {
+    const fetchCount = async () => {
+      try {
+        const data = await window.api.invoke('notifications:getUnreadCount');
+        if (data && typeof data.count === 'number') setUnreadCount(data.count);
+      } catch (e) { /* silent */ }
+    };
+    fetchCount();
+    // Listen for updates from main process (startup scan)
+    const cleanup = window.api.onNotificationCountUpdate?.((payload) => {
+      const count = typeof payload === 'number' ? payload : (typeof payload?.count === 'number' ? payload.count : 0);
+      setUnreadCount(count);
+    });
+    // Listen for local updates from NotificationsPage (mark read / delete)
+    const handleLocalUpdate = (e) => setUnreadCount(e.detail ?? 0);
+    window.addEventListener('notifications:localUpdate', handleLocalUpdate);
+    return () => {
+      if (cleanup) cleanup();
+      window.removeEventListener('notifications:localUpdate', handleLocalUpdate);
+    };
+  }, []);
 
   // Highlight link when current path matches exactly or is a sub-route
   const isActive = (path) =>
@@ -293,8 +317,30 @@ const NavBar = () => {
           ))}
         </div>
 
-        {/* Logout Section — bottom */}
-        <div className="border-t border-[#E2E8F0] p-3 flex-shrink-0">
+        {/* Notifications + Logout Section — bottom */}
+        <div className="border-t border-[#E2E8F0] p-3 flex-shrink-0 space-y-0.5">
+          <button
+            onClick={() => handleNavClick('/notifications')}
+            className={`cursor-pointer w-full flex items-center px-3 py-2.5 rounded-lg transition-all duration-150 group ${
+              isActive('/notifications')
+                ? 'bg-[#EFF6FF] text-[#2563EB]'
+                : 'text-[#334155] hover:bg-[#F1F5F9]'
+            }`}
+          >
+            <span className={`w-5 h-5 mr-3 flex items-center justify-center ${
+              isActive('/notifications') ? 'text-[#2563EB]' : 'text-[#94A3B8] group-hover:text-[#64748B]'
+            }`}>
+              <Bell size={20} />
+            </span>
+            <span className="flex-1 text-left text-[13px] font-medium">
+              Notifications
+            </span>
+            {unreadCount > 0 && (
+              <span className="min-w-[20px] h-5 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full px-1.5">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+          </button>
           <button
             onClick={() => handleNavClick('/logout')}
             className="cursor-pointer w-full flex items-center px-3 py-2.5 rounded-lg text-[#DC2626] hover:bg-red-50 transition-all duration-150"

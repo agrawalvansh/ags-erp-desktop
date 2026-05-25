@@ -223,9 +223,7 @@ try { db.prepare("ALTER TABLE supplier_order_items ADD COLUMN is_temporary INTEG
 db.prepare(`INSERT OR IGNORE INTO document_sequences (doc_type, last_number) VALUES ('customer_order', 0)`).run();
 db.prepare(`INSERT OR IGNORE INTO document_sequences (doc_type, last_number) VALUES ('supplier_order', 0)`).run();
 
-// Reusable order numbers pools
-db.prepare(`CREATE TABLE IF NOT EXISTS reusable_customer_order_numbers (order_number INTEGER PRIMARY KEY)`).run();
-db.prepare(`CREATE TABLE IF NOT EXISTS reusable_supplier_order_numbers (order_number INTEGER PRIMARY KEY)`).run();
+
 
 // One-time migration: sync order sequences with actual max order numbers
 const ORDER_SEQ_MIGRATION = 'fix_order_sequences_v1';
@@ -306,6 +304,31 @@ db.prepare(`
   )
 `).run();
 
+// 6. Notifications — per-invoice pending-payment reminders
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS notifications (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    type            TEXT    NOT NULL,
+    account_id      TEXT    NOT NULL,
+    account_name    TEXT    NOT NULL,
+    invoice_no      TEXT,
+    invoice_date    TEXT,
+    pending_amount  REAL    NOT NULL,
+    message         TEXT    NOT NULL,
+    is_read         INTEGER DEFAULT 0,
+    created_at      TEXT    NOT NULL,
+    reminder_key    TEXT    UNIQUE
+  )
+`).run();
+
+// 7. App State — lightweight key-value store for app-level flags
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS app_state (
+    key   TEXT PRIMARY KEY,
+    value TEXT
+  )
+`).run();
+
 // Migration history table to track one-time migrations
 db.prepare(`
   CREATE TABLE IF NOT EXISTS migration_history (
@@ -356,12 +379,7 @@ if (!migrationExists) {
   console.log(`[Migration] ${SEQUENCE_FIX_MIGRATION}: Reset invoice sequence to ${actualMax}`);
 }
 
-// Reusable invoice numbers pool - stores freed numbers from deleted invoices
-db.prepare(`
-  CREATE TABLE IF NOT EXISTS reusable_invoice_numbers (
-    invoice_number INTEGER PRIMARY KEY
-  )
-`).run();
+
 
 // 6. Quick Sales
 
@@ -449,12 +467,7 @@ db.prepare(`
   VALUES ('quick_sale', 0)
 `).run();
 
-// Reusable quick sale numbers pool
-db.prepare(`
-  CREATE TABLE IF NOT EXISTS reusable_quick_sale_numbers (
-    qs_number INTEGER PRIMARY KEY
-  )
-`).run();
+
 
 // Export only the database connection
 // Cleanup is now handled via admin:cleanupSoftDeletedProducts IPC handler (manual only)

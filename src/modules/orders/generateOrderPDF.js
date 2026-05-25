@@ -211,7 +211,7 @@ export function generateOrderPDF(data) {
       0: { halign: 'center', cellWidth: 8, font: 'helvetica' },
       1: { halign: 'left', cellWidth: 'auto' },
       2: { halign: 'center', cellWidth: 20, font: 'helvetica' },
-      3: { halign: 'right', cellWidth: 16, font: 'helvetica' },
+      3: { halign: 'center', cellWidth: 16, font: 'helvetica' },
       4: { halign: 'center', cellWidth: 14, font: 'helvetica' },
       5: { halign: 'left', cellWidth: 40, font: 'helvetica' },
     },

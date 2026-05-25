@@ -117,10 +117,13 @@ const SupplierAccount = () => {
       if (deps.hasDependencies) {
         const parts = [];
         if (deps.maalCount > 0) parts.push(`${deps.maalCount} maal`);
-        if (deps.jamaCount > 0) parts.push(`${deps.jamaCount} jama`);
+        if (deps.jamaCount > 0) parts.push(`${deps.jamaCount} payment`);
         if (deps.orderCount > 0) parts.push(`${deps.orderCount} order`);
-        const detail = parts.length > 0 ? parts.join(', ') : 'existing dependent';
-        setDeleteError(`Cannot delete: this supplier has ${detail} entries. Remove them first.`);
+        setDeleteError(
+          parts.length > 0
+            ? `Cannot delete: this supplier has ${parts.join(', ')} entries. Remove them first.`
+            : 'Cannot delete: this supplier has dependent entries. Remove them first.'
+        );
         setDeleteTarget(supplier);
       } else {
         setDeleteTarget(supplier);

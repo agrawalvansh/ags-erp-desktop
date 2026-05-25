@@ -187,31 +187,28 @@ const ListQuickSales = () => {
                             <tbody className="divide-y-0">
                                 {processedSales.length > 0 ? (
                                     processedSales.map((sale, index) => (
-                                        <tr key={sale.qs_id} className="group hover:bg-[#F2F4F6] transition-colors cursor-pointer">
+                                        <tr key={sale.qs_id} className="group hover:bg-[#F2F4F6] transition-colors cursor-pointer" onClick={() => handleEdit(sale.qs_id)}>
                                             <td className="py-5 px-6 text-sm text-[#434655] font-medium">{String((currentPage - 1) * itemsPerPage + index + 1).padStart(2, '0')}</td>
                                             <td className="py-5 px-6">
-                                                <button
-                                                    type="button"
-                                                    className="bg-[#E6E8EA] px-2 py-1 rounded text-[10px] font-bold text-[#004AC6] cursor-pointer hover:bg-[#D0E1FB] transition-colors border-none"
-                                                    onClick={() => handleEdit(sale.qs_id)}
-                                                    aria-label={`Open quick sale ${sale.qs_id}`}
+                                                <span
+                                                    className="bg-[#E6E8EA] px-2 py-1 rounded text-[10px] font-bold text-[#004AC6]"
                                                 >
                                                     {sale.qs_id}
-                                                </button>
+                                                </span>
                                             </td>
                                             <td className="py-5 px-6 text-sm font-medium text-[#191C1E]">{sale.qs_date}</td>
                                             <td className="py-5 px-6 text-right font-black text-[#191C1E]">₹{(parseFloat(sale.total) || 0).toFixed(2)}</td>
                                             <td className="py-5 px-6 text-right">
                                                 <div className="flex items-center justify-end gap-2">
                                                     <button
-                                                        onClick={() => handleEdit(sale.qs_id)}
+                                                        onClick={(e) => { e.stopPropagation(); handleEdit(sale.qs_id); }}
                                                         className="cursor-pointer p-2 rounded-full hover:bg-white text-[#434655] hover:text-[#004AC6] transition-all shadow-none hover:shadow-sm"
                                                         title="Edit"
                                                     >
                                                         <Edit size={16} />
                                                     </button>
                                                     <button
-                                                        onClick={() => setDeleteTarget(sale.qs_id)}
+                                                        onClick={(e) => { e.stopPropagation(); setDeleteTarget(sale.qs_id); }}
                                                         className="cursor-pointer p-2 rounded-full hover:bg-white text-[#434655] hover:text-[#DC2626] transition-all shadow-none hover:shadow-sm"
                                                         title="Delete"
                                                     >

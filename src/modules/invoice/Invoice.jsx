@@ -228,89 +228,91 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
           <div className="h-5"></div>
         </div>
 
-        {/* Qty + Unit — col-span-2 */}
-        <div className="col-span-6 md:col-span-2">
-          <div className="flex gap-1">
-            <div className="w-2/3">
+        {/* Qty + Unit + Rate — col-span-4 */}
+        <div className="col-span-12 md:col-span-4">
+          <div className="grid grid-cols-5 gap-2">
+            {/* Qty (40%) */}
+            <div className="col-span-2">
               <label className="block text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Qty</label>
               <div className="relative">
-              <input
-                ref={quantityInputRef}
-                type="number"
-                min="0.001"
-                step="0.001"
-                value={newItem.quantity}
-                onChange={(e) => setNewItem({ ...newItem, quantity: e.target.value })}
-                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddItem(); } }}
-                className={`w-full py-2.5 px-3 pr-8 bg-[#F2F4F6] border-none rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all ${formErrors.quantity ? 'ring-2 ring-red-500' : ''}`}
-                placeholder="0"
-              />
-              {/* Weight Calculator trigger */}
-              <button
-                type="button"
-                onClick={() => setShowWeightCalc(true)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-[#E6E8EA] text-[#434655] hover:text-[#004AC6] transition-colors cursor-pointer"
-                title="Multi-weight calculator"
-              >
-                <Calculator size={14} />
-              </button>
-              <WeightCalculator
-                isOpen={showWeightCalc}
-                onClose={() => setShowWeightCalc(false)}
-                initialValue={newItem.quantity}
-                onComplete={(total) => {
-                  setNewItem({ ...newItem, quantity: String(total) });
-                  setShowWeightCalc(false);
-                  setTimeout(() => quantityInputRef.current?.focus(), 50);
-                }}
-              />
+                <input
+                  ref={quantityInputRef}
+                  type="number"
+                  min="0.001"
+                  step="0.001"
+                  value={newItem.quantity}
+                  onChange={(e) => setNewItem({ ...newItem, quantity: e.target.value })}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddItem(); } }}
+                  className={`w-full py-2.5 px-3 pr-8 bg-[#F2F4F6] border-none rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all ${formErrors.quantity ? 'ring-2 ring-red-500' : ''}`}
+                  placeholder="0"
+                />
+                {/* Weight Calculator trigger */}
+                <button
+                  type="button"
+                  onClick={() => setShowWeightCalc(true)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-[#E6E8EA] text-[#434655] hover:text-[#004AC6] transition-colors cursor-pointer"
+                  title="Multi-weight calculator"
+                >
+                  <Calculator size={14} />
+                </button>
+                <WeightCalculator
+                  isOpen={showWeightCalc}
+                  onClose={() => setShowWeightCalc(false)}
+                  initialValue={newItem.quantity}
+                  onComplete={(total) => {
+                    setNewItem({ ...newItem, quantity: String(total) });
+                    setShowWeightCalc(false);
+                    setTimeout(() => quantityInputRef.current?.focus(), 50);
+                  }}
+                />
               </div>
             </div>
-            <div className="w-1/3">
-              <label className="block text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Unit</label>
+
+            {/* Unit (20%) */}
+            <div className="col-span-1">
+              <label className="block text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1 truncate">Unit</label>
               <select
                 value={newItem.packingType}
                 onChange={(e) => setNewItem({ ...newItem, packingType: e.target.value })}
-                className="w-full py-2.5 px-1.5 bg-[#F2F4F6] border-none rounded-lg text-[11px] font-bold appearance-none"
+                className="w-full py-2.5 px-1 bg-[#F2F4F6] border-none rounded-lg text-[11px] font-bold appearance-none text-center"
               >
                 {ALLOWED_PACKING_TYPES.map(type => (
                   <option key={type} value={type}>{type}</option>
                 ))}
               </select>
             </div>
+
+            {/* Rate (40%) */}
+            <div className="col-span-2">
+              <label className="block text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Rate (₹)</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#434655] text-xs font-bold">₹</span>
+                <input
+                  ref={rateInputRef}
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={newItem.sellingPrice}
+                  onChange={(e) => setNewItem({ ...newItem, sellingPrice: e.target.value })}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddItem(); } }}
+                  className={`w-full pl-7 py-2.5 pr-2 bg-[#F2F4F6] border-none rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all ${formErrors.sellingPrice ? 'ring-2 ring-red-500' : ''}`}
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
           </div>
-          <div className="h-5">
+
+          <div className="h-5 flex gap-4 mt-0.5">
             {formErrors.quantity && (
-              <p className="text-xs text-red-600 flex items-center mt-0.5">
-                <AlertCircle size={14} className="mr-1" />
-                {formErrors.quantity}
+              <p className="text-xs text-red-600 flex items-center truncate" title={formErrors.quantity}>
+                <AlertCircle size={14} className="mr-1 flex-shrink-0" />
+                <span className="truncate">{formErrors.quantity}</span>
               </p>
             )}
-          </div>
-        </div>
-
-        {/* Rate — col-span-2 */}
-        <div className="col-span-6 md:col-span-2">
-          <label className="block text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Rate (₹)</label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#434655] text-xs font-bold">₹</span>
-            <input
-              ref={rateInputRef}
-              type="number"
-              min="1"
-              step="1"
-              value={newItem.sellingPrice}
-              onChange={(e) => setNewItem({ ...newItem, sellingPrice: e.target.value })}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddItem(); } }}
-              className={`w-full pl-7 py-2.5 pr-3 bg-[#F2F4F6] border-none rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all ${formErrors.sellingPrice ? 'ring-2 ring-red-500' : ''}`}
-              placeholder="0.00"
-            />
-          </div>
-          <div className="h-5">
             {formErrors.sellingPrice && (
-              <p className="text-xs text-red-600 flex items-center mt-0.5">
-                <AlertCircle size={14} className="mr-1" />
-                {formErrors.sellingPrice}
+              <p className="text-xs text-red-600 flex items-center truncate" title={formErrors.sellingPrice}>
+                <AlertCircle size={14} className="mr-1 flex-shrink-0" />
+                <span className="truncate">{formErrors.sellingPrice}</span>
               </p>
             )}
           </div>
@@ -392,6 +394,11 @@ const Invoice = () => {
 
   // ForceNew modal state (when user clicks nav to create new while current has unsaved changes)
   const [showForceNewModal, setShowForceNewModal] = useState(false);
+
+  // Delete modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeletePending, setIsDeletePending] = useState(false);
+  const deleteModalRef = useRef(null);
 
   // Original invoice data for dirty state detection (when editing existing invoice)
   const [originalInvoiceData, setOriginalInvoiceData] = useState(null);
@@ -559,22 +566,13 @@ const Invoice = () => {
     setCurrentInvoiceId(invoiceNo || '');
   }, [invoiceNo]);
 
-  // Fetch initial data
+  // Fetch initial data (customers & products) + set invoice ID when editing
   useEffect(() => {
-    const getNextId = async () => {
-      if (!invoiceNo) {
-        try {
-          const data = await window.api.getNextInvoiceId();
-          const nextId = typeof data === 'object' && data !== null ? data.next_id : data;
-          setCustomInvoiceNo(nextId);
-        } catch (err) {
-          console.error('Error fetching next invoice id', err);
-        }
-      } else {
-        setCustomInvoiceNo(invoiceNo);
-      }
-    };
-    getNextId();
+    // If editing existing invoice, set the custom invoice number
+    if (invoiceNo) {
+      setCustomInvoiceNo(invoiceNo);
+    }
+    // Note: getNextInvoiceId is handled by resetInvoiceState() via the pathname effect
 
     // Fetch customers & products
     const fetchInitialData = async () => {
@@ -1180,6 +1178,33 @@ const Invoice = () => {
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [showForceNewModal, showNavigationWarning, showNewCustModal, showCustUpdateModal]);
+
+  // Focus the delete modal when it opens
+  useEffect(() => {
+    if (showDeleteModal) deleteModalRef.current?.focus();
+  }, [showDeleteModal]);
+
+  // Delete entire invoice (permanent, no rollback)
+  const handleDeleteInvoice = async () => {
+    if (!currentInvoiceId) { toast.error('No invoice to delete'); return; }
+    setIsDeletePending(true);
+    try {
+      const result = await window.api.invoke('invoices:delete', currentInvoiceId);
+      if (!result || result.error || result.success === false) {
+        toast.error(result?.error || 'Failed to delete invoice');
+        return;
+      }
+      setShowDeleteModal(false);
+      toast.success('Invoice deleted permanently');
+      // Navigate to create new invoice after short delay
+      setTimeout(() => { navigate('/invoice'); }, 500);
+    } catch (err) {
+      console.error('Error deleting invoice:', err);
+      toast.error('Failed to delete invoice');
+    } finally {
+      setIsDeletePending(false);
+    }
+  };
 
   // Marathi print state
   const [printMarathi, setPrintMarathi] = useState(false);
@@ -2002,29 +2027,85 @@ const Invoice = () => {
             </div>
           </div>
 
-          {/* Footer Action Buttons — mutually exclusive Save / Print */}
-          <div className="pt-8 border-t border-[#C3C6D7]/10 flex justify-end gap-4 mt-6">
-            {isDirty ? (
-              <button
-                onClick={handleSave}
-                className="cursor-pointer px-12 py-3 bg-gradient-to-br from-[#004AC6] to-[#2563EB] text-white font-bold text-xs uppercase rounded-xl shadow-lg shadow-[#004AC6]/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
-              >
-                <Save size={18} />
-                Save & Confirm
-              </button>
-            ) : (currentInvoiceId || !isNewInvoice) && (
-              <button
-                onClick={handlePrint}
-                disabled={isTranslating}
-                className={`cursor-pointer px-8 py-3 bg-[#E6E8EA] text-[#191C1E] font-bold text-xs uppercase rounded-xl hover:bg-[#E0E3E5] transition-all flex items-center gap-2 ${isTranslating ? 'opacity-50' : ''}`}
-              >
-                <Printer size={18} />
-                {isTranslating ? 'Translating...' : 'Print Estimate'}
-              </button>
-            )}
+          {/* Footer Action Buttons — mutually exclusive Save / Print + Delete */}
+          <div className="pt-8 border-t border-[#C3C6D7]/10 flex justify-between items-center mt-6">
+            {/* Delete button (left side) — only for existing invoices */}
+            <div>
+              {(currentInvoiceId && !isNewInvoice) && (
+                <button
+                  onClick={() => setShowDeleteModal(true)}
+                  className="cursor-pointer px-6 py-3 bg-red-600 text-white font-bold text-xs uppercase rounded-xl shadow-lg shadow-red-600/20 hover:bg-red-700 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
+                >
+                  <Trash2 size={18} />
+                  Delete Estimate
+                </button>
+              )}
+            </div>
+            {/* Save / Print button (right side) */}
+            <div>
+              {isDirty ? (
+                <button
+                  onClick={handleSave}
+                  className="cursor-pointer px-12 py-3 bg-gradient-to-br from-[#004AC6] to-[#2563EB] text-white font-bold text-xs uppercase rounded-xl shadow-lg shadow-[#004AC6]/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
+                >
+                  <Save size={18} />
+                  Save & Confirm
+                </button>
+              ) : (currentInvoiceId || !isNewInvoice) && (
+                <button
+                  onClick={handlePrint}
+                  disabled={isTranslating}
+                  className={`cursor-pointer px-8 py-3 bg-[#E6E8EA] text-[#191C1E] font-bold text-xs uppercase rounded-xl hover:bg-[#E0E3E5] transition-all flex items-center gap-2 ${isTranslating ? 'opacity-50' : ''}`}
+                >
+                  <Printer size={18} />
+                  {isTranslating ? 'Translating...' : 'Print Estimate'}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
+
+      {/* ─── Delete Invoice Confirmation Modal — Stitch Glass Overlay ─── */}
+      {showDeleteModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 print:hidden outline-none"
+          style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.7)' }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-invoice-heading"
+          tabIndex={-1}
+          ref={deleteModalRef}
+          onKeyDown={(e) => { if (e.key === 'Escape' && !isDeletePending) setShowDeleteModal(false); }}
+          onClick={(e) => { if (e.target === e.currentTarget && !isDeletePending) setShowDeleteModal(false); }}
+        >
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#C3C6D7]/20 p-8">
+            <div className="w-12 h-12 rounded-full bg-red-100/50 flex items-center justify-center text-red-600 mb-6 mx-auto">
+              <AlertTriangle size={28} />
+            </div>
+            <h2 id="delete-invoice-heading" className="text-2xl font-extrabold text-[#0F172A] tracking-tight mb-3 text-center">
+              Delete Estimate?
+            </h2>
+            <p className="text-[#434655] leading-relaxed mb-8 text-center">
+              Are you sure you want to permanently delete <span className="font-bold text-[#191C1E]">"{currentInvoiceId}"</span>? All items, maal entries, and linked payments will be removed. This action cannot be undone.
+            </p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                disabled={isDeletePending}
+                className="flex-1 px-6 py-3 bg-[#E6E8EA] text-[#191C1E] font-bold rounded-xl hover:bg-[#E0E3E5] transition-all text-sm cursor-pointer disabled:opacity-50"
+              >Cancel</button>
+              <button
+                onClick={handleDeleteInvoice}
+                disabled={isDeletePending}
+                className="flex-1 px-6 py-3 bg-red-600 text-white font-bold rounded-xl shadow-lg shadow-red-600/20 hover:bg-red-700 hover:scale-[1.02] active:scale-95 transition-all text-sm cursor-pointer disabled:opacity-50"
+              >
+                {isDeletePending ? 'Deleting...' : 'Delete Permanently'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
