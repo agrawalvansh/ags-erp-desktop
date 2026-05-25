@@ -398,6 +398,7 @@ const Invoice = () => {
   // Delete modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeletePending, setIsDeletePending] = useState(false);
+  const [deleteAlsoPayment, setDeleteAlsoPayment] = useState(false);
   const deleteModalRef = useRef(null);
 
   // Original invoice data for dirty state detection (when editing existing invoice)
@@ -1189,7 +1190,7 @@ const Invoice = () => {
     if (!currentInvoiceId) { toast.error('No invoice to delete'); return; }
     setIsDeletePending(true);
     try {
-      const result = await window.api.invoke('invoices:delete', currentInvoiceId);
+      const result = await window.api.invoke('invoices:delete', { invoice_id: currentInvoiceId, deletePayment: deleteAlsoPayment });
       if (!result || result.error || result.success === false) {
         toast.error(result?.error || 'Failed to delete invoice');
         return;
@@ -1197,7 +1198,8 @@ const Invoice = () => {
       // Clear dirty state BEFORE navigating so useBlocker allows navigation
       resetInvoiceState();
       setShowDeleteModal(false);
-      toast.success('Invoice deleted permanently');
+      setDeleteAlsoPayment(false);
+      toast.success(deleteAlsoPayment ? 'Invoice & linked payment deleted' : 'Invoice deleted (payment kept in ledger)');
       // Navigate to create new invoice after short delay
       setTimeout(() => { navigate('/invoice'); }, 500);
     } catch (err) {
@@ -1631,21 +1633,25 @@ const Invoice = () => {
               <p className="text-sm font-bold text-[#2563EB]">{customInvoiceNo || '...'}</p>
             </div>
             <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A] tracking-wide">ESTIMATE</h1>
-            <div className="text-right">
-              <p className="text-xs font-medium text-[#64748B] uppercase tracking-wider">Transaction Date</p>
-              <input
-                type="date"
-                value={invoiceDate}
-                onChange={(e) => setInvoiceDate(e.target.value)}
-                className="text-sm font-semibold text-[#0F172A] border border-[#E2E8F0] rounded-md px-2 py-1 focus:ring-2 focus:ring-[#2563EB] focus:border-transparent print:border-none print:bg-transparent print:p-0"
-              />
-              <p className="text-xs font-medium text-[#64748B] uppercase tracking-wider mt-2">Time</p>
-              <input
-                type="time"
-                value={invoiceTime}
-                onChange={(e) => setInvoiceTime(e.target.value)}
-                className="text-sm font-semibold text-[#0F172A] border border-[#E2E8F0] rounded-md px-2 py-1 focus:ring-2 focus:ring-[#2563EB] focus:border-transparent print:border-none print:bg-transparent print:p-0"
-              />
+            <div className="flex items-center gap-4 text-right">
+              <div>
+                <p className="text-xs font-medium text-[#64748B] uppercase tracking-wider mb-1 text-left">Date</p>
+                <input
+                  type="date"
+                  value={invoiceDate}
+                  onChange={(e) => setInvoiceDate(e.target.value)}
+                  className="text-sm font-semibold text-[#0F172A] border border-[#E2E8F0] rounded-md px-2 py-1 focus:ring-2 focus:ring-[#2563EB] focus:border-transparent print:border-none print:bg-transparent print:p-0 w-[125px]"
+                />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-[#64748B] uppercase tracking-wider mb-1 text-left">Time</p>
+                <input
+                  type="time"
+                  value={invoiceTime}
+                  onChange={(e) => setInvoiceTime(e.target.value)}
+                  className="text-sm font-semibold text-[#0F172A] border border-[#E2E8F0] rounded-md px-2 py-1 focus:ring-2 focus:ring-[#2563EB] focus:border-transparent print:border-none print:bg-transparent print:p-0 w-[100px]"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -2078,8 +2084,8 @@ const Invoice = () => {
           aria-labelledby="delete-invoice-heading"
           tabIndex={-1}
           ref={deleteModalRef}
-          onKeyDown={(e) => { if (e.key === 'Escape' && !isDeletePending) setShowDeleteModal(false); }}
-          onClick={(e) => { if (e.target === e.currentTarget && !isDeletePending) setShowDeleteModal(false); }}
+          onKeyDown={(e) => { if (e.key === 'Escape' && !isDeletePending) { setShowDeleteModal(false); setDeleteAlsoPayment(false); } }}
+          onClick={(e) => { if (e.target === e.currentTarget && !isDeletePending) { setShowDeleteModal(false); setDeleteAlsoPayment(false); } }}
         >
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#C3C6D7]/20 p-8">
             <div className="w-12 h-12 rounded-full bg-red-100/50 flex items-center justify-center text-red-600 mb-6 mx-auto">
@@ -2088,12 +2094,29 @@ const Invoice = () => {
             <h2 id="delete-invoice-heading" className="text-2xl font-extrabold text-[#0F172A] tracking-tight mb-3 text-center">
               Delete Estimate?
             </h2>
-            <p className="text-[#434655] leading-relaxed mb-8 text-center">
-              Are you sure you want to permanently delete <span className="font-bold text-[#191C1E]">"{currentInvoiceId}"</span>? All items, maal entries, and linked payments will be removed. This action cannot be undone.
+            <p className="text-[#434655] leading-relaxed mb-6 text-center">
+              Are you sure you want to permanently delete <span className="font-bold text-[#191C1E]">"{currentInvoiceId}"</span>? All items and maal entries will be removed. This action cannot be undone.
             </p>
+            {/* Show payment checkbox only when there's a linked payment */}
+            {parseFloat(originalInvoiceData?.payment_amount || 0) > 0 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-left">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={deleteAlsoPayment}
+                    onChange={(e) => setDeleteAlsoPayment(e.target.checked)}
+                    className="w-5 h-5 mt-0.5 rounded border-amber-300 text-red-600 focus:ring-red-500/20 cursor-pointer shrink-0"
+                  />
+                  <div>
+                    <span className="text-sm font-bold text-amber-800 block">Also delete ₹{Number(originalInvoiceData.payment_amount).toLocaleString('en-IN')} linked payment from ledger (Jama)</span>
+                    <span className="text-xs text-amber-600 mt-1 block">If unchecked, only the invoice is deleted. The payment stays in the ledger.</span>
+                  </div>
+                </label>
+              </div>
+            )}
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setShowDeleteModal(false)}
+                onClick={() => { setShowDeleteModal(false); setDeleteAlsoPayment(false); }}
                 disabled={isDeletePending}
                 className="flex-1 px-6 py-3 bg-[#E6E8EA] text-[#191C1E] font-bold rounded-xl hover:bg-[#E0E3E5] transition-all text-sm cursor-pointer disabled:opacity-50"
               >Cancel</button>

@@ -307,7 +307,7 @@ const BuyerAccountDetail = () => {
         invoiceId: r.invoiceId,
         isLinkedToInvoice: r.isLinkedToInvoice,
       }));
-      const jamaIds = jamaData.filter(r => !r.isLinkedToOrder).map(r => r.transactionId);
+      const jamaIds = jamaData.map(r => r.transactionId);
       const result = await window.api.invoke('customers:bulkDeleteEntries', { maalRows, jamaIds });
       
       if (!result || result.success === false) {

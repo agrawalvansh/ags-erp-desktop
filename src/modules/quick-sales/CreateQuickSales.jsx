@@ -343,6 +343,11 @@ const CreateQuickSale = () => {
     // ForceNew modal state
     const [showForceNewModal, setShowForceNewModal] = useState(false);
 
+    // Delete modal state
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [isDeletePending, setIsDeletePending] = useState(false);
+    const deleteModalRef = useRef(null);
+
     // Dirty state detection
     const isDirty = useMemo(() => {
         if (isNewSale) return invoiceItems.length > 0;
@@ -659,13 +664,40 @@ const CreateQuickSale = () => {
         const onKeyDown = (e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                 e.preventDefault();
-                if (showForceNewModal) return;
+                if (showForceNewModal || showDeleteModal) return;
                 handleSaveRef.current();
             }
         };
         document.addEventListener('keydown', onKeyDown);
         return () => document.removeEventListener('keydown', onKeyDown);
-    }, [showForceNewModal]);
+    }, [showForceNewModal, showDeleteModal]);
+
+    // Focus the delete modal when it opens
+    useEffect(() => {
+        if (showDeleteModal) deleteModalRef.current?.focus();
+    }, [showDeleteModal]);
+
+    // Delete entire quick sale
+    const handleDeleteSale = async () => {
+        if (!currentQsId) { toast.error('No quick sale to delete'); return; }
+        setIsDeletePending(true);
+        try {
+            const result = await window.api.invoke('quickSales:delete', currentQsId);
+            if (!result || result.error || result.success === false) {
+                toast.error(result?.error || 'Failed to delete quick sale');
+                return;
+            }
+            // Clear dirty state BEFORE resetting so blocker allows clear
+            resetState();
+            setShowDeleteModal(false);
+            toast.success('Quick sale deleted permanently');
+        } catch (err) {
+            console.error('Error deleting quick sale:', err);
+            toast.error('Failed to delete quick sale');
+        } finally {
+            setIsDeletePending(false);
+        }
+    };
 
     // Marathi print state
     const [printMarathi, setPrintMarathi] = useState(false);
@@ -945,19 +977,23 @@ const CreateQuickSale = () => {
                             <p className="text-sm font-bold text-[#2563EB]">{customQsId || '...'}</p>
                         </div>
                         <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A] tracking-wide">QUICK SALE</h1>
-                        <div className="text-right">
-                            <p className="text-xs font-medium text-[#64748B] uppercase tracking-wider">Transaction Date</p>
-                            <input
-                                type="date" value={saleDate}
-                                onChange={(e) => setSaleDate(e.target.value)}
-                                className="text-sm font-semibold text-[#0F172A] border border-[#E2E8F0] rounded-md px-2 py-1 focus:ring-2 focus:ring-[#2563EB] focus:border-transparent print:border-none print:bg-transparent print:p-0"
-                            />
-                            <p className="text-xs font-medium text-[#64748B] uppercase tracking-wider mt-2">Time</p>
-                            <input
-                                type="time" value={saleTime}
-                                onChange={(e) => setSaleTime(e.target.value)}
-                                className="text-sm font-semibold text-[#0F172A] border border-[#E2E8F0] rounded-md px-2 py-1 focus:ring-2 focus:ring-[#2563EB] focus:border-transparent print:border-none print:bg-transparent print:p-0"
-                            />
+                        <div className="flex items-center gap-4 text-right">
+                            <div>
+                                <p className="text-xs font-medium text-[#64748B] uppercase tracking-wider mb-1 text-left">Date</p>
+                                <input
+                                    type="date" value={saleDate}
+                                    onChange={(e) => setSaleDate(e.target.value)}
+                                    className="text-sm font-semibold text-[#0F172A] border border-[#E2E8F0] rounded-md px-2 py-1 focus:ring-2 focus:ring-[#2563EB] focus:border-transparent print:border-none print:bg-transparent print:p-0 w-[125px]"
+                                />
+                            </div>
+                            <div>
+                                <p className="text-xs font-medium text-[#64748B] uppercase tracking-wider mb-1 text-left">Time</p>
+                                <input
+                                    type="time" value={saleTime}
+                                    onChange={(e) => setSaleTime(e.target.value)}
+                                    className="text-sm font-semibold text-[#0F172A] border border-[#E2E8F0] rounded-md px-2 py-1 focus:ring-2 focus:ring-[#2563EB] focus:border-transparent print:border-none print:bg-transparent print:p-0 w-[100px]"
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1103,29 +1139,86 @@ const CreateQuickSale = () => {
                         </div>
                     </div>
 
-                    {/* Footer Action Buttons — mutually exclusive Save / Print */}
-                    <div className="pt-8 border-t border-[#C3C6D7]/10 flex justify-end gap-4 mt-6">
-                        {isDirty ? (
-                            <button
-                                onClick={handleSave}
-                                className="cursor-pointer px-12 py-3 bg-gradient-to-br from-[#004AC6] to-[#2563EB] text-white font-bold text-xs uppercase rounded-xl shadow-lg shadow-[#004AC6]/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
-                            >
-                                <Save size={18} />
-                                Save & Confirm
-                            </button>
-                        ) : (currentQsId || !isNewSale) && (
-                            <button
-                                onClick={handlePrint}
-                                disabled={isTranslating}
-                                className={`cursor-pointer px-8 py-3 bg-[#E6E8EA] text-[#191C1E] font-bold text-xs uppercase rounded-xl hover:bg-[#E0E3E5] transition-all flex items-center gap-2 ${isTranslating ? 'opacity-50' : ''}`}
-                            >
-                                <Printer size={18} />
-                                {isTranslating ? 'Translating...' : 'Print Quick Sale'}
-                            </button>
-                        )}
+                    {/* Footer Action Buttons — mutually exclusive Save / Print + Delete */}
+                    <div className="pt-8 border-t border-[#C3C6D7]/10 flex justify-between items-center mt-6">
+                        {/* Delete button (left side) — only for existing quick sales */}
+                        <div>
+                            {(currentQsId && !isNewSale) && (
+                                <button
+                                    onClick={() => setShowDeleteModal(true)}
+                                    className="cursor-pointer px-6 py-3 bg-red-600 text-white font-bold text-xs uppercase rounded-xl shadow-lg shadow-red-600/20 hover:bg-red-700 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
+                                >
+                                    <Trash2 size={18} />
+                                    Delete Quick Sale
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Save / Print buttons (right side) */}
+                        <div className="flex gap-4">
+                            {isDirty ? (
+                                <button
+                                    onClick={handleSave}
+                                    className="cursor-pointer px-12 py-3 bg-gradient-to-br from-[#004AC6] to-[#2563EB] text-white font-bold text-xs uppercase rounded-xl shadow-lg shadow-[#004AC6]/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
+                                >
+                                    <Save size={18} />
+                                    Save & Confirm
+                                </button>
+                            ) : (currentQsId || !isNewSale) && (
+                                <button
+                                    onClick={handlePrint}
+                                    disabled={isTranslating}
+                                    className={`cursor-pointer px-8 py-3 bg-[#E6E8EA] text-[#191C1E] font-bold text-xs uppercase rounded-xl hover:bg-[#E0E3E5] transition-all flex items-center gap-2 ${isTranslating ? 'opacity-50' : ''}`}
+                                >
+                                    <Printer size={18} />
+                                    {isTranslating ? 'Translating...' : 'Print Quick Sale'}
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
+
+            {/* ─── Delete Quick Sale Confirmation Modal — Stitch Glass Overlay ─── */}
+            {showDeleteModal && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 print:hidden outline-none"
+                    style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.7)' }}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="delete-sale-heading"
+                    tabIndex={-1}
+                    ref={deleteModalRef}
+                    onKeyDown={(e) => { if (e.key === 'Escape' && !isDeletePending) setShowDeleteModal(false); }}
+                    onClick={(e) => { if (e.target === e.currentTarget && !isDeletePending) setShowDeleteModal(false); }}
+                >
+                    <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#C3C6D7]/20 p-8">
+                        <div className="w-12 h-12 rounded-full bg-red-100/50 flex items-center justify-center text-red-600 mb-6 mx-auto">
+                            <AlertTriangle size={28} />
+                        </div>
+                        <h2 id="delete-sale-heading" className="text-2xl font-extrabold text-[#0F172A] tracking-tight mb-3 text-center">
+                            Delete Quick Sale?
+                        </h2>
+                        <p className="text-[#434655] leading-relaxed mb-8 text-center">
+                            Are you sure you want to permanently delete <span className="font-bold text-[#191C1E]">"{currentQsId}"</span>? This action cannot be undone.
+                        </p>
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => setShowDeleteModal(false)}
+                                disabled={isDeletePending}
+                                className="flex-1 px-6 py-3 bg-[#E6E8EA] text-[#191C1E] font-bold rounded-xl hover:bg-[#E0E3E5] transition-all text-sm cursor-pointer disabled:opacity-50"
+                            >Cancel</button>
+                            <button
+                                onClick={handleDeleteSale}
+                                disabled={isDeletePending}
+                                className="flex-1 px-6 py-3 bg-red-600 text-white font-bold rounded-xl shadow-lg shadow-red-600/20 hover:bg-red-700 hover:scale-[1.02] active:scale-95 transition-all text-sm cursor-pointer disabled:opacity-50"
+                            >
+                                {isDeletePending ? 'Deleting...' : 'Delete Quick Sale'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

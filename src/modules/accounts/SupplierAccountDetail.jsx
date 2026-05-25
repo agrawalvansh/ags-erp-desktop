@@ -309,7 +309,7 @@ const SupplierAccountDetail = () => {
       const nonOrderMaalData = maalData.filter(r => !r.isLinkedToOrder);
       const maalIds = nonOrderMaalData.map(r => r.maalDbId).filter(Boolean);
       const maalInvoiceNos = nonOrderMaalData.filter(r => !r.maalDbId && r.maalInvoiceNumber).map(r => r.maalInvoiceNumber);
-      const jamaIds = jamaData.filter(r => !r.isLinkedToOrder).map(r => r.transactionId).filter(Boolean);
+      const jamaIds = jamaData.map(r => r.transactionId).filter(Boolean);
       
       const result = await window.api.invoke('suppliers:bulkDeleteEntries', { maalIds, maalInvoiceNos, jamaIds });
       if (!result || result.success === false) {

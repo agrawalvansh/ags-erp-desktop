@@ -228,7 +228,9 @@ app.whenReady().then(() => {
         if (mainWindow && !mainWindow.isDestroyed()) {
           if (mainWindow.webContents.isLoading()) {
             mainWindow.webContents.once('did-finish-load', () => {
-              mainWindow.webContents.send('notifications:countUpdate', unread.count);
+              if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+                mainWindow.webContents.send('notifications:countUpdate', unread.count);
+              }
             });
           } else {
             mainWindow.webContents.send('notifications:countUpdate', unread.count);
@@ -261,7 +263,7 @@ app.whenReady().then(() => {
       if (missing.length === 0) return;
       console.log(`[Marathi] Batch transliterating ${missing.length} products...`);
       // Notify renderer that batch transliteration is starting
-      if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
         mainWindow.webContents.send('marathi:batchStart', { total: missing.length });
       }
 
@@ -294,7 +296,7 @@ app.whenReady().then(() => {
       }
       console.log(`[Marathi] Batch transliteration complete: ${translated}/${missing.length}`);
       // Notify renderer if window is available
-      if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
         mainWindow.webContents.send('marathi:batchComplete', { translated, total: missing.length });
       }
     } catch (e) { console.error('[Marathi] Batch transliteration error:', e.message); }
