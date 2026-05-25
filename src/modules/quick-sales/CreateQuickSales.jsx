@@ -691,6 +691,8 @@ const CreateQuickSale = () => {
             resetState();
             setShowDeleteModal(false);
             toast.success('Quick sale deleted permanently');
+            // Navigate away so useParams doesn't reload the deleted ID
+            setTimeout(() => { navigate('/quick-sales/create'); }, 500);
         } catch (err) {
             console.error('Error deleting quick sale:', err);
             toast.error('Failed to delete quick sale');

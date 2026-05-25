@@ -225,7 +225,7 @@ app.whenReady().then(() => {
         }
         // Push updated unread count to renderer (only when new notifications created)
         const unread = db.prepare('SELECT COUNT(*) AS count FROM notifications WHERE is_read = 0').get();
-        if (mainWindow && !mainWindow.isDestroyed()) {
+        if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
           if (mainWindow.webContents.isLoading()) {
             mainWindow.webContents.once('did-finish-load', () => {
               if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
