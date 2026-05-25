@@ -1171,13 +1171,13 @@ const Invoice = () => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
         // Don't save if a modal/popup requiring input is active
-        if (showForceNewModal || showNavigationWarning || showNewCustModal || showCustUpdateModal) return;
+        if (showForceNewModal || showNavigationWarning || showNewCustModal || showCustUpdateModal || showDeleteModal) return;
         handleSaveRef.current();
       }
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [showForceNewModal, showNavigationWarning, showNewCustModal, showCustUpdateModal]);
+  }, [showForceNewModal, showNavigationWarning, showNewCustModal, showCustUpdateModal, showDeleteModal]);
 
   // Focus the delete modal when it opens
   useEffect(() => {
@@ -1194,6 +1194,8 @@ const Invoice = () => {
         toast.error(result?.error || 'Failed to delete invoice');
         return;
       }
+      // Clear dirty state BEFORE navigating so useBlocker allows navigation
+      resetInvoiceState();
       setShowDeleteModal(false);
       toast.success('Invoice deleted permanently');
       // Navigate to create new invoice after short delay

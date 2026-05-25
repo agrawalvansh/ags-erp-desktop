@@ -451,6 +451,14 @@ const AddCustomerOrder = () => {
     try {
       const result = await window.api.invoke('cusOrders:delete', { order_id: currentorderId, deletePayment: deleteAlsoPayment });
       if (!result || result.error || result.success === false) { toast.error(result?.error || 'An error occurred while deleting. Please try again.'); return; }
+      
+      // Clear dirty state BEFORE navigating so useBlocker allows navigation
+      setOriginalOrderData(null);
+      setIsNewOrder(true);
+      setorderItems([]);
+      setRemark('');
+      setPaymentAmount('');
+      
       setShowDeleteModal(false);
       setDeleteAlsoPayment(false);
       toast.success(deleteAlsoPayment ? 'Order & payment entry deleted' : 'Order deleted (payment kept in ledger)');

@@ -226,9 +226,13 @@ app.whenReady().then(() => {
         // Push updated unread count to renderer (only when new notifications created)
         const unread = db.prepare('SELECT COUNT(*) AS count FROM notifications WHERE is_read = 0').get();
         if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.once('did-finish-load', () => {
+          if (mainWindow.webContents.isLoading()) {
+            mainWindow.webContents.once('did-finish-load', () => {
+              mainWindow.webContents.send('notifications:countUpdate', unread.count);
+            });
+          } else {
             mainWindow.webContents.send('notifications:countUpdate', unread.count);
-          });
+          }
         }
       } else {
         console.log('[Notifications] Scan complete — no new reminders');

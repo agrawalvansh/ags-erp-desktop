@@ -220,6 +220,12 @@ try { db.prepare("ALTER TABLE supplier_order_items ADD COLUMN packing_type TEXT 
 try { db.prepare("ALTER TABLE supplier_order_items ADD COLUMN is_temporary INTEGER DEFAULT 0").run(); } catch (e) { /* already exists */ }
 
 // Initialize sequences for orders
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS document_sequences (
+    doc_type    TEXT    PRIMARY KEY,
+    last_number INTEGER NOT NULL
+  )
+`).run();
 db.prepare(`INSERT OR IGNORE INTO document_sequences (doc_type, last_number) VALUES ('customer_order', 0)`).run();
 db.prepare(`INSERT OR IGNORE INTO document_sequences (doc_type, last_number) VALUES ('supplier_order', 0)`).run();
 
@@ -338,13 +344,7 @@ db.prepare(`
   )
 `).run();
 
-// Document sequences table - tracks the highest number ever created for each doc type
-db.prepare(`
-  CREATE TABLE IF NOT EXISTS document_sequences (
-    doc_type    TEXT    PRIMARY KEY,
-    last_number INTEGER NOT NULL
-  )
-`).run();
+// Document sequences table created above for orders
 
 // Initialize sequence for invoices if not exists
 db.prepare(`INSERT OR IGNORE INTO document_sequences (doc_type, last_number) VALUES ('invoice', 0)`).run();

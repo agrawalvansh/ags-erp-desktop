@@ -39,6 +39,7 @@ const SupplierAccountDetail = () => {
   const [reminderDays, setReminderDays] = useState(1);
   const lastSavedReminderDaysRef = useRef(1);
   const deleteModalRef = useRef(null);
+  const bulkDeleteModalRef = useRef(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteAlsoPayment, setDeleteAlsoPayment] = useState(false);
 
@@ -57,6 +58,11 @@ const SupplierAccountDetail = () => {
   useEffect(() => {
     if (deleteTarget !== null) deleteModalRef.current?.focus();
   }, [deleteTarget]);
+
+  // Focus the bulk delete modal when it opens
+  useEffect(() => {
+    if (showBulkDeleteModal) bulkDeleteModalRef.current?.focus();
+  }, [showBulkDeleteModal]);
 
   // Fetch functions
   const fetchInvoices = useCallback(async () => {
@@ -303,11 +309,14 @@ const SupplierAccountDetail = () => {
       const nonOrderMaalData = maalData.filter(r => !r.isLinkedToOrder);
       const maalIds = nonOrderMaalData.map(r => r.maalDbId).filter(Boolean);
       const maalInvoiceNos = nonOrderMaalData.filter(r => !r.maalDbId && r.maalInvoiceNumber).map(r => r.maalInvoiceNumber);
-      const jamaIds = jamaData.map(r => r.transactionId).filter(Boolean);
+      const jamaIds = jamaData.filter(r => !r.isLinkedToOrder).map(r => r.transactionId).filter(Boolean);
       
       const result = await window.api.invoke('suppliers:bulkDeleteEntries', { maalIds, maalInvoiceNos, jamaIds });
       if (!result || result.success === false) {
         toast.error(result?.error || 'Bulk delete failed.');
+        setShowBulkDeleteModal(false);
+        fetchInvoices();
+        fetchTransactions();
         return;
       }
       toast.success(`Deleted ${result.deletedCount + orderLinkedRows.length} entries successfully.`);
@@ -316,6 +325,9 @@ const SupplierAccountDetail = () => {
       fetchTransactions();
     } catch (err) {
       toast.error('Bulk delete failed: ' + err.message);
+      setShowBulkDeleteModal(false);
+      fetchInvoices();
+      fetchTransactions();
     } finally {
       setIsBulkDeleting(false);
     }
@@ -770,7 +782,7 @@ const SupplierAccountDetail = () => {
                       onBlur={saveReminderDays}
                       className="w-20 px-3 py-1.5 text-sm font-semibold text-[#191C1E] border border-[#C3C6D7]/30 rounded-lg focus:ring-2 focus:ring-[#004AC6]/20 focus:border-[#004AC6] outline-none text-center"
                     />
-                    <span className="text-xs font-semibold text-[#434655]">days if balance is not Zero</span>
+                    <span className="text-xs font-semibold text-[#434655]">days if balance is zero or negative</span>
                   </div>
                 )}
               </div>
@@ -784,7 +796,7 @@ const SupplierAccountDetail = () => {
                 <span className="text-[10px] font-bold opacity-80 uppercase tracking-widest">Quick Report</span>
                 {isReminderTriggered ? (
                   <>
-                    <h4 className="text-xl font-bold mt-1">⚠️ Balance Clear</h4>
+                    <h4 className="text-xl font-bold mt-1">Balance Clear</h4>
                     <p className="text-xs opacity-80 mt-2">Balance is ₹0. No pending dues. Reminder was set for {reminderDays} day{reminderDays > 1 ? 's' : ''}.</p>
                   </>
                 ) : reminderEnabled ? (
@@ -1107,16 +1119,20 @@ const SupplierAccountDetail = () => {
       {/* ─── Bulk Delete Confirmation Modal ─── */}
       {showBulkDeleteModal && (
         <div
+          ref={bulkDeleteModalRef}
+          tabIndex={-1}
+          aria-labelledby="bulk-delete-heading"
           className="fixed inset-0 z-50 flex items-center justify-center p-4 outline-none"
           style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.7)' }}
           role="dialog" aria-modal="true"
           onClick={(e) => { if (e.target === e.currentTarget && !isBulkDeleting) setShowBulkDeleteModal(false); }}
+          onKeyDown={(e) => { if (e.key === 'Escape' && !isBulkDeleting) setShowBulkDeleteModal(false); }}
         >
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#C3C6D7]/20 p-8">
             <div className="w-12 h-12 rounded-full bg-red-100/50 flex items-center justify-center text-red-600 mb-6">
               <Trash2 size={28} />
             </div>
-            <h2 className="text-2xl font-extrabold text-[#0F172A] tracking-tight mb-3">Delete Filtered Entries?</h2>
+            <h2 id="bulk-delete-heading" className="text-2xl font-extrabold text-[#0F172A] tracking-tight mb-3">Delete Filtered Entries?</h2>
             <p className="text-[#434655] leading-relaxed mb-4">
               This will permanently delete all currently visible entries. This action cannot be undone.
             </p>
