@@ -6,17 +6,8 @@ const db = require('./db'); // uses better-sqlite3 instance
 // Enforce foreign key constraints on every connection
 if (db.pragma) db.pragma('foreign_keys = ON');
 
-// ─── Weekly Cleanup Scheduler ───────────────────────────
-// Run cleanup of soft-deleted products every 7 days (in milliseconds)
-const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-
-// Run cleanup once on startup
-if (db.cleanupSoftDeletedProducts) {
-  console.log('[Scheduler] Running initial soft-deleted products cleanup...');
-  db.cleanupSoftDeletedProducts();
-}
-
-// Auto-cleanup quick sales older than 30 days on startup
+// ─── Startup Cleanup ────────────────────────────────────
+// Auto-cleanup quick sales older than 30 days
 try {
   const oldSales = db.prepare(
     `SELECT qs_id FROM quick_sales WHERE date(qs_date) < date('now', '-30 days')`
@@ -29,17 +20,8 @@ try {
       }
     });
     cleanupTxn();
-    console.log(`[Scheduler] Cleaned up ${oldSales.length} quick sales older than 30 days`);
   }
 } catch (e) { console.error('[Scheduler] Quick sales cleanup error:', e.message); }
-
-// Schedule weekly cleanup
-setInterval(() => {
-  if (db.cleanupSoftDeletedProducts) {
-    console.log('[Scheduler] Running scheduled weekly cleanup...');
-    db.cleanupSoftDeletedProducts();
-  }
-}, ONE_WEEK_MS);
 
 // ─── Register IPC handlers ─────────────────────────────
 const registerIpcHandlers = require('./ipcHandlers');
@@ -89,8 +71,22 @@ ipcMain.handle('print:pdf', async (_event, { pdfBase64, printerName, fileName })
   }
 });
 
+// ─── Single-Instance Lock ──────────────────────────────
+// Prevent multiple instances from writing to the same SQLite database simultaneously
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+}
+
 // ─── Create the window ─────────────────────────────────
 let mainWindow;
+
+app.on('second-instance', () => {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  }
+});
 function createWindow() {
 
   mainWindow = new BrowserWindow({
@@ -214,7 +210,7 @@ app.whenReady().then(() => {
       db.prepare("INSERT OR REPLACE INTO app_state (key, value) VALUES ('last_notification_scan', ?)").run(today);
 
       if (newCount > 0) {
-        console.log(`[Notifications] Created ${newCount} new pending-invoice reminders`);
+
         // Desktop notification (single summary, not per-invoice)
         if (Notification.isSupported()) {
           new Notification({
@@ -237,10 +233,10 @@ app.whenReady().then(() => {
           }
         }
       } else {
-        console.log('[Notifications] Scan complete — no new reminders');
+
       }
     } else {
-      console.log('[Notifications] Already scanned today — skipping');
+
     }
   } catch (e) { console.error('[Notifications] Scanner error:', e.message); }
 
@@ -254,14 +250,14 @@ app.whenReady().then(() => {
       ).get();
       if (needsReset && needsReset.cnt > 0) {
         db.prepare("UPDATE products SET marathi_name = NULL, marathi_status = 'missing' WHERE marathi_status = 'translated'").run();
-        console.log('[Marathi] Reset old translations for re-transliteration');
+
       }
 
       const missing = db.prepare(
         "SELECT code, name FROM products WHERE (marathi_name IS NULL OR marathi_name = '') AND (is_deleted = 0 OR is_deleted IS NULL)"
       ).all();
       if (missing.length === 0) return;
-      console.log(`[Marathi] Batch transliterating ${missing.length} products...`);
+
       // Notify renderer that batch transliteration is starting
       if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
         mainWindow.webContents.send('marathi:batchStart', { total: missing.length });
@@ -294,7 +290,7 @@ app.whenReady().then(() => {
           await new Promise(r => setTimeout(r, 100)); // rate limit safety
         } catch (e) { console.error(`[Marathi] Failed for ${prod.code}:`, e.message); }
       }
-      console.log(`[Marathi] Batch transliteration complete: ${translated}/${missing.length}`);
+
       // Notify renderer if window is available
       if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
         mainWindow.webContents.send('marathi:batchComplete', { translated, total: missing.length });

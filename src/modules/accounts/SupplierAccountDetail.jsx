@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom';
 import { Search, Edit, Trash2, Filter, Plus, Phone, MapPin, Building, Save, X, ArrowLeft, Bell, Clock, Download, Printer } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import PageLoader from '../../components/PageLoader';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -268,7 +269,7 @@ const SupplierAccountDetail = () => {
           result = await window.api.invoke('suppliersMaal:delete', row.maalDbId || row.maalInvoiceNumber);
         }
       } else {
-        result = await window.api.invoke('suppliers:txnDelete', row.transactionId);
+        result = await window.api.invoke('supplierTransactions:delete', row.transactionId);
       }
       if (!result || result.success === false || result.error) {
         toast.error(result?.error || 'Failed to delete entry.');
@@ -573,14 +574,7 @@ const SupplierAccountDetail = () => {
   };
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[#F7F9FB] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-4 border-[#004AC6] border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm font-semibold text-[#434655]">Loading supplier...</span>
-        </div>
-      </div>
-    );
+    return <PageLoader message="Loading supplier..." />;
   }
 
   if (error) {

@@ -1,12 +1,7 @@
 // src/utils/productUtils.js
 // Centralized product utility functions shared between Invoice and PriceList modules
 
-/**
- * Slugify a string: lowercase, trim, replace spaces with hyphens
- * @param {string} str - The string to slugify
- * @returns {string} - Slugified string
- */
-export const slugify = (str) => {
+const slugify = (str) => {
     if (!str) return '';
     return str
         .toLowerCase()
@@ -77,16 +72,6 @@ export const ALLOWED_PACKING_TYPES = [
 export const DEFAULT_PACKING_TYPE = 'Pc';
 
 /**
- * Check if a packing type is valid
- * @param {string} type - Packing type to check
- * @returns {boolean} - True if valid
- */
-export const isValidPackingType = (type) => {
-    if (!type) return false;
-    return ALLOWED_PACKING_TYPES.includes(type);
-};
-
-/**
  * Check if a product with the given code exists in the products list
  * Uses normalized code comparison to handle inconsistent formats
  * @param {string} code - Product code to check
@@ -146,24 +131,6 @@ export const findProductByNameAndSize = (name, size, products) => {
     found = products.find(p => normalizeProductCode(p.code) === expectedCode);
 
     return found || null;
-};
-
-/**
- * Create a product payload for the API
- * @param {Object} params - Product parameters
- * @returns {Object} - Product payload for API
- */
-export const createProductPayload = ({ name, size, packingType, costPrice, sellingPrice }) => {
-    const code = generateProductCode(name, size);
-
-    return {
-        code,
-        name,
-        size: size || '',
-        packing_type: packingType || DEFAULT_PACKING_TYPE,
-        cost_price: Number(costPrice) || 0,
-        selling_price: Number(sellingPrice) || 0
-    };
 };
 
 /**

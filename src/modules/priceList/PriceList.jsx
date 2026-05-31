@@ -1,5 +1,4 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { getProducts } from '../../../erpApi';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ChevronDown, Plus, Search, Eye, EyeOff, Edit, Trash2, AlertTriangle, CircleX } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -24,7 +23,7 @@ const PriceList = () => {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const data = await getProducts();
+        const data = await window.api.getProducts();
         const normalized = data.map(p => ({
           id: p.code,
           productName: p.name,
@@ -130,7 +129,7 @@ const PriceList = () => {
     try {
       await window.api.deleteProduct(deleteTarget.code || '');
       toast.success('Product deleted successfully');
-      const data = await getProducts();
+      const data = await window.api.getProducts();
       const normalized = data.map(p => ({
         id: p.code || `blank-${Math.random()}`,
         productName: p.name,

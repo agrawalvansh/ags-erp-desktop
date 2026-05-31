@@ -27,3 +27,6 @@ release
 dist
 .agent/
 .env/
+
+# Database
+erp.db

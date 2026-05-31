@@ -139,56 +139,6 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     return res.changes ? { success: true } : { error: 'Product not found' };
   }));
 
-  // Update product including code change (for normalizing legacy products)
-  ipcMain.handle('products:updateWithCodeChange', wrap((prod) => {
-    const { originalCode, newCode, name, size, packing_type, cost_price, selling_price } = prod;
-
-    if (!originalCode) return { error: 'Original code is required' };
-    if (!newCode || !name) return { error: 'New code and name are required' };
-
-    // Check if newCode already exists (and it's not the same product)
-    if (originalCode !== newCode) {
-      const existing = db.prepare(
-        'SELECT code FROM products WHERE code = ? AND (is_deleted = 0 OR is_deleted IS NULL)'
-      ).get(newCode);
-
-      if (existing) {
-        return { error: 'A product with this code already exists' };
-      }
-    }
-
-    // Use transaction to ensure data integrity
-    const updateProduct = db.transaction(() => {
-      // First update all invoice_items references to the new code
-      if (originalCode !== newCode) {
-        db.prepare(
-          'UPDATE invoice_items SET product_code = ? WHERE product_code = ?'
-        ).run(newCode, originalCode);
-
-        // Update customer_order_items
-        db.prepare(
-          'UPDATE customer_order_items SET product_code = ? WHERE product_code = ?'
-        ).run(newCode, originalCode);
-
-        // Update supplier_order_items
-        db.prepare(
-          'UPDATE supplier_order_items SET product_code = ? WHERE product_code = ?'
-        ).run(newCode, originalCode);
-      }
-
-      // Now update the product itself (including the code)
-      const res = db.prepare(`
-          UPDATE products 
-          SET code = ?, name = ?, size = ?, packing_type = ?, cost_price = ?, selling_price = ?
-          WHERE code = ? AND (is_deleted = 0 OR is_deleted IS NULL)
-        `).run(newCode, name, size, packing_type, cost_price, selling_price, originalCode);
-
-      return res.changes;
-    });
-
-    const changes = updateProduct();
-    return changes ? { success: true } : { error: 'Product not found' };
-  }));
 
   // Soft delete product (mark as deleted instead of removing)
   ipcMain.handle('products:delete', wrap((code) => {
@@ -206,45 +156,6 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     return res.changes ? { success: true } : { error: 'Product not found' };
   }));
 
-  // Soft delete product by rowid (for products with problematic codes)
-  ipcMain.handle('products:deleteByRowid', wrap((rowid) => {
-    if (!rowid) return { error: 'Rowid is required' };
-    const res = db.prepare('UPDATE products SET is_deleted = 1 WHERE rowid = ?').run(rowid);
-    return res.changes ? { success: true } : { error: 'Product not found' };
-  }));
-
-  // One-time migration: normalize packing types
-  ipcMain.handle('products:normalizePacking', wrap(() => {
-    const mappings = [
-      { from: ['PC', 'PCS', 'pc', 'pcs'], to: 'Pc' },
-      { from: ['KG', 'KGS', 'kg', 'kgs'], to: 'Kg' },
-      { from: ['DZ', 'DOZ', 'DOZEN', 'dz', 'doz', 'dozen'], to: 'Dz' },
-      { from: ['BOX', 'BOXES', 'box', 'boxes', 'Box'], to: 'Box' },
-      { from: ['KODI', 'kodi'], to: 'Kodi' },
-      { from: ['THELI', 'theli', 'Theli'], to: 'Theli' },
-      { from: ['PACKET', 'packet', 'Packet'], to: 'Packet' },
-      { from: ['SET', 'set', 'Set'], to: 'Set' },
-    ];
-
-    let totalUpdated = 0;
-
-    for (const mapping of mappings) {
-      for (const fromValue of mapping.from) {
-        const res = db.prepare(`
-            UPDATE products SET packing_type = ? WHERE packing_type = ?
-          `).run(mapping.to, fromValue);
-        totalUpdated += res.changes;
-      }
-    }
-
-    return { success: true, updated: totalUpdated };
-  }));
-
-  // Hard delete all soft-deleted products (cleanup)
-  ipcMain.handle('products:cleanupDeleted', wrap(() => {
-    const res = db.prepare('DELETE FROM products WHERE is_deleted = 1').run();
-    return { success: true, deleted: res.changes };
-  }));
 
   // -----------------------
   // Customers CRUD
@@ -318,47 +229,6 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     return { success: true, deletedCount: deleted };
   }));
 
-  // Additional: list invoices / transactions for a customer ---------
-  ipcMain.handle('customers:listInvoices', wrap((customer_id) => {
-    const rows = db.prepare(`
-        SELECT * FROM (
-          SELECT i.invoice_id     AS invoice_id,
-                i.invoice_date   AS invoice_date,
-                i.grand_total    AS grand_total,
-                i.remark         AS remark,
-                'invoice'        AS source
-            FROM invoices i
-          WHERE i.customer_id = ?
-
-          UNION ALL
-
-          SELECT m.maal_invoice_no AS invoice_id,
-                m.maal_date       AS invoice_date,
-                m.maal_amount     AS grand_total,
-                m.maal_remark     AS remark,
-                'maal_only'      AS source
-            FROM customer_maal_account m
-          WHERE m.customer_id = ?
-            AND NOT EXISTS (SELECT 1 FROM invoices i2 WHERE i2.invoice_id = m.maal_invoice_no)
-        )
-        ORDER BY invoice_date DESC
-      `).all(customer_id, customer_id);
-    return rows;
-  }));
-
-  ipcMain.handle('customers:listTransactions', wrap((customer_id) => {
-    const rows = db.prepare(`
-        SELECT id AS transaction_id,
-              jama_date  AS date,
-              jama_txn_type AS txn_type,
-              jama_amount AS amount,
-              jama_remark AS remark
-          FROM customer_jama_account
-        WHERE customer_id = ?
-        ORDER BY jama_date DESC, id DESC
-      `).all(customer_id);
-    return rows;
-  }));
 
   // Legacy aliases for BuyerAccountDetail -----------------------
   ipcMain.handle('invoices:getByCustomer', wrap((customer_id) => {
@@ -400,50 +270,6 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     return rows;
   }));
 
-  // -----------------------
-  // Customer Jama Transactions
-  // -----------------------
-  ipcMain.handle('transactions:create', wrap((txn) => {
-    const { customer_id, date, txn_type, amount, remark } = txn;
-    const info = db.prepare(`
-        INSERT INTO customer_jama_account (customer_id, jama_date, jama_txn_type, jama_amount, jama_remark)
-        VALUES (?, ?, ?, ?, ?)
-      `).run(customer_id, date, txn_type, amount, remark || '');
-    return {
-      transaction_id: info.lastInsertRowid,
-      customer_id,
-      date,
-      txn_type,
-      amount,
-      remark: remark || ''
-    };
-  }));
-
-  ipcMain.handle('transactions:get', wrap((txn_id) => {
-    const row = db.prepare(`SELECT id AS transaction_id,
-                                    customer_id,
-                                    jama_date  AS date,
-                                    jama_txn_type AS txn_type,
-                                    jama_amount AS amount,
-                                    jama_remark AS remark
-                                FROM customer_jama_account
-                              WHERE id = ?`).get(txn_id);
-    return row || { error: 'Transaction not found' };
-  }));
-
-  ipcMain.handle('transactions:update', wrap((txn) => {
-    const { id, transaction_id, date, txn_type, amount, remark } = txn;
-    const entryId = id || transaction_id; // Accept both id and transaction_id
-    const res = db.prepare(`UPDATE customer_jama_account
-                                SET jama_date = ?, jama_txn_type = ?, jama_amount = ?, jama_remark = ?
-                              WHERE id = ?`).run(date, txn_type, amount, remark || '', entryId);
-    return res.changes ? { success: true } : { error: 'Transaction not found' };
-  }));
-
-  ipcMain.handle('transactions:delete', wrap((transaction_id) => {
-    const res = db.prepare('DELETE FROM customer_jama_account WHERE id = ?').run(transaction_id);
-    return res.changes ? { success: true } : { error: 'Transaction not found' };
-  }));
 
   // -----------------------
   // Invoices
@@ -538,85 +364,7 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     return { success: true };
   }));
 
-  // -----------------------
-  // Maal (simple invoice header) routes
-  // -----------------------
-  ipcMain.handle('maal:get', wrap((identifier) => {
-    // Support lookup by id (numeric) or invoice_id (string)
-    let row;
-    if (typeof identifier === 'number' || !isNaN(Number(identifier))) {
-      row = db.prepare(`SELECT id, customer_id, maal_date AS date, maal_invoice_no AS invoice_number,
-                                maal_amount AS amount, maal_remark AS remark
-                            FROM customer_maal_account WHERE id = ?`).get(Number(identifier));
-    }
-    if (!row) {
-      row = db.prepare(`SELECT id, customer_id, maal_date AS date, maal_invoice_no AS invoice_number,
-                                maal_amount AS amount, maal_remark AS remark
-                            FROM customer_maal_account WHERE maal_invoice_no = ?`).get(identifier);
-    }
-    return row || { error: 'Entry not found' };
-  }));
 
-  ipcMain.handle('maal:update', wrap((data) => {
-    const { id, invoice_id, date, amount, remark, invoice_number } = data;
-    let changes = 0;
-    // Update by id (direct maal entry) or invoice_id (linked to invoice)
-    if (id) {
-      const res = db.prepare(`UPDATE customer_maal_account SET maal_date = ?, maal_invoice_no = ?, maal_amount = ?, maal_remark = ? WHERE id = ?`)
-        .run(date, invoice_number || '', amount, remark || '', id);
-      changes = res.changes;
-    } else if (invoice_id) {
-      db.prepare(`UPDATE invoices SET invoice_date = ?, grand_total = ?, remark = ? WHERE invoice_id = ?`).run(date, amount, remark || '', invoice_id);
-      const res = db.prepare(`UPDATE customer_maal_account SET maal_date = ?, maal_invoice_no = ?, maal_amount = ?, maal_remark = ? WHERE maal_invoice_no = ?`)
-        .run(date, invoice_number || invoice_id, amount, remark || '', invoice_id);
-      changes = res.changes;
-    }
-    return changes ? { success: true } : { error: 'Entry not found' };
-  }));
-
-  ipcMain.handle('maal:delete', wrap((identifier) => {
-    // Support delete by id (numeric) or invoice_id (string)
-    let invoiceIdToRecycle = null;
-
-    if (typeof identifier === 'number' || !isNaN(Number(identifier))) {
-      // Delete by id - first get the maal_invoice_no for recycling
-      const entry = db.prepare('SELECT maal_invoice_no FROM customer_maal_account WHERE id = ?').get(Number(identifier));
-      if (entry) invoiceIdToRecycle = entry.maal_invoice_no;
-      const res = db.prepare('DELETE FROM customer_maal_account WHERE id = ?').run(Number(identifier));
-      if (res.changes) {
-        return { success: true };
-      }
-    }
-    // Fallback: delete by invoice_id (also cleans up invoice_items and invoices)
-    invoiceIdToRecycle = identifier;
-    const txn = db.transaction(() => {
-      db.prepare('DELETE FROM invoice_items WHERE invoice_id = ?').run(identifier);
-      const res1 = db.prepare('DELETE FROM customer_maal_account WHERE maal_invoice_no = ?').run(identifier);
-      db.prepare('DELETE FROM invoices WHERE invoice_id = ?').run(identifier);
-      return res1.changes;
-    });
-    const changes = txn();
-    return changes ? { success: true } : { error: 'Entry not found' };
-  }));
-
-  ipcMain.handle('maal:create', wrap((data) => {
-    const { customer_id, invoice_number, date, amount, remark } = data;
-    let newInvoiceId = invoice_number;
-    if (!newInvoiceId) {
-      db.prepare("UPDATE document_sequences SET last_number = last_number + 1 WHERE doc_type = 'invoice'").run();
-      const seq = db.prepare("SELECT last_number FROM document_sequences WHERE doc_type = 'invoice'").get();
-      newInvoiceId = `E-${seq.last_number}`;
-    }
-    db.prepare(`INSERT INTO customer_maal_account (customer_id, maal_date, maal_invoice_no, maal_amount, maal_remark)
-                  VALUES (?, ?, ?, ?, ?)`).run(customer_id, date, newInvoiceId, amount, remark || '');
-    return {
-      invoice_id: newInvoiceId,
-      customer_id,
-      invoice_date: date,
-      grand_total: amount,
-      remark: remark || ''
-    };
-  }));
 
   // -----------------------
   // Customer Orders
@@ -859,32 +607,7 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     return { success: true, invoice_id };
   }));
 
-  ipcMain.handle('invoices:listByCustomer', wrap((customer_id) => {
-    const rows = db.prepare(`
-          SELECT * FROM (
-            SELECT i.invoice_id     AS invoice_id,
-                  i.invoice_date   AS invoice_date,
-                  i.grand_total    AS grand_total,
-                  i.remark         AS remark,
-                  'invoice'        AS source
-              FROM invoices i
-            WHERE i.customer_id = ?
 
-            UNION ALL
-
-            SELECT m.maal_invoice_no AS invoice_id,
-                  m.maal_date       AS invoice_date,
-                  m.maal_amount     AS grand_total,
-                  m.maal_remark     AS remark,
-                  'maal_only'      AS source
-              FROM customer_maal_account m
-            WHERE m.customer_id = ?
-              AND NOT EXISTS (SELECT 1 FROM invoices i2 WHERE i2.invoice_id = m.maal_invoice_no)
-          )
-          ORDER BY invoice_date DESC
-      `).all(customer_id, customer_id);
-    return rows;
-  }));
 
   // Hard delete invoice with all related data (invoice_items, customer_maal_account, optionally linked Jama entry)
   ipcMain.handle('invoices:delete', wrap((data) => {
@@ -1035,27 +758,6 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     return changes ? { success: true } : { error: 'Quick sale not found' };
   }));
 
-  // Auto-cleanup quick sales older than N days (items + header)
-  ipcMain.handle('quickSales:cleanupOld', wrap((days) => {
-    const maxDays = parseInt(days) || 30;
-    const cleanupTxn = db.transaction(() => {
-      // Find IDs of quick sales older than maxDays
-      const oldSales = db.prepare(
-        `SELECT qs_id FROM quick_sales WHERE date(qs_date) < date('now', '-' || ? || ' days')`
-      ).all(maxDays);
-
-      if (oldSales.length === 0) return 0;
-
-      const ids = oldSales.map(r => r.qs_id);
-      for (const id of ids) {
-        db.prepare('DELETE FROM quick_sale_items WHERE qs_id = ?').run(id);
-        db.prepare('DELETE FROM quick_sales WHERE qs_id = ?').run(id);
-      }
-      return ids.length;
-    });
-    const deleted = cleanupTxn();
-    return { success: true, deletedCount: deleted };
-  }));
 
   // -----------------------
   // Customer Maal (simple invoice entries)
@@ -1193,20 +895,6 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     return res.changes ? { success: true } : { error: 'Transaction not found' };
   }));
 
-  ipcMain.handle('customers:txnList', wrap((customer_id) => {
-    const rows = db.prepare(`SELECT id AS transaction_id,
-                                      jama_date   AS date,
-                                      jama_txn_type AS txn_type,
-                                      jama_amount AS amount,
-                                      jama_remark AS remark
-                                FROM customer_jama_account
-                                WHERE customer_id = ?
-                                ORDER BY jama_date DESC, id DESC`).all(customer_id);
-    return rows;
-  }));
-
-  // NOTE: customerOrders:* duplicate handler family has been removed.
-  // All frontend code uses cusOrders:* handlers (lines above).
 
   // -----------------------
   // Supplier Orders
@@ -1468,12 +1156,6 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     return { id: info.lastInsertRowid, supplier_id, date, invoice_number, amount, remark };
   }));
 
-  ipcMain.handle('suppliersMaal:get', wrap((id) => {
-    const row = db.prepare(`SELECT id, supplier_id, maal_date AS date, maal_invoice_no AS invoiceNumber,
-                                    maal_amount AS amount, maal_remark AS remark
-                                FROM supplier_maal_account WHERE id = ?`).get(id);
-    return row || { error: 'Maal entry not found' };
-  }));
 
   ipcMain.handle('suppliersMaal:update', wrap((data) => {
     const { id, date, invoice_number, amount, remark } = data;
@@ -1495,12 +1177,6 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     return { transaction_id: info.lastInsertRowid, supplier_id, date, txn_type, amount, remark };
   }));
 
-  ipcMain.handle('supplierTransactions:get', wrap((id) => {
-    const row = db.prepare(`SELECT id, supplier_id, jama_date AS date, jama_txn_type AS txnType,
-                                    jama_amount AS amount, jama_remark AS remark
-                                FROM supplier_jama_account WHERE id = ?`).get(id);
-    return row || { error: 'Transaction not found' };
-  }));
 
   ipcMain.handle('supplierTransactions:update', wrap((data) => {
     const { id, date, txn_type, amount, remark } = data;
@@ -1519,60 +1195,6 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     return rows;
   }));
 
-  // Supplier Maal ----------------------------------------------------
-  ipcMain.handle('suppliers:maalList', wrap((supplier_id) => {
-    const rows = db.prepare(`SELECT id, maal_date, maal_invoice_no, maal_amount, maal_remark FROM supplier_maal_account WHERE supplier_id = ? ORDER BY maal_date DESC, id DESC`).all(supplier_id);
-    return rows;
-  }));
-
-  ipcMain.handle('suppliers:maalCreate', wrap((data) => {
-    const { supplier_id, invoice_number, date, amount, remark } = data;
-    const info = db.prepare(`INSERT INTO supplier_maal_account (supplier_id, maal_date, maal_invoice_no, maal_amount, maal_remark) VALUES (?, ?, ?, ?, ?)`)
-      .run(supplier_id, date, invoice_number || null, amount, remark || '');
-    return { id: info.lastInsertRowid, supplier_id, date, invoice_number, amount, remark };
-  }));
-
-  ipcMain.handle('suppliers:maalUpdate', wrap((data) => {
-    const { id, date, invoice_number, amount, remark } = data;
-    const res = db.prepare(`UPDATE supplier_maal_account SET maal_date = ?, maal_invoice_no = ?, maal_amount = ?, maal_remark = ? WHERE id = ?`).run(date, invoice_number || '', amount, remark || '', id);
-    return res.changes ? { success: true } : { error: 'Maal entry not found' };
-  }));
-
-  ipcMain.handle('suppliers:maalDelete', wrap((id) => {
-    const res = db.prepare('DELETE FROM supplier_maal_account WHERE id = ?').run(id);
-    return res.changes ? { success: true } : { error: 'Maal entry not found' };
-  }));
-
-  // Supplier Jama transactions --------------------------------------
-  ipcMain.handle('suppliers:txnCreate', wrap((data) => {
-    const { supplier_id, date, txn_type, amount, remark } = data;
-    const info = db.prepare(`INSERT INTO supplier_jama_account (supplier_id, jama_date, jama_txn_type, jama_amount, jama_remark) VALUES (?, ?, ?, ?, ?)`)
-      .run(supplier_id, date, txn_type, amount, remark || '');
-    return { transaction_id: info.lastInsertRowid, supplier_id, date, txn_type, amount, remark };
-  }));
-
-  ipcMain.handle('suppliers:txnUpdate', wrap((data) => {
-    const { id, date, txn_type, amount, remark } = data;
-    const res = db.prepare(`UPDATE supplier_jama_account SET jama_date = ?, jama_txn_type = ?, jama_amount = ?, jama_remark = ? WHERE id = ?`).run(date, txn_type, amount, remark || '', id);
-    return res.changes ? { success: true } : { error: 'Transaction not found' };
-  }));
-
-  ipcMain.handle('suppliers:txnDelete', wrap((id) => {
-    // Guard: block deletion if linked to an order payment
-    const row = db.prepare('SELECT jama_remark FROM supplier_jama_account WHERE id = ?').get(id);
-    if (row && row.jama_remark) {
-      if (row.jama_remark.startsWith('Order ')) {
-        return { success: false, error: 'Cannot delete: this payment is linked to an order.' };
-      }
-    }
-    const res = db.prepare('DELETE FROM supplier_jama_account WHERE id = ?').run(id);
-    return res.changes ? { success: true } : { error: 'Transaction not found' };
-  }));
-
-  ipcMain.handle('suppliers:txnList', wrap((supplier_id) => {
-    const rows = db.prepare(`SELECT id AS transaction_id, jama_date AS date, jama_txn_type AS txn_type, jama_amount AS amount, jama_remark AS remark FROM supplier_jama_account WHERE supplier_id = ? ORDER BY jama_date DESC, id DESC`).all(supplier_id);
-    return rows;
-  }));
 
   // -----------------------
   // Notifications CRUD
@@ -1610,58 +1232,6 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     return { success: true };
   }));
 
-  // -----------------------
-  // Admin-Only Maintenance
-  // -----------------------
-  // Manual cleanup of soft-deleted products - ONLY triggered by admin action
-  // This handler is NOT called automatically on startup
-  ipcMain.handle('admin:cleanupSoftDeletedProducts', wrap(() => {
-    console.log('[Admin] Starting manual cleanup of soft-deleted products...');
-
-    // Get all soft-deleted products
-    const deletedProducts = db.prepare(
-      'SELECT code FROM products WHERE is_deleted = 1'
-    ).all();
-
-    let deletedCount = 0;
-    let skippedCount = 0;
-
-    for (const product of deletedProducts) {
-      try {
-        // Attempt to hard delete this product
-        const result = db.prepare('DELETE FROM products WHERE code = ?').run(product.code);
-
-        if (result.changes > 0) {
-          deletedCount++;
-          console.log(`[Admin] Deleted product: ${product.code}`);
-        }
-      } catch (err) {
-        // Check if this is a foreign key constraint error
-        if (err.code === 'SQLITE_CONSTRAINT_FOREIGNKEY' ||
-          err.message.includes('FOREIGN KEY constraint failed')) {
-          // Product is referenced in invoices or orders - skip it
-          skippedCount++;
-          console.log(`[Admin] Skipped product (referenced elsewhere): ${product.code}`);
-        } else {
-          // Log other errors but continue processing
-          skippedCount++;
-          console.error(`[Admin] Error deleting product ${product.code}:`, err.message);
-        }
-        // Continue to next product regardless of error
-      }
-    }
-
-    console.log(`[Admin] Completed. Deleted: ${deletedCount}, Skipped: ${skippedCount}`);
-
-    return {
-      success: true,
-      data: {
-        deleted: deletedCount,
-        skipped: skippedCount,
-        total: deletedProducts.length
-      }
-    };
-  }));
 
   // -----------------------
   // Marathi Transliteration
@@ -1687,78 +1257,6 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     return { success: true, marathi_name: marathiName };
   }));
 
-  // Batch transliterate all products with missing Marathi names
-  // Per-operation cancel tokens to avoid leaking between concurrent runs
-  const batchOperations = new Map();
-
-  ipcMain.handle('translate:batchCancel', wrap((operationId) => {
-    if (operationId && batchOperations.has(operationId)) {
-      batchOperations.get(operationId).cancelled = true;
-    } else {
-      // Cancel all active operations if no specific ID given
-      for (const op of batchOperations.values()) op.cancelled = true;
-    }
-    return { success: true };
-  }));
-
-  ipcMain.handle('translate:batchMissing', async (event) => {
-    const operationId = `batch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const token = { cancelled: false };
-    batchOperations.set(operationId, token);
-
-    // Safe send helper — guards against destroyed renderer windows
-    const safeSend = (channel, data) => {
-      try {
-        if (event && event.sender && !event.sender.isDestroyed()) {
-          event.sender.send(channel, data);
-        }
-      } catch (_e) { /* swallow — renderer may have closed */ }
-    };
-
-    try {
-      const missing = db.prepare(
-        "SELECT code, name FROM products WHERE (marathi_name IS NULL OR marathi_name = '') AND (is_deleted = 0 OR is_deleted IS NULL)"
-      ).all();
-      const total = missing.length;
-      if (total === 0) {
-        return { success: true, translated: 0, total: 0, operationId };
-      }
-
-      let translated = 0;
-      const CHUNK_SIZE = 10;
-
-      for (let i = 0; i < missing.length; i++) {
-        if (token.cancelled) {
-          safeSend('translate:batchProgress', { translated, total, cancelled: true, operationId });
-          return { success: true, translated, total, cancelled: true, operationId };
-        }
-        const prod = missing[i];
-        try {
-          const marathiName = await transliterateToMarathi(prod.name);
-          if (marathiName) {
-            db.prepare("UPDATE products SET marathi_name = ?, marathi_status = 'transliterated' WHERE code = ?").run(marathiName, prod.code);
-            translated++;
-          }
-        } catch (e) { console.error(`Batch transliterate failed for ${prod.code}:`, e.message); }
-
-        // Report progress every item
-        safeSend('translate:batchProgress', { translated, total, current: i + 1, operationId });
-
-        // Delay between chunks to avoid rate limiting
-        if ((i + 1) % CHUNK_SIZE === 0) {
-          await new Promise(r => setTimeout(r, 200));
-        } else {
-          await new Promise(r => setTimeout(r, 50));
-        }
-      }
-      return { success: true, translated, total, operationId };
-    } catch (err) {
-      console.error('Batch transliteration error:', err);
-      return { error: err.message };
-    } finally {
-      batchOperations.delete(operationId);
-    }
-  });
 
   // Check which product codes are missing Marathi names
   ipcMain.handle('translate:checkMissing', wrap((codes) => {
@@ -1781,4 +1279,19 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     for (const r of rows) names[r.code] = r.marathi_name;
     return { names };
   }));
+  // ── Authentication ──────────────────────────────────────
+
+  ipcMain.handle('auth:login', (_, { username, password }) => {
+    try {
+      const crypto = require('crypto');
+      const hash = crypto.createHash('sha256').update(password).digest('hex');
+      const user = db.prepare(
+        'SELECT id FROM users WHERE username = ? AND password_hash = ?'
+      ).get(username, hash);
+      return { success: !!user };
+    } catch (err) {
+      console.error('auth:login error:', err);
+      return { success: false };
+    }
+  });
 };

@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom';
 import { Search, Edit, Trash2, Filter, Plus, Phone, MapPin, Building, Save, X, ArrowLeft, Bell, Clock, Download, Printer } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import PageLoader from '../../components/PageLoader';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -538,8 +539,8 @@ const BuyerAccountDetail = () => {
       let result;
       if (editDraft.type === 'maal') {
         const invoiceId = editDraft.invoiceId;
-        result = await window.api.invoke('maal:update', {
-          invoice_number: invoiceId,
+        result = await window.api.invoke('customers:maalUpdate', {
+          invoice_id: invoiceId,
           date: editDraft.maalDate,
           amount: editDraft.maalAmount,
           remark: editDraft.maalRemark,
@@ -556,7 +557,7 @@ const BuyerAccountDetail = () => {
       } else if (editDraft.type === 'jama') {
         const txnId = editDraft.transactionId;
         if (txnId) {
-          result = await window.api.invoke('transactions:update', {
+          result = await window.api.invoke('customers:txnUpdate', {
             id: txnId,
             date: editDraft.jamaDate,
             txn_type: editDraft.jamaTxnType,
@@ -586,14 +587,7 @@ const BuyerAccountDetail = () => {
   };
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[#F7F9FB] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-4 border-[#004AC6] border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm font-semibold text-[#434655]">Loading customer...</span>
-        </div>
-      </div>
-    );
+    return <PageLoader message="Loading customer..." />;
   }
 
   if (error) {

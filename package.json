@@ -20,10 +20,6 @@
     ],
     "extraResources": [
       {
-        "from": "erp.db",
-        "to": "erp.db"
-      },
-      {
         "from": "icons/icon.ico",
         "to": "icon.ico"
       }
@@ -78,44 +74,34 @@
   "scripts": {
     "dev": "vite build && electron .",
     "build": "npm run build-react && electron-builder",
-    "build:mac": "npm run build-react && electron-builder --mac",
-    "build:win": "npm run build-react && electron-builder --win",
     "build-react": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview",
     "start": "electron .",
     "package": "electron-builder",
-    "dist": "electron-builder",
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
     "better-sqlite3": "^12.2.0",
+    "framer-motion": "^12.12.1",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",
-    "node-pdf-printer": "^1.1.7"
+    "lucide-react": "^0.511.0",
+    "node-pdf-printer": "^1.1.7",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-hot-toast": "^2.5.2",
+    "react-router-dom": "^7.6.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
     "@tailwindcss/vite": "^4.1.7",
-    "@types/react": "^19.1.2",
-    "@types/react-dom": "^19.1.2",
     "@vitejs/plugin-react": "^4.4.1",
     "electron": "^37.2.4",
     "electron-builder": "^24.13.3",
     "eslint": "^9.25.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",
-    "framer-motion": "^12.12.1",
     "globals": "^16.0.0",
-    "lightswind": "^3.0.6",
-    "lucide-react": "^0.511.0",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
-    "react-hot-toast": "^2.5.2",
-    "react-icons": "^5.5.0",
-    "react-router-dom": "^7.6.0",
-    "react-to-print": "^3.1.1",
-    "reactjs-popup": "^2.0.6",
     "tailwindcss": "^4.1.7",
     "vite": "^6.3.5"
   },

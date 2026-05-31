@@ -4,6 +4,7 @@ import { useParams, useNavigate, useLocation, useBlocker } from 'react-router-do
 import { AlertCircle } from 'lucide-react';
 import { Search } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import PageLoader from '../../components/PageLoader';
 import { generateInvoicePDF } from './generateInvoicePDF';
 import WeightCalculator from '../../utils/WeightCalculator';
 import {
@@ -336,9 +337,9 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
   );
 };
 const Invoice = () => {
-  const wrapperRef = useRef(null);  // customer dropdown wrapper
+  const wrapperRef = useRef(null);
   const printRef = useRef(null);
-  const productNameInputRef = useRef(null);  // product name input field
+  const productNameInputRef = useRef(null);
   const { invoiceNo } = useParams();
 
   // State declarations
@@ -350,7 +351,7 @@ const Invoice = () => {
     quantity: '',
     packingType: DEFAULT_PACKING_TYPE,
     sellingPrice: '',
-    originalProduct: null, // Track the originally selected product
+    originalProduct: null,
   });
   const [total, setTotal] = useState(0);
   const [products, setProducts] = useState([]);
@@ -598,7 +599,6 @@ const Invoice = () => {
         try {
           const inv = await window.api.getInvoice(invoiceNo);
           if (!inv) return;
-          //TODO Work on this
           const formatName = (name) => {
             if (!name) return '';
             return name
@@ -1597,18 +1597,7 @@ const Invoice = () => {
 
       {/* Full-Screen Marathi Translation Loader */}
       {isTranslating && (
-        <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center print:hidden" style={{ backdropFilter: 'blur(10px)', backgroundColor: 'rgba(255,255,255,0.85)' }}>
-          <div className="flex flex-col items-center gap-6">
-            <div className="relative w-16 h-16">
-              <div className="absolute inset-0 rounded-full border-4 border-[#E2E8F0]"></div>
-              <div className="absolute inset-0 rounded-full border-4 border-t-[#2563EB] animate-spin"></div>
-            </div>
-            <div className="text-center">
-              <p className="text-lg font-bold text-[#0F172A] mb-1">Preparing Marathi print...</p>
-              <p className="text-sm text-[#64748B]">Translating product names, please wait</p>
-            </div>
-          </div>
-        </div>
+        <PageLoader variant="overlay" message="Preparing Marathi print..." subtitle="Translating product names, please wait" />
       )}
 
       <div

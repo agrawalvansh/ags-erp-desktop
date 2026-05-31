@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, Trash2, CheckCheck, ExternalLink, X } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import PageLoader from '../../components/PageLoader';
 
 const NotificationsPage = () => {
   const navigate = useNavigate();
@@ -138,9 +139,7 @@ const NotificationsPage = () => {
       <main className="flex-1 px-4 md:px-8 pb-12">
         <div className="max-w-4xl mx-auto space-y-2">
           {isLoading ? (
-            <div className="bg-white rounded-xl shadow-sm border border-[#C3C6D7]/10 px-8 py-16 text-center">
-              <p className="text-sm text-[#64748B]">Loading notifications...</p>
-            </div>
+            <PageLoader variant="section" message="Loading notifications..." />
           ) : notifications.length === 0 ? (
             <div className="bg-white rounded-xl shadow-sm border border-[#C3C6D7]/10 px-8 py-16 text-center">
               <div className="w-16 h-16 rounded-full bg-[#F2F4F6] flex items-center justify-center mx-auto mb-4">

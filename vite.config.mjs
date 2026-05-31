@@ -6,9 +6,22 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   base: './', // <-- important for file:// loading in Electron
   plugins: [react(), tailwindcss()],
-  // example: bump warning threshold
+  // Strip console.log/warn/debug/info from production builds (keep console.error)
+  esbuild: {
+    pure: ['console.log', 'console.warn', 'console.debug', 'console.info'],
+  },
   build: {
-    chunkSizeWarningLimit: 1000, // in kB
+    chunkSizeWarningLimit: 600, // in kB
     outDir: 'dist',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Separate heavy vendor libs into their own cacheable chunks
+          'vendor-pdf': ['jspdf', 'jspdf-autotable'],
+          'vendor-motion': ['framer-motion'],
+          'vendor-router': ['react-router-dom'],
+        },
+      },
+    },
   }
 });

@@ -4,6 +4,7 @@ import { generateQuickSalePDF } from './generateQuickSalePDF';
 import { useParams, useNavigate, useLocation, useBlocker } from 'react-router-dom';
 import { AlertCircle, Search } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import PageLoader from '../../components/PageLoader';
 import {
     generateProductCode,
     capitalizeWords,
@@ -955,19 +956,7 @@ const CreateQuickSale = () => {
 
             {/* Full-Screen Marathi Translation Loader */}
             {isTranslating && (
-                <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center print:hidden" style={{ backdropFilter: 'blur(10px)', backgroundColor: 'rgba(255,255,255,0.85)' }}>
-                    <div className="flex flex-col items-center gap-6">
-                        {/* Spinner */}
-                        <div className="relative w-16 h-16">
-                            <div className="absolute inset-0 rounded-full border-4 border-[#E2E8F0]"></div>
-                            <div className="absolute inset-0 rounded-full border-4 border-t-[#2563EB] animate-spin"></div>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-lg font-bold text-[#0F172A] mb-1">Preparing Marathi print...</p>
-                            <p className="text-sm text-[#64748B]">Translating product names, please wait</p>
-                        </div>
-                    </div>
-                </div>
+                <PageLoader variant="overlay" message="Preparing Marathi print..." subtitle="Translating product names, please wait" />
             )}
 
             <div ref={printRef} className="max-w-[1040px] mx-auto bg-white shadow-sm rounded-xl border border-[#E2E8F0] overflow-hidden print:shadow-none print:rounded-none print:border-none print:w-[100%] print:m-0">

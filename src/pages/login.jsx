@@ -13,21 +13,24 @@ const LoginPage = () => {
   });
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const ENV_USERNAME = "amit_agrawal";
-  const ENV_PASSWORD = "Amit@1234";
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (
-      formData.username === ENV_USERNAME &&
-      formData.password === ENV_PASSWORD
-    ) {
-      setError('');
-      login();
-      toast.success('Login Successful');
-      navigate('/invoice');
-    } else {
-      setError('Wrong username or password');
+    try {
+      const result = await window.api.login({
+        username: formData.username,
+        password: formData.password,
+      });
+      if (result.success) {
+        setError('');
+        login();
+        toast.success('Login Successful');
+        navigate('/invoice');
+      } else {
+        setError('Wrong username or password');
+      }
+    } catch (err) {
+      toast.error('Login failed. Please try again.');
     }
   };
 

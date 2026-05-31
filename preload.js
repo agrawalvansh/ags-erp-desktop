@@ -1,153 +1,40 @@
 // preload.js
 // Exposes a safe, whitelisted API to the renderer process.
-// NOTE: update this file whenever new ipcMain channels are added.
+// All IPC communication goes through window.api.invoke(channel, payload).
+// Shorthand aliases are provided for the most frequently used channels.
 // -------------------------------------------------------------------
 const { contextBridge, ipcRenderer } = require('electron');
 
-// Helper to build wrappers for an array of [alias, channel]
-function buildApiMap(pairs) {
-  const api = {};
-  for (const [alias, channel] of pairs) {
-    api[alias] = (payload) => ipcRenderer.invoke(channel, payload);
-  }
-  return api;
-}
+const exposed = {};
 
-// Explicitly list the most-used channels (add more as needed)
-const exposed = buildApiMap([
-  // Products ----------------------------------------------------------------
-  ['getProducts', 'products:getAll'],
-  ['createProduct', 'products:create'],
-  ['updateProduct', 'products:update'],
-  ['deleteProduct', 'products:delete'],
+// Shorthand aliases for frequently-used channels --------------------
+// Products
+exposed.getProducts    = (p) => ipcRenderer.invoke('products:getAll', p);
+exposed.createProduct  = (p) => ipcRenderer.invoke('products:create', p);
+exposed.updateProduct  = (p) => ipcRenderer.invoke('products:update', p);
+exposed.deleteProduct  = (p) => ipcRenderer.invoke('products:delete', p);
 
-  // Customers ---------------------------------------------------------------
-  ['getCustomers', 'customers:getAll'],
-  ['createCustomer', 'customers:create'],
-  ['updateCustomer', 'customers:update'],
-  ['deleteCustomer', 'customers:delete'],
+// Customers
+exposed.getCustomers   = (p) => ipcRenderer.invoke('customers:getAll', p);
 
-  // Suppliers ---------------------------------------------------------------
-  ['getSuppliers', 'suppliers:getAll'],
-  ['createSupplier', 'suppliers:create'],
-  ['updateSupplier', 'suppliers:update'],
-  ['deleteSupplier', 'suppliers:delete'],
+// Invoices
+exposed.getInvoice       = (p) => ipcRenderer.invoke('invoices:get', p);
+exposed.getNextInvoiceId = (p) => ipcRenderer.invoke('invoices:getNextId', p);
 
-  // Invoices ----------------------------------------------------------------
-  ['getInvoice', 'invoices:get'],
-  ['createInvoice', 'invoices:create'],
-  ['updateInvoice', 'invoices:update'],
-  ['getNextInvoiceId', 'invoices:getNextId'],
+// Auth
+exposed.login = (credentials) => ipcRenderer.invoke('auth:login', credentials);
 
-  // Customer transactions ---------------------------------------------------
-  ['createTransaction', 'transactions:create'],
-  ['updateTransaction', 'transactions:update'],
-  ['deleteTransaction', 'transactions:delete'],
-]);
-
-// Add a true generic invoke helper
+// Generic invoke — used by all other IPC calls ----------------------
 exposed.invoke = (...args) => ipcRenderer.invoke(...args);
 
-// Listen for batch Marathi translation events from main process
-exposed.onMarathiBatchStart = (callback) => {
-  const handler = (_event, data) => callback(data);
-  ipcRenderer.on('marathi:batchStart', handler);
-  return () => ipcRenderer.removeListener('marathi:batchStart', handler);
-};
-exposed.onMarathiBatchComplete = (callback) => {
-  const handler = (_event, data) => callback(data);
-  ipcRenderer.on('marathi:batchComplete', handler);
-  return () => ipcRenderer.removeListener('marathi:batchComplete', handler);
-};
-// Progress reporting for batch transliteration
-exposed.onTranslateBatchProgress = (callback) => {
-  const handler = (_event, data) => callback(data);
-  ipcRenderer.on('translate:batchProgress', handler);
-  return () => ipcRenderer.removeListener('translate:batchProgress', handler);
-};
-exposed.cancelBatchTransliterate = (operationId) => ipcRenderer.invoke('translate:batchCancel', operationId);
-
-// Notification count updates from main process (after startup scan)
+// Event listeners from main process ---------------------------------
 exposed.onNotificationCountUpdate = (callback) => {
   const handler = (_event, data) => callback(data);
   ipcRenderer.on('notifications:countUpdate', handler);
   return () => ipcRenderer.removeListener('notifications:countUpdate', handler);
 };
 
+// Expose to renderer ------------------------------------------------
 if (!('api' in globalThis)) {
   contextBridge.exposeInMainWorld('api', exposed);
 }
-
-// -------------------------------------------------------------------
-// Legacy FETCH shim: reroute old HTTP calls (http://localhost:4000/api/*)
-// to their equivalent IPC channels, so existing React components that
-// still use fetch() keep working. Remove this once every component
-// switches to window.api wrappers directly.
-// -------------------------------------------------------------------
-const originalFetch = globalThis.fetch.bind(globalThis);
-
-const crudMap = {
-  'products': 'products',
-  'customers': 'customers',
-  'suppliers': 'suppliers',
-  'invoices': 'invoices',
-  'customer-orders': 'cusOrders',
-  'supplier-orders': 'supOrders'
-};
-
-function translateEndpoint(entity, method, id, subPath) {
-  const base = crudMap[entity];
-  if (!base) return null; // unknown entity
-  switch (method) {
-    case 'GET':
-      if (id) return [base + ':get', id];
-      return [base + ':getAll'];
-    case 'POST':
-      return [base + ':create'];
-    case 'PUT':
-      return [base + ':update'];
-    case 'DELETE':
-      return [base + ':delete', id];
-    default:
-      return null;
-  }
-}
-
-async function ipcFetch(input, init = {}) {
-  try {
-    const url = typeof input === 'string' ? input : input.url;
-    const method = (init.method || 'GET').toUpperCase();
-    const apiPrefix = 'http://localhost:4000/api/';
-    if (!url.startsWith(apiPrefix)) {
-      // non-API request → fall back to real fetch
-      return originalFetch(input, init);
-    }
-    const rel = url.slice(apiPrefix.length); // products or products/123
-    const [entity, id, subPath] = rel.split('/');
-    const t = translateEndpoint(entity, method, id, subPath);
-    if (!t) {
-      console.warn('ipcFetch: unmapped endpoint', method, url);
-      return originalFetch(input, init); // fallback
-    }
-    const [channel, paramOverride] = t;
-    let payload = undefined;
-    if (['POST', 'PUT'].includes(method)) {
-      if (init.body) {
-        payload = typeof init.body === 'string' ? JSON.parse(init.body) : init.body;
-      }
-      if (paramOverride) payload = { ...(payload || {}), id: paramOverride };
-    } else if (paramOverride) {
-      payload = paramOverride;
-    }
-    const data = await exposed.invoke(channel, payload);
-    const json = JSON.stringify(data);
-    return new Response(json, { headers: { 'Content-Type': 'application/json' } });
-  } catch (err) {
-    console.error('ipcFetch error:', err);
-    throw err;
-  }
-}
-
-// Override global fetch in the renderer BEFORE other scripts run
-delete globalThis.fetch;
-globalThis.fetch = ipcFetch;
