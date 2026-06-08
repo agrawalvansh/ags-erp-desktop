@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Trash2, Check, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Trash2, Save, ChevronDown } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 // Reusable form for creating supplier maal / jama entries
@@ -155,7 +155,7 @@ const AddSupplierAccountEntry = () => {
           onClick={() => navigate(`/accounts/suppliers/${slug}`)}
           className="flex items-center gap-2 text-[#434655] hover:text-[#004AC6] transition-colors group cursor-pointer"
         >
-          <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
+          <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
           <span className="text-sm font-medium">Back to Supplier Account</span>
         </button>
         <div className="bg-[#ECEEF0] h-6 w-[1px]"></div>
@@ -187,7 +187,7 @@ const AddSupplierAccountEntry = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Date */}
               <div className="space-y-2">
-                <label className="block text-[10px] font-bold uppercase text-[#434655] tracking-wider ml-1">
+                <label className="block text-[10px] font-bold uppercase text-[#434655] tracking-wider mb-1.5 ml-1">
                   Date <span className="text-[#BA1A1A]">*</span>
                 </label>
                 <input
@@ -195,7 +195,7 @@ const AddSupplierAccountEntry = () => {
                   name="date"
                   value={formData.date}
                   onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  className={`w-full bg-[#F2F4F6] border-none rounded-lg px-4 py-3 text-sm font-medium focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none ${errors.date ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
+                  className={`w-full bg-[#F2F4F6] border-none rounded-lg px-3 py-2.5 text-sm font-medium focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none ${errors.date ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
                 />
                 {errors.date && <p className="text-xs text-[#BA1A1A] ml-1">{errors.date}</p>}
               </div>
@@ -203,7 +203,7 @@ const AddSupplierAccountEntry = () => {
               {/* Transaction Type (Jama) or Invoice Number (Maal) */}
               {isMaal ? (
                 <div className="space-y-2">
-                  <label className="block text-[10px] font-bold uppercase text-[#434655] tracking-wider ml-1">
+                  <label className="block text-[10px] font-bold uppercase text-[#434655] tracking-wider mb-1.5 ml-1">
                     Invoice Number <span className="text-[#BA1A1A]">*</span>
                   </label>
                   <input
@@ -211,7 +211,7 @@ const AddSupplierAccountEntry = () => {
                     name="invoiceNumber"
                     value={formData.invoiceNumber}
                     onChange={(e) => setFormData({ ...formData, invoiceNumber: e.target.value })}
-                    className={`w-full bg-[#F2F4F6] border-none rounded-lg px-4 py-3 text-sm font-medium focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none ${errors.invoiceNumber ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
+                    className={`w-full bg-[#F2F4F6] border-none rounded-lg px-3 py-2.5 text-sm font-medium focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none ${errors.invoiceNumber ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
                     placeholder="Enter invoice number"
                     autoComplete="off"
                   />
@@ -219,7 +219,7 @@ const AddSupplierAccountEntry = () => {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <label className="block text-[10px] font-bold uppercase text-[#434655] tracking-wider ml-1">
+                  <label className="block text-[10px] font-bold uppercase text-[#434655] tracking-wider mb-1.5 ml-1">
                     Transaction Type <span className="text-[#BA1A1A]">*</span>
                   </label>
                 <div className="relative">
@@ -227,7 +227,7 @@ const AddSupplierAccountEntry = () => {
                     name="txnType"
                     value={formData.txnType}
                     onChange={(e) => setFormData({ ...formData, txnType: e.target.value })}
-                    className={`w-full bg-[#F2F4F6] border-none rounded-lg px-4 py-3 pr-10 text-sm font-medium focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none appearance-none cursor-pointer ${errors.txnType ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
+                    className={`w-full bg-[#F2F4F6] border-none rounded-lg px-3 py-2.5 pr-10 text-sm font-medium focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none appearance-none cursor-pointer ${errors.txnType ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
                   >
                     <option value="">Select Transaction Type</option>
                     <option value="Cash">Cash</option>
@@ -284,8 +284,9 @@ const AddSupplierAccountEntry = () => {
                   type="button"
                   disabled={deleting}
                   onClick={() => setShowDeleteModal(true)}
-                  className="px-6 py-3 bg-[#DC2626] text-white font-bold rounded-xl text-sm hover:bg-red-700 transition-colors active:scale-95 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  className="px-6 py-2.5 bg-[#DC2626] text-white font-bold rounded-xl text-sm hover:bg-red-700 transition-colors active:scale-95 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center gap-2"
                 >
+                  <Trash2 size={16} />
                   {deleting ? 'Deleting...' : 'Delete'}
                 </button>
               ) : (
@@ -294,11 +295,11 @@ const AddSupplierAccountEntry = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="px-10 py-3 text-white font-bold rounded-xl text-sm shadow-lg shadow-[#004AC6]/20 hover:opacity-90 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                className="px-10 py-2.5 text-white font-bold rounded-xl text-sm shadow-lg shadow-[#004AC6]/20 hover:opacity-90 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 style={{ background: 'linear-gradient(135deg, #004AC6 0%, #2563EB 100%)' }}
               >
+                <Save size={16} />
                 <span>{loading ? (isEditing ? 'Updating...' : 'Saving...') : 'Save Entry'}</span>
-                {!loading && <Check size={16} />}
               </button>
             </div>
           </form>

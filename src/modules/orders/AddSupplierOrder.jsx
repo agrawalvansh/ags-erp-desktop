@@ -4,7 +4,9 @@ import { generateOrderPDF } from './generateOrderPDF';
 import { useParams, useNavigate, useBlocker } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { sortProducts, capitalizeWords, generateProductCode, DEFAULT_PACKING_TYPE, ALLOWED_PACKING_TYPES } from '../../utils/productUtils';
+import { sortProducts, capitalizeWords, generateProductCode, DEFAULT_PACKING_TYPE, ALLOWED_PACKING_TYPES, mapPackingType } from '../../utils/productUtils';
+import NavigationWarningModal from '../../components/NavigationWarningModal';
+import PrinterSelectionModal from '../../components/PrinterSelectionModal';
 
 // ─── Stitch-styled Add Item Form ───
 const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors, productNameInputRef }) => {
@@ -34,21 +36,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
     return name.replace(/-/g, ' ').split(' ').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   };
 
-  const mapPackingType = (rawType) => {
-    if (!rawType) return DEFAULT_PACKING_TYPE;
-    const trimmed = rawType.toString().trim();
-    if (ALLOWED_PACKING_TYPES.includes(trimmed)) return trimmed;
-    const upper = trimmed.toUpperCase();
-    if (['PC', 'PCS'].includes(upper)) return 'Pc';
-    if (['KG', 'KGS'].includes(upper)) return 'Kg';
-    if (['DZ', 'DOZ', 'DOZEN'].includes(upper)) return 'Dz';
-    if (['BOX', 'BOXES'].includes(upper)) return 'Box';
-    if (['KODI'].includes(upper)) return 'Kodi';
-    if (['THELI'].includes(upper)) return 'Theli';
-    if (['PACKET'].includes(upper)) return 'Packet';
-    if (['SET'].includes(upper)) return 'Set';
-    return DEFAULT_PACKING_TYPE;
-  };
+
 
   const handleProductSelect = (product) => {
     setNewItem({
@@ -97,12 +85,12 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
   }, []);
 
   return (
-    <section className="bg-[#F2F4F6] p-8 rounded-xl border border-[#C3C6D7]/10 print:hidden">
-      <h3 className="text-[#434655] font-bold text-[0.65rem] uppercase tracking-[0.1em] mb-6">Quick Add Item</h3>
+    <section className="bg-white p-6 rounded-xl border border-[#2563EB]/20 shadow-[0_8px_30px_rgb(37,99,235,0.04)] print:hidden">
+      <h3 className="text-xs font-bold text-[#434655] uppercase tracking-wider mb-6">Quick Add Item</h3>
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end">
         {/* Product Name */}
         <div className="lg:col-span-3 space-y-2 relative" ref={prodWrapperRef}>
-          <label className="text-[0.7rem] font-medium text-[#434655]">Product Name</label>
+          <label className="text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Product Name</label>
           <div className="relative">
             <input
               ref={productNameInputRef}
@@ -111,7 +99,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
               onFocus={() => { setShowProdDropdown(true); setHighlightedIndex(0); }}
               onChange={(e) => { setNewItem({ ...newItem, productName: e.target.value }); setShowProdDropdown(true); setHighlightedIndex(0); }}
               onKeyDown={handleKeyDown}
-              className={`w-full bg-white border-none rounded-lg py-3 px-4 text-sm font-medium focus:ring-2 focus:ring-[#2563EB]/20 outline-none ${formErrors.productName ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
+              className={`w-full bg-[#F2F4F6] border-none rounded-lg py-2.5 px-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none ${formErrors.productName ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
               placeholder="Start typing product..."
               aria-autocomplete="list"
               aria-expanded={showProdDropdown}
@@ -129,7 +117,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
                   filteredProducts.map((p, index) => (
                     <button
                       key={p.code} data-so-prod-index={index} role="option" aria-selected={highlightedIndex === index}
-                      className={`cursor-pointer w-full text-left px-4 py-3 transition-colors flex items-center justify-between ${highlightedIndex === index ? 'bg-[#004AC6]/5' : 'hover:bg-[#F2F4F6]'} ${index === 0 ? 'rounded-t-lg' : ''} ${index === filteredProducts.length - 1 ? 'rounded-b-lg' : ''}`}
+                      className={`cursor-pointer w-full text-left px-4 py-3 transition-colors flex items-center justify-between ${highlightedIndex === index ? 'bg-[#EFF6FF]' : 'hover:bg-[#F2F4F6]'} ${index === 0 ? 'rounded-t-lg' : ''} ${index === filteredProducts.length - 1 ? 'rounded-b-lg' : ''}`}
                       onClick={() => handleProductSelect(p)}
                       onMouseEnter={() => setHighlightedIndex(index)}
                     >
@@ -155,19 +143,19 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
 
         {/* Size */}
         <div className="lg:col-span-1 space-y-2">
-          <label className="text-[0.7rem] font-medium text-[#434655]">Size</label>
-          <input ref={sizeInputRef} type="text" value={newItem.size || ''} onChange={(e) => setNewItem({ ...newItem, size: e.target.value })} className="w-full bg-white border-none rounded-lg py-3 px-4 text-sm font-medium focus:ring-2 focus:ring-[#2563EB]/20 outline-none" placeholder="e.g. 1Kg" />
+          <label className="text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Size</label>
+          <input ref={sizeInputRef} type="text" value={newItem.size || ''} onChange={(e) => setNewItem({ ...newItem, size: e.target.value })} className="w-full bg-[#F2F4F6] border-none rounded-lg py-2.5 px-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none" placeholder="e.g. 1Kg" />
           <div className="h-5"></div>
         </div>
 
         {/* Qty */}
         <div className="lg:col-span-1 space-y-2">
-          <label className="text-[0.7rem] font-medium text-[#434655]">Qty</label>
+          <label className="text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Qty</label>
           <input
             ref={quantityInputRef} type="number" min="0.001" step="0.001" value={newItem.quantity}
             onChange={(e) => setNewItem({ ...newItem, quantity: e.target.value })}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddItem(); } }}
-            className={`w-full bg-white border-none rounded-lg py-3 px-4 text-sm font-medium focus:ring-2 focus:ring-[#2563EB]/20 outline-none ${formErrors.quantity ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
+            className={`w-full bg-[#F2F4F6] border-none rounded-lg py-2.5 px-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none ${formErrors.quantity ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
             placeholder="0"
           />
           <div className="h-5">
@@ -177,8 +165,8 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
 
         {/* Unit */}
         <div className="lg:col-span-1 space-y-2">
-          <label className="text-[0.7rem] font-medium text-[#434655]">Unit</label>
-          <select value={newItem.packingType} onChange={(e) => setNewItem({ ...newItem, packingType: e.target.value })} className="w-full bg-white border-none rounded-lg py-3 px-3 text-sm font-medium focus:ring-2 focus:ring-[#2563EB]/20 appearance-none outline-none">
+          <label className="text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Unit</label>
+          <select value={newItem.packingType} onChange={(e) => setNewItem({ ...newItem, packingType: e.target.value })} className="w-full bg-[#F2F4F6] border-none rounded-lg py-2.5 px-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 appearance-none transition-all outline-none">
             {ALLOWED_PACKING_TYPES.map((type) => (<option key={type} value={type}>{type}</option>))}
           </select>
           <div className="h-5"></div>
@@ -186,8 +174,8 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
 
         {/* Item Remark */}
         <div className="lg:col-span-3 space-y-2">
-          <label className="text-[0.7rem] font-medium text-[#434655]">Item Remark</label>
-          <input type="text" value={newItem.itemRemark || ''} onChange={(e) => setNewItem({ ...newItem, itemRemark: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddItem(); } }} className="w-full bg-white border-none rounded-lg py-3 px-4 text-sm font-medium focus:ring-2 focus:ring-[#2563EB]/20 outline-none" placeholder="Optional note..." />
+          <label className="text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Item Remark</label>
+          <input type="text" value={newItem.itemRemark || ''} onChange={(e) => setNewItem({ ...newItem, itemRemark: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddItem(); } }} className="w-full bg-[#F2F4F6] border-none rounded-lg py-2.5 px-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none" placeholder="Optional note..." />
           <div className="h-5"></div>
         </div>
 
@@ -296,21 +284,7 @@ const AddSupplierOrder = () => {
     if (!name) return '';
     return name.replace(/-/g, ' ').split(' ').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   };
-  const mapPackingType = (rawType) => {
-    if (!rawType) return DEFAULT_PACKING_TYPE;
-    const trimmed = rawType.toString().trim();
-    if (ALLOWED_PACKING_TYPES.includes(trimmed)) return trimmed;
-    const upper = trimmed.toUpperCase();
-    if (['PC', 'PCS'].includes(upper)) return 'Pc';
-    if (['KG', 'KGS'].includes(upper)) return 'Kg';
-    if (['DZ', 'DOZ', 'DOZEN'].includes(upper)) return 'Dz';
-    if (['BOX', 'BOXES'].includes(upper)) return 'Box';
-    if (['KODI'].includes(upper)) return 'Kodi';
-    if (['THELI'].includes(upper)) return 'Theli';
-    if (['PACKET'].includes(upper)) return 'Packet';
-    if (['SET'].includes(upper)) return 'Set';
-    return DEFAULT_PACKING_TYPE;
-  };
+
 
   useEffect(() => { setCurrentorderId(orderNo || ''); }, [orderNo]);
 
@@ -581,56 +555,22 @@ const AddSupplierOrder = () => {
 
   return (
     <div className="min-h-screen bg-[#F7F9FB] print:bg-white print:p-0 print:text-black">
-      {/* ─── Navigation Warning Modal — Stitch Glass ─── */}
-      {blocker.state === 'blocked' && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 print:hidden" style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.7)' }}>
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#C3C6D7]/20 p-8">
-            <div className="w-12 h-12 rounded-full bg-amber-100/50 flex items-center justify-center text-amber-600 mb-6 mx-auto">
-              <AlertTriangle size={28} />
-            </div>
-            <h2 className="text-2xl font-extrabold text-[#0F172A] tracking-tight mb-3 text-center">Unsaved Changes</h2>
-            <p className="text-[#434655] leading-relaxed mb-8 text-center">This order is not saved. Do you want to leave this page?</p>
-            <div className="flex items-center gap-3">
-              <button onClick={() => blocker.reset()} className="flex-1 px-6 py-3 font-bold rounded-xl text-sm cursor-pointer text-white shadow-lg shadow-[#004AC6]/20 hover:scale-[1.02] active:scale-95 transition-all" style={{ background: 'linear-gradient(135deg, #004AC6 0%, #2563EB 100%)' }}>Stay on Page</button>
-              <button onClick={() => blocker.proceed()} className="flex-1 px-6 py-3 bg-[#E6E8EA] text-[#191C1E] font-bold rounded-xl hover:bg-[#E0E3E5] transition-all text-sm cursor-pointer">Leave</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Navigation Warning Modal */}
+      <NavigationWarningModal blocker={blocker} />
 
-      {/* ─── Printer Selection Modal ─── */}
-      {showPrinterModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 print:hidden" style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.7)' }}>
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#C3C6D7]/20 p-8">
-            <div className="flex items-center justify-center mb-4">
-              <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center">
-                <Printer className="text-[#2563EB]" size={24} />
-              </div>
-            </div>
-            <h2 className="text-xl font-bold text-[#0F172A] text-center mb-2">Print Supplier Order</h2>
-            <p className="text-[#64748B] text-center mb-4 text-sm">{pendingPDFData?.fileName || 'Supplier Order'}</p>
-
-            <div className="mb-6">
-              <label className="block text-xs font-bold text-[#434655] uppercase mb-2">Select Printer</label>
-              <select value={selectedPrinter} onChange={(e) => setSelectedPrinter(e.target.value)} className="w-full py-3 px-4 bg-[#F2F4F6] border border-[#E2E8F0] rounded-lg text-sm font-medium appearance-none cursor-pointer focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB]">
-                <option value="">Default Printer</option>
-                {printerList.map((printer, idx) => (<option key={idx} value={printer}>{printer}</option>))}
-              </select>
-              {printerList.length === 0 && <p className="text-xs text-[#64748B] mt-1">Using system default printer</p>}
-            </div>
-
-            <div className="flex gap-3">
-              <button onClick={handleConfirmPrint} disabled={isPrinting} className={`flex-1 px-4 py-2.5 rounded-lg bg-[#2563EB] text-white font-medium hover:bg-[#1D4ED8] transition-colors cursor-pointer flex items-center justify-center gap-2 ${isPrinting ? 'opacity-50' : ''}`}>
-                <Printer size={16} />{isPrinting ? 'Printing...' : 'Print'}
-              </button>
-              <button onClick={handleDownloadPDF} className="flex-1 px-4 py-2.5 rounded-lg border border-[#E2E8F0] text-[#434655] font-medium hover:bg-[#F1F5F9] transition-colors cursor-pointer flex items-center justify-center gap-2">
-                <Save size={16} />Download PDF
-              </button>
-            </div>
-            <button onClick={() => { setShowPrinterModal(false); setPendingPDFData(null); }} className="w-full mt-3 py-2 text-sm text-[#64748B] hover:text-[#0F172A] transition-colors cursor-pointer">Cancel</button>
-          </div>
-        </div>
-      )}
+      {/* Printer Selection Modal */}
+      <PrinterSelectionModal
+        isOpen={showPrinterModal}
+        onClose={() => { setShowPrinterModal(false); setPendingPDFData(null); }}
+        printers={printerList}
+        selectedPrinter={selectedPrinter}
+        onSelectPrinter={setSelectedPrinter}
+        onPrint={handleConfirmPrint}
+        onDownload={handleDownloadPDF}
+        isPrinting={isPrinting}
+        title="Print Supplier Order"
+        subtitle={pendingPDFData?.fileName || 'Supplier Order'}
+      />
 
       {/* ─── Top App Bar ─── */}
       <header className="bg-[#F7F9FB] flex justify-between items-center px-8 py-5 print:hidden">
@@ -680,7 +620,7 @@ const AddSupplierOrder = () => {
                       case 'Escape': e.preventDefault(); setShowCustDropdown(false); setHighlightedCustIndex(-1); break;
                     }
                   }}
-                  className="w-full bg-white border border-[#C3C6D7]/20 rounded-lg py-3 px-4 focus:ring-2 focus:ring-[#2563EB]/20 transition-all text-sm font-medium outline-none"
+                  className="w-full bg-[#F2F4F6] border-none rounded-lg py-2.5 px-3 focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all text-sm outline-none"
                   placeholder="Search supplier..."
                 />
                 {buyer ? (
@@ -694,7 +634,7 @@ const AddSupplierOrder = () => {
               {showCustDropdown && (
                 <ul className="absolute z-50 w-full top-full mt-1 overflow-y-auto bg-white border border-[#C3C6D7]/20 rounded-lg shadow-lg" style={{ maxHeight: '9rem' }}>
                   {suppliers.filter((c) => c.name.toLowerCase().includes(buyer.toLowerCase())).map((c, idx) => (
-                    <li key={c.supplier_id} data-so-cust-index={idx} className={`px-4 py-2.5 cursor-pointer text-sm font-medium transition-colors ${highlightedCustIndex === idx ? 'bg-[#004AC6]/5' : 'hover:bg-[#004AC6]/5'}`} onClick={() => handleSelectsupplier(c)} onMouseEnter={() => setHighlightedCustIndex(idx)}>{c.name}</li>
+                    <li key={c.supplier_id} data-so-cust-index={idx} className={`px-4 py-2.5 cursor-pointer text-sm font-medium transition-colors ${highlightedCustIndex === idx ? 'bg-[#EFF6FF]' : 'hover:bg-[#F2F4F6]'}`} onClick={() => handleSelectsupplier(c)} onMouseEnter={() => setHighlightedCustIndex(idx)}>{c.name}</li>
                   ))}
                   {suppliers.filter((c) => c.name.toLowerCase().includes(buyer.toLowerCase())).length === 0 && (
                     <li className="px-4 py-2.5 text-[#434655] text-sm">No suppliers found</li>
@@ -705,33 +645,33 @@ const AddSupplierOrder = () => {
 
             {/* Mobile Number */}
             <div className="flex flex-col space-y-2">
-              <label className="text-[0.65rem] font-bold text-[#434655] uppercase tracking-[0.05em]">Mobile Number</label>
-              <input type="text" value={mobileNo} onChange={(e) => setMobileNo(e.target.value)} className="w-full bg-white border border-[#C3C6D7]/20 rounded-lg py-3 px-4 text-sm font-medium outline-none focus:ring-2 focus:ring-[#2563EB]/20" placeholder="Mobile number" />
+              <label className="text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Mobile Number</label>
+              <input type="text" value={mobileNo} onChange={(e) => setMobileNo(e.target.value)} className="w-full bg-[#F2F4F6] border-none rounded-lg py-2.5 px-3 text-sm outline-none focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all" placeholder="Mobile number" />
             </div>
 
             {/* Address */}
             <div className="flex flex-col space-y-2">
-              <label className="text-[0.65rem] font-bold text-[#434655] uppercase tracking-[0.05em]">Address</label>
-              <textarea value={address} onChange={(e) => setAddress(e.target.value)} className="w-full bg-white border border-[#C3C6D7]/20 rounded-lg py-3 px-4 text-sm font-medium outline-none focus:ring-2 focus:ring-[#2563EB]/20 resize-none" placeholder="Address" rows="1" />
+              <label className="text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Address</label>
+              <textarea value={address} onChange={(e) => setAddress(e.target.value)} className="w-full bg-[#F2F4F6] border-none rounded-lg py-2.5 px-3 text-sm outline-none focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all resize-none" placeholder="Address" rows="1" />
             </div>
           </div>
         </section>
 
         {/* ─── Order Details ─── */}
         <section className="bg-white p-8 rounded-xl shadow-sm border border-[#C3C6D7]/10 print:hidden">
-          <h3 className="text-[0.65rem] font-bold text-[#434655] uppercase tracking-[0.1em] mb-6 print:hidden">Order Details</h3>
+          <h3 className="text-xs font-bold text-[#434655] uppercase tracking-wider mb-6 print:hidden">Order Details</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-6 print:gap-y-2 print:gap-x-4">
             {/* Order Date */}
             <div className="flex flex-col space-y-2">
-              <label className="text-[0.65rem] font-bold text-[#434655] uppercase tracking-[0.05em]">Order Date</label>
-              <input type="date" value={orderDate} onChange={(e) => setorderDate(e.target.value)} className="w-full bg-white border border-[#C3C6D7]/20 rounded-lg py-3 px-4 text-sm font-medium outline-none focus:ring-2 focus:ring-[#2563EB]/20" />
+              <label className="text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Order Date</label>
+              <input type="date" value={orderDate} onChange={(e) => setorderDate(e.target.value)} className="w-full bg-[#F2F4F6] border-none rounded-lg py-2.5 px-3 text-sm outline-none focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all" />
             </div>
 
             {/* Status */}
             <div className="flex flex-col space-y-2">
-              <label className="text-[0.65rem] font-bold text-[#434655] uppercase tracking-[0.05em]">Status</label>
+              <label className="text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Status</label>
               <div className="relative">
-                <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full bg-white border border-[#C3C6D7]/20 rounded-lg py-3 px-4 pr-10 text-sm font-medium outline-none focus:ring-2 focus:ring-[#2563EB]/20 appearance-none cursor-pointer print:bg-transparent">
+                <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full bg-[#F2F4F6] border-none rounded-lg py-2.5 px-3 pr-10 text-sm outline-none focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 appearance-none cursor-pointer transition-all print:bg-transparent">
                   <option>Placed</option><option>Confirmed</option><option>In Progress</option><option>Dispatched</option><option>Payment Pending</option><option>Paid</option><option>Cancelled</option>
                 </select>
                 <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#434655] pointer-events-none" />
@@ -740,7 +680,7 @@ const AddSupplierOrder = () => {
 
             {/* Remark */}
             <div className="flex flex-col space-y-2">
-              <label className="text-[0.65rem] font-bold text-[#434655] uppercase tracking-[0.05em]">Order Remark</label>
+              <label className="text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Order Remark</label>
               <input type="text" value={remark} onChange={(e) => setRemark(e.target.value)} className="w-full bg-white border border-[#C3C6D7]/20 rounded-lg py-3 px-4 text-sm font-medium outline-none focus:ring-2 focus:ring-[#2563EB]/20" placeholder="Add notes or instructions..." />
             </div>
           </div>
@@ -826,7 +766,7 @@ const AddSupplierOrder = () => {
               </button>
             )}
             {currentorderId && (
-              <button onClick={() => setShowDeleteModal(true)} className="w-full bg-red-600 hover:bg-red-700 text-white py-4 rounded-xl font-bold text-base flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-lg shadow-red-600/20 cursor-pointer">
+              <button onClick={() => setShowDeleteModal(true)} className="w-full bg-[#DC2626] hover:bg-red-700 text-white py-4 rounded-xl font-bold text-base flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-lg shadow-[#DC2626]/20 cursor-pointer">
                 <Trash2 size={20} /><span>Delete Order</span>
               </button>
             )}
@@ -837,7 +777,7 @@ const AddSupplierOrder = () => {
       {/* ─── Delete Confirmation — Stitch Glass Overlay ─── */}
       {showDeleteModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 print:hidden outline-none"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 print:hidden outline-none"
           style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.7)' }}
           role="dialog"
           aria-modal="true"
@@ -870,7 +810,7 @@ const AddSupplierOrder = () => {
             )}
             <div className="flex items-center gap-3">
               <button onClick={() => { setShowDeleteModal(false); setDeleteAlsoPayment(false); }} className="flex-1 px-6 py-3 bg-[#E6E8EA] text-[#191C1E] font-bold rounded-xl hover:bg-[#E0E3E5] transition-all text-sm cursor-pointer">Cancel</button>
-              <button onClick={async () => { await handleDelete(); }} className="flex-1 px-6 py-3 bg-red-600 text-white font-bold rounded-xl shadow-lg shadow-red-600/20 hover:bg-red-700 hover:scale-[1.02] active:scale-95 transition-all text-sm cursor-pointer">Delete</button>
+              <button onClick={async () => { await handleDelete(); }} className="flex-1 px-6 py-3 bg-[#DC2626] text-white font-bold rounded-xl shadow-lg shadow-[#DC2626]/20 hover:bg-red-700 active:scale-95 transition-all text-sm cursor-pointer">Delete</button>
             </div>
           </div>
         </div>

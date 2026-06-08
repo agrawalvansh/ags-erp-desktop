@@ -175,7 +175,7 @@ const WeightCalculator = ({ isOpen, onClose, onComplete, initialValue }) => {
           Enter → add &nbsp;|&nbsp; Shift+Enter → subtract
         </p>
         {error && (
-          <p className="text-[10px] text-red-600 mt-1 ml-0.5">{error}</p>
+          <p className="text-[10px] text-[#BA1A1A] mt-1 ml-0.5">{error}</p>
         )}
       </div>
 

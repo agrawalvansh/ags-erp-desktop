@@ -3,18 +3,42 @@
 
 /* === Design System Tokens === */
 :root {
-  --color-primary: #2563EB;
-  --color-primary-dark: #1D4ED8;
-  --color-primary-light: #EFF6FF;
-  --color-surface: #F8FAFC;
-  --color-bg: #F7F9FB;
-  --color-border: #E2E8F0;
-  --color-text-primary: #0F172A;
-  --color-text-secondary: #64748B;
+  /* === Core Palette === */
+  --color-primary: #004AC6;              /* Icons, links, accents, grand total */
+  --color-primary-container: #2563EB;    /* Buttons, active states */
+  --color-primary-light: #EFF6FF;        /* Light highlight on hover */
+
+  /* === Surfaces === */
+  --color-bg: #F7F9FB;                   /* Page background */
+  --color-surface: #FFFFFF;              /* Cards, table body, modals */
+  --color-surface-lowest: #FFFFFF;
+  --color-surface-container-low: #F2F4F6;   /* Input backgrounds, table headers */
+  --color-surface-container: #ECEEF0;       /* Dividers, borders */
+  --color-surface-container-high: #E6E8EA;  /* Secondary button bg */
+  --color-surface-dim: #F8FAFC;             /* Top bar bg, table header row */
+
+  /* === Text === */
+  --color-on-surface: #191C1E;           /* Headings, high-emphasis labels */
+  --color-on-surface-body: #0F172A;      /* Body copy, lower-emphasis content */
+  --color-on-surface-variant: #434655;   /* Labels, secondary text */
+  --color-muted: #64748B;                /* Table cell text, descriptions */
+
+  /* === Borders === */
+  --color-outline-variant: #C3C6D7;      /* Borders at /10 or /20 opacity */
+  --color-border-soft: #E2E8F0;          /* Card borders, header borders */
+
+  /* === Semantic === */
   --color-success: #16A34A;
   --color-warning: #F59E0B;
-  --color-danger: #DC2626;
+  --color-danger-active: #DC2626;        /* Delete buttons, error icons */
+  --color-danger-text: #BA1A1A;          /* Inline validation text, required asterisks */
 
+  /* === Components === */
+  --color-pill-bg: #D0E1FB;              /* Items pill background */
+  --color-pill-text: #54647A;            /* Items pill text */
+  --color-secondary-hover: #E0E3E5;      /* Secondary button hover */
+
+  /* === Layout === */
   --sidebar-width: 240px;
   --font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
@@ -84,4 +108,19 @@ body {
 
 input, textarea {
   -webkit-user-modify: read-write-plaintext-only;
+}
+
+/* ─── Nav dropdown expand/collapse (CSS grid trick for height:auto) ─── */
+.nav-dropdown {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 0.2s ease-in-out, opacity 0.2s ease-in-out;
+}
+.nav-dropdown-open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.nav-dropdown > div {
+  overflow: hidden;
 }

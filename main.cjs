@@ -6,6 +6,14 @@ const db = require('./db'); // uses better-sqlite3 instance
 // Enforce foreign key constraints on every connection
 if (db.pragma) db.pragma('foreign_keys = ON');
 
+// ─── Single-Instance Lock ──────────────────────────────
+// Prevent multiple instances from writing to the same SQLite database simultaneously
+// Must be checked before any DB writes or IPC handler registration
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+}
+
 // ─── Startup Cleanup ────────────────────────────────────
 // Auto-cleanup quick sales older than 30 days
 try {
@@ -71,12 +79,6 @@ ipcMain.handle('print:pdf', async (_event, { pdfBase64, printerName, fileName })
   }
 });
 
-// ─── Single-Instance Lock ──────────────────────────────
-// Prevent multiple instances from writing to the same SQLite database simultaneously
-const gotTheLock = app.requestSingleInstanceLock();
-if (!gotTheLock) {
-  app.quit();
-}
 
 // ─── Create the window ─────────────────────────────────
 let mainWindow;

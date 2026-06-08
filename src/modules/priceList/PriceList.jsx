@@ -1,8 +1,10 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ChevronDown, Plus, Search, Eye, EyeOff, Edit, Trash2, AlertTriangle, CircleX } from 'lucide-react';
+import { ChevronDown, Plus, Search, Eye, EyeOff, Edit, Trash2, AlertTriangle, CircleX, Download } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { sortProducts, extractNumericFromSize } from '../../utils/productUtils';
+import { generatePriceListPDF } from './generatePriceListPDF';
+import PrinterSelectionModal from '../../components/PrinterSelectionModal';
 
 
 const PriceList = () => {
@@ -18,6 +20,13 @@ const PriceList = () => {
   const [highlightedCode, setHighlightedCode] = useState(null);
   const rowRefs = useRef({});
   const deleteModalRef = useRef(null);
+
+  // Print / Download state
+  const [showPrinterModal, setShowPrinterModal] = useState(false);
+  const [pendingPDFData, setPendingPDFData] = useState(null);
+  const [printerList, setPrinterList] = useState([]);
+  const [selectedPrinter, setSelectedPrinter] = useState('');
+  const [isPrinting, setIsPrinting] = useState(false);
 
   // Load products from backend on first render (IPC)
   useEffect(() => {
@@ -167,6 +176,67 @@ const PriceList = () => {
     }).format(value);
   };
 
+  // ─── Print / Download handlers ───
+  const handlePrintDownload = () => {
+    try {
+      const result = generatePriceListPDF({
+        products: filteredProducts,
+        includeCostPrice: showCostPrice,
+      });
+      setPendingPDFData(result);
+      window.api.invoke('print:listPrinters').then(res => {
+        setPrinterList(res.success ? res.printers.filter(p => p && p.trim()) : []);
+        setSelectedPrinter('');
+        setShowPrinterModal(true);
+      }).catch(() => {
+        setPrinterList([]);
+        setSelectedPrinter('');
+        setShowPrinterModal(true);
+      });
+    } catch (err) {
+      console.error('PDF generation error:', err);
+      toast.error('Failed to generate Price List PDF');
+    }
+  };
+
+  const handleConfirmPrint = async () => {
+    if (!pendingPDFData) return;
+    setIsPrinting(true);
+    try {
+      const res = await window.api.invoke('print:pdf', {
+        pdfBase64: pendingPDFData.pdfBase64,
+        printerName: selectedPrinter || undefined,
+        fileName: pendingPDFData.fileName,
+      });
+      if (res.success) toast.success('Print job sent successfully');
+      else toast.error(res.error || 'Failed to print');
+    } catch (err) {
+      toast.error('Print failed: ' + (err.message || 'Unknown error'));
+    } finally {
+      setIsPrinting(false);
+      setShowPrinterModal(false);
+      setPendingPDFData(null);
+    }
+  };
+
+  const handleDownloadPDF = () => {
+    if (!pendingPDFData) return;
+    const byteChars = atob(pendingPDFData.pdfBase64);
+    const byteNumbers = new Array(byteChars.length);
+    for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
+    const blob = new Blob([new Uint8Array(byteNumbers)], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${pendingPDFData.fileName}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+    toast.success('PDF downloaded');
+    setShowPrinterModal(false);
+    setPendingPDFData(null);
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-[#F7F9FB]">
       {/* Page Header */}
@@ -208,6 +278,15 @@ const PriceList = () => {
               >
                 {showCostPrice ? <EyeOff size={18} /> : <Eye size={18} />}
                 {showCostPrice ? 'Hide' : 'Show'} Cost Price
+              </button>
+
+              {/* Print / Download Price List */}
+              <button
+                className="cursor-pointer flex items-center gap-2 px-5 py-2.5 bg-[#E6E8EA] text-[#191C1E] font-semibold rounded-lg hover:bg-[#E0E3E5] transition-all text-sm whitespace-nowrap active:scale-95"
+                onClick={handlePrintDownload}
+              >
+                <Download size={18} />
+                Print / Download
               </button>
 
               {/* Add New Product */}
@@ -353,7 +432,7 @@ const PriceList = () => {
         <div
           ref={deleteModalRef}
           tabIndex={-1}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 outline-none"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 outline-none"
           style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.7)' }}
           role="dialog"
           aria-modal="true"
@@ -385,7 +464,7 @@ const PriceList = () => {
               <button
                 onClick={() => confirmDeleteProduct()}
                 disabled={isDeleting}
-                className="flex-1 px-6 py-3 bg-red-600 text-white font-bold rounded-xl shadow-lg shadow-red-600/20 hover:bg-red-700 hover:scale-[1.02] active:scale-95 transition-all text-sm cursor-pointer disabled:opacity-50"
+                className="flex-1 px-6 py-3 bg-[#DC2626] text-white font-bold rounded-xl shadow-lg shadow-[#DC2626]/20 hover:bg-red-700 active:scale-95 transition-all text-sm cursor-pointer disabled:opacity-50"
               >
                 {isDeleting ? 'Deleting...' : 'Delete'}
               </button>
@@ -393,6 +472,20 @@ const PriceList = () => {
           </div>
         </div>
       )}
+
+      {/* Print / Download Modal */}
+      <PrinterSelectionModal
+        isOpen={showPrinterModal}
+        onClose={() => { setShowPrinterModal(false); setPendingPDFData(null); }}
+        printers={printerList}
+        selectedPrinter={selectedPrinter}
+        onSelectPrinter={setSelectedPrinter}
+        onPrint={handleConfirmPrint}
+        onDownload={handleDownloadPDF}
+        isPrinting={isPrinting}
+        title="Print Price List"
+        subtitle={`${filteredProducts.length} products${showCostPrice ? ' (with cost price)' : ''}`}
+      />
     </div>
   );
 };

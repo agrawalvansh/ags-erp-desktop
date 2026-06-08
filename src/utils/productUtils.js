@@ -178,3 +178,21 @@ export const sortProducts = (products, nameKey = 'name', sizeKey = 'size') => {
         return numA - numB;
     });
 };
+
+/**
+ * Maps a legacy or non-canonical packing type string to the nearest
+ * allowed packing type. Used in order forms.
+ * Extracted from inline duplicates in AddCustomerOrder and AddSupplierOrder.
+ */
+export function mapPackingType(type) {
+    if (!type) return DEFAULT_PACKING_TYPE;
+    if (ALLOWED_PACKING_TYPES.includes(type)) return type;
+    const lower = type.toLowerCase();
+    if (lower === 'piece' || lower === 'pieces' || lower === 'pcs') return 'Pc';
+    if (lower === 'dozen' || lower === 'dozens') return 'Dz';
+    if (lower === 'kilogram' || lower === 'kilograms') return 'Kg';
+    if (lower === 'boxes') return 'Box';
+    if (lower === 'packets') return 'Packet';
+    if (lower === 'sets') return 'Set';
+    return DEFAULT_PACKING_TYPE;
+}

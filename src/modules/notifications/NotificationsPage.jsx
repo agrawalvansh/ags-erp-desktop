@@ -105,7 +105,7 @@ const NotificationsPage = () => {
               <p className="text-[#434655] text-sm font-medium">
                 Pending invoice payment reminders
                 {unreadCount > 0 && (
-                  <span className="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 bg-red-500 text-white text-[10px] font-bold rounded-full px-1.5">
+                  <span className="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 bg-[#DC2626] text-white text-[10px] font-bold rounded-full px-1.5">
                     {unreadCount} unread
                   </span>
                 )}

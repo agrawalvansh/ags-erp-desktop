@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Search, ChevronDown, Plus, Edit, Trash2, CircleX, AlertTriangle } from 'lucide-react';
+import { Search, ChevronDown, Plus, Edit, Trash2, CircleX } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import DeleteConfirmModal from '../../components/DeleteConfirmModal';
 
 const BuyerAccount = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -387,53 +388,34 @@ const BuyerAccount = () => {
         </div>
       </main>
 
-      {/* Delete Confirmation Modal — Stitch Glass Overlay */}
-      {deleteTarget !== null && (
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={deleteTarget !== null && !deleteError}
+        onConfirm={() => confirmDeleteCustomer()}
+        onCancel={() => { setDeleteTarget(null); setDeleteError(null); }}
+        title="Delete Customer?"
+        message={`Are you sure you want to delete ${deleteTarget?.name || 'this customer'}? This action cannot be undone and will permanently remove the customer from your records.`}
+        confirmLabel="Delete"
+        isLoading={isDeleting}
+      />
+
+      {/* Delete Error Modal (dependency conflict) */}
+      {deleteTarget !== null && deleteError && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 outline-none"
-          style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.7)' }}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="delete-customer-heading"
-          tabIndex={-1}
-          ref={deleteModalRef}
-          onKeyDown={(e) => { if (e.key === 'Escape' && !isDeleting) { setDeleteTarget(null); setDeleteError(null); } }}
-          onClick={(e) => { if (e.target === e.currentTarget && !isDeleting) { setDeleteTarget(null); setDeleteError(null); } }}
+          className="fixed inset-0 flex items-center justify-center z-[100]"
+          style={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(8px)' }}
+          onClick={() => { setDeleteTarget(null); setDeleteError(null); }}
         >
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#C3C6D7]/20 p-8 transform scale-100 transition-all">
-            <div className="w-12 h-12 rounded-full bg-red-100/50 flex items-center justify-center text-red-600 mb-6">
-              <AlertTriangle size={28} />
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+              <p className="text-red-700 text-sm font-medium">{deleteError}</p>
             </div>
-            <h2 id="delete-customer-heading" className="text-2xl font-extrabold text-[#0F172A] tracking-tight mb-3">
-              Delete Customer?
-            </h2>
-            {deleteError ? (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-8">
-                <p className="text-red-700 text-sm font-medium">{deleteError}</p>
-              </div>
-            ) : (
-              <p className="text-[#434655] leading-relaxed mb-8">
-                Are you sure you want to delete <span className="font-bold text-[#191C1E]">{deleteTarget?.name || 'this customer'}</span>? This action cannot be undone and will permanently remove the customer from your records.
-              </p>
-            )}
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => { setDeleteTarget(null); setDeleteError(null); }}
-                disabled={isDeleting}
-                className="flex-1 px-6 py-3 bg-[#E6E8EA] text-[#191C1E] font-bold rounded-xl hover:bg-[#E0E3E5] transition-all text-sm cursor-pointer disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              {!deleteError && (
-                <button
-                  onClick={() => confirmDeleteCustomer()}
-                  disabled={isDeleting}
-                  className="flex-1 px-6 py-3 bg-red-600 text-white font-bold rounded-xl shadow-lg shadow-red-600/20 hover:bg-red-700 hover:scale-[1.02] active:scale-95 transition-all text-sm cursor-pointer disabled:opacity-50"
-                >
-                  {isDeleting ? 'Deleting...' : 'Delete'}
-                </button>
-              )}
-            </div>
+            <button
+              onClick={() => { setDeleteTarget(null); setDeleteError(null); }}
+              className="w-full px-4 py-2.5 rounded-xl bg-[#E6E8EA] text-[#191C1E] font-semibold text-sm hover:bg-[#E0E3E5] active:scale-95 transition-all cursor-pointer"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}

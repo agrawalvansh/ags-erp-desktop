@@ -290,7 +290,7 @@ const ListQuickSales = () => {
             {/* Delete Confirmation Modal — Stitch Glass Overlay */}
             {deleteTarget !== null && (
                 <div
-                    className="fixed inset-0 z-50 flex items-center justify-center p-4 outline-none"
+                    className="fixed inset-0 z-[100] flex items-center justify-center p-4 outline-none"
                     style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.7)' }}
                     role="dialog"
                     aria-modal="true"
@@ -319,7 +319,7 @@ const ListQuickSales = () => {
                             <button
                                 onClick={async () => { await confirmDelete(); }}
                                 disabled={isDeleting}
-                                className="flex-1 px-6 py-3 bg-red-600 text-white font-bold rounded-xl shadow-lg shadow-red-600/20 hover:bg-red-700 hover:scale-[1.02] active:scale-95 transition-all text-sm cursor-pointer disabled:opacity-50"
+                                className="flex-1 px-6 py-3 bg-[#DC2626] text-white font-bold rounded-xl shadow-lg shadow-[#DC2626]/20 hover:bg-red-700 active:scale-95 transition-all text-sm cursor-pointer disabled:opacity-50"
                             >
                                 {isDeleting ? 'Deleting...' : 'Delete'}
                             </button>

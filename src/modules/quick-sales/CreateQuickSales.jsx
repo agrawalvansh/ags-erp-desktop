@@ -5,6 +5,8 @@ import { useParams, useNavigate, useLocation, useBlocker } from 'react-router-do
 import { AlertCircle, Search } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import PageLoader from '../../components/PageLoader';
+import NavigationWarningModal from '../../components/NavigationWarningModal';
+import PrinterSelectionModal from '../../components/PrinterSelectionModal';
 import {
     generateProductCode,
     capitalizeWords,
@@ -134,7 +136,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
                                 setHighlightedIndex(0);
                             }}
                             onKeyDown={handleKeyDown}
-                            className={`w-full py-2.5 px-3 bg-[#F2F4F6] border-none rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all pr-10 ${formErrors.productName ? 'ring-2 ring-red-500' : ''}`}
+                            className={`w-full py-2.5 px-3 bg-[#F2F4F6] border-none rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all pr-10 ${formErrors.productName ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
                             placeholder="Search product..."
                             aria-autocomplete="list"
                             aria-expanded={showProdDropdown}
@@ -185,7 +187,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
                     </div>
                     <div className="h-5">
                         {formErrors.productName && (
-                            <p className="text-xs text-red-600 flex items-center mt-0.5">
+                            <p className="text-xs text-[#BA1A1A] flex items-center mt-0.5">
                                 <AlertCircle size={14} className="mr-1" />{formErrors.productName}
                             </p>
                         )}
@@ -219,7 +221,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
                                     value={newItem.quantity}
                                     onChange={(e) => setNewItem({ ...newItem, quantity: e.target.value })}
                                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddItem(); } }}
-                                    className={`w-full py-2.5 px-3 pr-8 bg-[#F2F4F6] border-none rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all ${formErrors.quantity ? 'ring-2 ring-red-500' : ''}`}
+                                    className={`w-full py-2.5 px-3 pr-8 bg-[#F2F4F6] border-none rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all ${formErrors.quantity ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
                                     placeholder="0"
                                 />
                                 {/* Weight Calculator trigger */}
@@ -268,7 +270,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
                                     value={newItem.sellingPrice}
                                     onChange={(e) => setNewItem({ ...newItem, sellingPrice: e.target.value })}
                                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddItem(); } }}
-                                    className={`w-full pl-7 py-2.5 pr-2 bg-[#F2F4F6] border-none rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all ${formErrors.sellingPrice ? 'ring-2 ring-red-500' : ''}`}
+                                    className={`w-full pl-7 py-2.5 pr-2 bg-[#F2F4F6] border-none rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all ${formErrors.sellingPrice ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
                                     placeholder="0.00"
                                 />
                             </div>
@@ -277,13 +279,13 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
 
                     <div className="h-5 flex gap-4 mt-0.5">
                         {formErrors.quantity && (
-                            <p className="text-xs text-red-600 flex items-center truncate" title={formErrors.quantity}>
+                            <p className="text-xs text-[#BA1A1A] flex items-center truncate" title={formErrors.quantity}>
                                 <AlertCircle size={14} className="mr-1 flex-shrink-0" />
                                 <span className="truncate">{formErrors.quantity}</span>
                             </p>
                         )}
                         {formErrors.sellingPrice && (
-                            <p className="text-xs text-red-600 flex items-center truncate" title={formErrors.sellingPrice}>
+                            <p className="text-xs text-[#BA1A1A] flex items-center truncate" title={formErrors.sellingPrice}>
                                 <AlertCircle size={14} className="mr-1 flex-shrink-0" />
                                 <span className="truncate">{formErrors.sellingPrice}</span>
                             </p>
@@ -850,27 +852,11 @@ const CreateQuickSale = () => {
     return (
         <div className="p-2 sm:p-6 min-h-screen bg-[#F7F9FB] print:bg-white print:p-0 print:text-black">
             {/* Navigation Warning Modal */}
-            {blocker.state === 'blocked' && (
-                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] print:hidden">
-                    <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md mx-4">
-                        <div className="flex items-center justify-center mb-4">
-                            <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
-                                <AlertTriangle className="text-yellow-600" size={24} />
-                            </div>
-                        </div>
-                        <h2 className="text-xl font-bold text-[#0F172A] text-center mb-2">Unsaved Changes</h2>
-                        <p className="text-[#64748B] text-center mb-6">This quick sale is not saved. Do you want to leave?</p>
-                        <div className="flex gap-3">
-                            <button onClick={() => blocker.reset()} className="flex-1 px-4 py-2.5 rounded-lg bg-[#2563EB] text-white font-medium hover:bg-[#1D4ED8] cursor-pointer">Stay on Page</button>
-                            <button onClick={() => blocker.proceed()} className="flex-1 px-4 py-2.5 rounded-lg border border-[#E2E8F0] text-[#64748B] font-medium hover:bg-[#F1F5F9] cursor-pointer">Leave Without Saving</button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <NavigationWarningModal blocker={blocker} />
 
             {/* Force New Quick Sale Modal */}
             {showForceNewModal && (
-                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] print:hidden">
+                <div className="fixed inset-0 flex items-center justify-center z-[100] print:hidden" style={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(8px)' }}>
                     <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md mx-4">
                         <div className="flex items-center justify-center mb-4">
                             <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
@@ -894,65 +880,18 @@ const CreateQuickSale = () => {
             )}
 
             {/* Printer Selection Modal */}
-            {showPrinterModal && (
-                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] print:hidden">
-                    <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md mx-4 w-full">
-                        <div className="flex items-center justify-center mb-4">
-                            <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center">
-                                <Printer className="text-[#2563EB]" size={24} />
-                            </div>
-                        </div>
-                        <h2 className="text-xl font-bold text-[#0F172A] text-center mb-2">
-                            Print Quick Sale
-                        </h2>
-                        <p className="text-[#64748B] text-center mb-4 text-sm">
-                            {pendingPDFData?.fileName || 'Quick Sale'}
-                        </p>
-
-                        <div className="mb-6">
-                            <label className="block text-xs font-bold text-[#434655] uppercase mb-2">Select Printer</label>
-                            <select
-                                value={selectedPrinter}
-                                onChange={(e) => setSelectedPrinter(e.target.value)}
-                                className="w-full py-3 px-4 bg-[#F2F4F6] border border-[#E2E8F0] rounded-lg text-sm font-medium appearance-none cursor-pointer focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB]"
-                            >
-                                <option value="">Default Printer</option>
-                                {printerList.map((printer, idx) => (
-                                    <option key={idx} value={printer}>{printer}</option>
-                                ))}
-                            </select>
-                            {printerList.length === 0 && (
-                                <p className="text-xs text-[#64748B] mt-1">Using system default printer</p>
-                            )}
-                        </div>
-
-                        <div className="flex gap-3">
-                            <button
-                                onClick={handleConfirmPrint}
-                                disabled={isPrinting}
-                                className={`flex-1 px-4 py-2.5 rounded-lg bg-[#2563EB] text-white font-medium hover:bg-[#1D4ED8] transition-colors cursor-pointer flex items-center justify-center gap-2 ${isPrinting ? 'opacity-50' : ''}`}
-                            >
-                                <Printer size={16} />
-                                {isPrinting ? 'Printing...' : 'Print'}
-                            </button>
-                            <button
-                                onClick={handleDownloadPDF}
-                                className="flex-1 px-4 py-2.5 rounded-lg border border-[#E2E8F0] text-[#434655] font-medium hover:bg-[#F1F5F9] transition-colors cursor-pointer flex items-center justify-center gap-2"
-                            >
-                                <Save size={16} />
-                                Download PDF
-                            </button>
-                        </div>
-
-                        <button
-                            onClick={() => { setShowPrinterModal(false); setPendingPDFData(null); }}
-                            className="w-full mt-3 py-2 text-sm text-[#64748B] hover:text-[#0F172A] transition-colors cursor-pointer"
-                        >
-                            Cancel
-                        </button>
-                    </div>
-                </div>
-            )}
+            <PrinterSelectionModal
+                isOpen={showPrinterModal}
+                onClose={() => { setShowPrinterModal(false); setPendingPDFData(null); }}
+                printers={printerList}
+                selectedPrinter={selectedPrinter}
+                onSelectPrinter={setSelectedPrinter}
+                onPrint={handleConfirmPrint}
+                onDownload={handleDownloadPDF}
+                isPrinting={isPrinting}
+                title="Print Quick Sale"
+                subtitle={pendingPDFData?.fileName || 'Quick Sale'}
+            />
 
             {/* Full-Screen Marathi Translation Loader */}
             {isTranslating && (
@@ -1137,7 +1076,7 @@ const CreateQuickSale = () => {
                             {(currentQsId && !isNewSale) && (
                                 <button
                                     onClick={() => setShowDeleteModal(true)}
-                                    className="cursor-pointer px-6 py-3 bg-red-600 text-white font-bold text-xs uppercase rounded-xl shadow-lg shadow-red-600/20 hover:bg-red-700 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
+                                    className="cursor-pointer px-6 py-3 bg-[#DC2626] text-white font-bold text-xs uppercase rounded-xl shadow-lg shadow-[#DC2626]/20 hover:bg-red-700 active:scale-95 transition-all flex items-center gap-2"
                                 >
                                     <Trash2 size={18} />
                                     Delete Quick Sale
@@ -1173,7 +1112,7 @@ const CreateQuickSale = () => {
             {/* ─── Delete Quick Sale Confirmation Modal — Stitch Glass Overlay ─── */}
             {showDeleteModal && (
                 <div
-                    className="fixed inset-0 z-50 flex items-center justify-center p-4 print:hidden outline-none"
+                    className="fixed inset-0 z-[100] flex items-center justify-center p-4 print:hidden outline-none"
                     style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.7)' }}
                     role="dialog"
                     aria-modal="true"
@@ -1202,7 +1141,7 @@ const CreateQuickSale = () => {
                             <button
                                 onClick={handleDeleteSale}
                                 disabled={isDeletePending}
-                                className="flex-1 px-6 py-3 bg-red-600 text-white font-bold rounded-xl shadow-lg shadow-red-600/20 hover:bg-red-700 hover:scale-[1.02] active:scale-95 transition-all text-sm cursor-pointer disabled:opacity-50"
+                                className="flex-1 px-6 py-3 bg-[#DC2626] text-white font-bold rounded-xl shadow-lg shadow-[#DC2626]/20 hover:bg-red-700 active:scale-95 transition-all text-sm cursor-pointer disabled:opacity-50"
                             >
                                 {isDeletePending ? 'Deleting...' : 'Delete Quick Sale'}
                             </button>

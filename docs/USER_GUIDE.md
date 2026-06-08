@@ -11,7 +11,7 @@ C:\Users\[Your Username]\AppData\Roaming\AGS‑ERP\erp.db
 
 **For your system specifically:**
 ```
-C:\Users\Vansh Agrawal\AppData\Roaming\AGS‑ERP\erp.db
+"C:\Users\Vansh Agrawal\AppData\Roaming\ags-erp\erp.db"
 ```
 
 ### How to Access Your Database:

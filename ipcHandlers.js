@@ -1281,17 +1281,15 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
   }));
   // ── Authentication ──────────────────────────────────────
 
-  ipcMain.handle('auth:login', (_, { username, password }) => {
-    try {
-      const crypto = require('crypto');
-      const hash = crypto.createHash('sha256').update(password).digest('hex');
-      const user = db.prepare(
-        'SELECT id FROM users WHERE username = ? AND password_hash = ?'
-      ).get(username, hash);
-      return { success: !!user };
-    } catch (err) {
-      console.error('auth:login error:', err);
-      return { success: false };
+  ipcMain.handle('auth:login', wrap(({ username, password }) => {
+    if (!username || typeof username !== 'string' || !password || typeof password !== 'string') {
+      return { success: false, error: 'Invalid input' };
     }
-  });
+    const crypto = require('crypto');
+    const hash = crypto.createHash('sha256').update(password).digest('hex');
+    const user = db.prepare(
+      'SELECT id FROM users WHERE username = ? AND password_hash = ?'
+    ).get(username, hash);
+    return { success: !!user };
+  }));
 };

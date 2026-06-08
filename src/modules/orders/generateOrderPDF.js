@@ -92,7 +92,7 @@ export function generateOrderPDF(data) {
   doc.setFontSize(16);
   doc.setTextColor(...black);
   doc.text(orderType.toUpperCase(), pageWidth / 2, y + 3, { align: 'center' });
-  y += 12;
+  y += 10;
 
   // ─── Two-column layout: Party info (left) + Order details (right) ───
   const leftX = margin;
@@ -223,6 +223,7 @@ export function generateOrderPDF(data) {
       }
       if (hookData.section === 'head') {
         hookData.cell.styles.font = 'helvetica';
+        hookData.cell.styles.halign = 'center';
       }
       if (hookData.section === 'body' && hookData.column.index !== 1) {
         hookData.cell.styles.font = 'helvetica';

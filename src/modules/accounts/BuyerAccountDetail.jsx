@@ -390,9 +390,9 @@ const BuyerAccountDetail = () => {
     const startY = dateRange ? 38 : 33;
 
     const tableStyle = {
-      styles: { fontSize: 8, cellPadding: 2, textColor: black, lineColor: borderGray, lineWidth: 0.2, fillColor: white },
-      headStyles: { fillColor: white, textColor: black, fontStyle: 'bold', lineColor: borderGray, lineWidth: 0.2 },
-      footStyles: { fillColor: white, textColor: black, fontStyle: 'bold', lineColor: borderGray, lineWidth: 0.2 },
+      styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak', valign: 'middle', textColor: black, lineColor: borderGray, lineWidth: 0.2, fillColor: white, font: 'helvetica' },
+      headStyles: { fillColor: white, textColor: black, fontSize: 8, fontStyle: 'bold', cellPadding: 2.5, halign: 'center', valign: 'middle', lineColor: borderGray, lineWidth: 0.2, font: 'helvetica' },
+      footStyles: { fillColor: white, textColor: black, fontStyle: 'bold', halign: 'center', valign: 'middle', lineColor: borderGray, lineWidth: 0.2, font: 'helvetica' },
       alternateRowStyles: { fillColor: white },
       theme: 'grid',
     };
@@ -606,7 +606,7 @@ const BuyerAccountDetail = () => {
     <div className="min-h-screen bg-[#F7F9FB]">
       {/* ─── Printer Selection Modal (Invoice-style) ─── */}
       {showPrinterModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] print:hidden">
+        <div className="fixed inset-0 flex items-center justify-center z-[100] print:hidden" style={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(8px)' }}>
           <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md mx-4 w-full">
             <div className="flex items-center justify-center mb-4">
               <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center">
@@ -1043,7 +1043,7 @@ const BuyerAccountDetail = () => {
       {/* Delete Confirmation Modal — Stitch Glass Overlay */}
       {deleteTarget !== null && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 outline-none"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 outline-none"
           style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.7)' }}
           role="dialog"
           aria-modal="true"
@@ -1113,7 +1113,7 @@ const BuyerAccountDetail = () => {
                   }
                 }}
                 disabled={isDeleting}
-                className="flex-1 px-6 py-3 bg-red-600 text-white font-bold rounded-xl shadow-lg shadow-red-600/20 hover:bg-red-700 hover:scale-[1.02] active:scale-95 transition-all text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-6 py-3 bg-[#DC2626] text-white font-bold rounded-xl shadow-lg shadow-[#DC2626]/20 hover:bg-red-700 active:scale-95 transition-all text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >{isDeleting ? 'Deleting...' : 'Delete'}</button>
             </div>
           </div>
@@ -1126,7 +1126,7 @@ const BuyerAccountDetail = () => {
           ref={bulkDeleteModalRef}
           tabIndex={-1}
           aria-labelledby="bulk-delete-heading"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 outline-none"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 outline-none"
           style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.7)' }}
           role="dialog" aria-modal="true"
           onClick={(e) => { if (e.target === e.currentTarget && !isBulkDeleting) setShowBulkDeleteModal(false); }}
@@ -1159,7 +1159,7 @@ const BuyerAccountDetail = () => {
               <button
                 onClick={handleBulkDelete}
                 disabled={isBulkDeleting}
-                className="flex-1 px-6 py-3 bg-red-600 text-white font-bold rounded-xl shadow-lg shadow-red-600/20 hover:bg-red-700 hover:scale-[1.02] active:scale-95 transition-all text-sm cursor-pointer disabled:opacity-50"
+                className="flex-1 px-6 py-3 bg-[#DC2626] text-white font-bold rounded-xl shadow-lg shadow-[#DC2626]/20 hover:bg-red-700 active:scale-95 transition-all text-sm cursor-pointer disabled:opacity-50"
               >{isBulkDeleting ? 'Deleting...' : 'Confirm Delete'}</button>
             </div>
           </div>

@@ -26,7 +26,8 @@ dist-ssr
 release
 dist
 .agent/
-.env/
-
+.env
+.env.*
+!.env.example
 # Database
 erp.db

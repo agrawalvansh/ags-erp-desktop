@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Save, Trash2, Lock } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import DeleteConfirmModal from '../../components/DeleteConfirmModal';
 
 const AddBuyerAccount = () => {
   const navigate = useNavigate();
@@ -98,29 +99,29 @@ const AddBuyerAccount = () => {
 
   return (
     <div className="min-h-screen bg-[#F7F9FB]">
-      {/* ─── Page Content ─── */}
-      <div className="flex-1 p-8">
-        <div className="max-w-4xl mx-auto">
-          {/* ─── Header Section ─── */}
-          <div className="mb-8">
-            <button
-              onClick={() => navigate('/accounts/customers')}
-              className="flex items-center gap-2 text-[#434655] hover:text-[#004AC6] transition-colors mb-3 group cursor-pointer"
-            >
-              <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
-              <span className="text-sm font-medium">Back to Customer Accounts</span>
-            </button>
-            <h2 className="text-[20px] font-bold text-[#191C1E]">
-              {isEdit ? 'Edit Customer' : 'Add New Customer'}
-            </h2>
-          </div>
+      {/* ─── Top Bar ─── */}
+      <header className="bg-[#F7F9FB] flex items-center gap-4 px-8 py-5">
+        <button
+          onClick={() => navigate('/accounts/customers')}
+          className="flex items-center gap-2 text-[#434655] hover:text-[#004AC6] transition-colors group cursor-pointer"
+        >
+          <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+          <span className="text-sm font-medium">Back to Customer Accounts</span>
+        </button>
+        <div className="bg-[#ECEEF0] h-6 w-[1px]"></div>
+        <h1 className="text-lg font-bold text-[#191C1E]">
+          {isEdit ? 'Edit Customer' : 'Add New Customer'}
+        </h1>
+      </header>
 
-          {/* ─── Form Card ─── */}
-          <div className="max-w-[576px] mx-auto bg-white rounded-xl shadow-sm border border-[#C3C6D7]/10 p-8">
+      {/* ─── Content Canvas ─── */}
+      <main className="flex flex-col items-center px-4 py-8 md:py-12">
+        {/* Form Card */}
+        <div className="w-full max-w-[576px] bg-white rounded-xl shadow-sm border border-[#C3C6D7]/10 p-8">
             <form onSubmit={handleSubmit} className="space-y-6" autoComplete="off">
               {/* Customer ID (Read-only) */}
               <div className="space-y-2">
-                <label className="block text-[10px] font-bold uppercase text-[#434655] tracking-wider">
+                <label className="block text-[10px] font-bold uppercase text-[#434655] tracking-wider mb-1.5 ml-1">
                   Customer ID
                 </label>
                 <div className="relative">
@@ -128,7 +129,7 @@ const AddBuyerAccount = () => {
                     type="text"
                     value={customerId}
                     readOnly
-                    className="w-full bg-[#ECEEF0] border-none rounded-lg px-4 py-3 text-sm text-[#434655] cursor-not-allowed focus:ring-0 outline-none"
+                    className="w-full bg-[#ECEEF0] border-none rounded-lg px-3 py-2.5 text-sm text-[#434655] cursor-not-allowed focus:ring-0 outline-none"
                     autoComplete="off"
                   />
                   <Lock size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#434655]/40" />
@@ -137,14 +138,14 @@ const AddBuyerAccount = () => {
 
               {/* Name (Required) */}
               <div className="space-y-2">
-                <label className="block text-[10px] font-bold uppercase text-[#434655] tracking-wider">
+                <label className="block text-[10px] font-bold uppercase text-[#434655] tracking-wider mb-1.5 ml-1">
                   Name <span className="text-[#BA1A1A]">*</span>
                 </label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => { setName(e.target.value); if (errors.name) setErrors(prev => ({ ...prev, name: '' })); }}
-                  className={`w-full bg-[#F2F4F6] border-none rounded-lg px-4 py-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none ${errors.name ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
+                  className={`w-full bg-[#F2F4F6] border-none rounded-lg px-3 py-2.5 text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none ${errors.name ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
                   placeholder="Enter customer name"
                   autoComplete="off"
                 />
@@ -153,13 +154,13 @@ const AddBuyerAccount = () => {
 
               {/* Address (Textarea) */}
               <div className="space-y-2">
-                <label className="block text-[10px] font-bold uppercase text-[#434655] tracking-wider">
+                <label className="block text-[10px] font-bold uppercase text-[#434655] tracking-wider mb-1.5 ml-1">
                   Address
                 </label>
                 <textarea
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  className="w-full bg-[#F2F4F6] border-none rounded-lg px-4 py-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none resize-none"
+                  className="w-full bg-[#F2F4F6] border-none rounded-lg px-3 py-2.5 text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none resize-none"
                   placeholder="Enter complete business address"
                   rows={3}
                   autoComplete="off"
@@ -168,14 +169,14 @@ const AddBuyerAccount = () => {
 
               {/* Mobile No. */}
               <div className="space-y-2">
-                <label className="block text-[10px] font-bold uppercase text-[#434655] tracking-wider">
+                <label className="block text-[10px] font-bold uppercase text-[#434655] tracking-wider mb-1.5 ml-1">
                   Mobile No.
                 </label>
                 <input
                   type="text"
                   value={mobile}
                   onChange={(e) => setMobile(e.target.value)}
-                  className="w-full bg-[#F2F4F6] border-none rounded-lg px-4 py-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none"
+                  className="w-full bg-[#F2F4F6] border-none rounded-lg px-3 py-2.5 text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none"
                   placeholder="Enter mobile number"
                   maxLength={15}
                   autoComplete="off"
@@ -191,8 +192,9 @@ const AddBuyerAccount = () => {
                     type="button"
                     disabled={deleting}
                     onClick={() => setShowDeleteModal(true)}
-                    className="px-6 py-2.5 bg-[#DC2626] text-white font-bold rounded-xl text-sm hover:bg-red-700 transition-colors active:scale-95 duration-150 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    className="px-6 py-2.5 bg-[#DC2626] text-white font-bold rounded-xl text-sm hover:bg-red-700 transition-colors active:scale-95 duration-150 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center gap-2"
                   >
+                    <Trash2 size={16} />
                     {deleting ? 'Deleting...' : 'Delete'}
                   </button>
                 ) : (
@@ -201,9 +203,10 @@ const AddBuyerAccount = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-8 py-2.5 text-white font-bold rounded-xl text-sm shadow-lg shadow-[#004AC6]/20 hover:opacity-90 transition-all active:scale-95 duration-150 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  className="px-8 py-2.5 text-white font-bold rounded-xl text-sm shadow-lg shadow-[#004AC6]/20 hover:opacity-90 transition-all active:scale-95 duration-150 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center gap-2"
                   style={{ background: 'linear-gradient(135deg, #004AC6 0%, #2563EB 100%)' }}
                 >
+                  <Save size={16} />
                   {loading
                     ? (isEdit ? 'Updating...' : 'Saving...')
                     : (isEdit ? 'Update Customer' : 'Add Customer')
@@ -212,49 +215,17 @@ const AddBuyerAccount = () => {
               </div>
             </form>
           </div>
-        </div>
-      </div>
-
-      {/* ─── Delete Confirmation — Stitch Glass Overlay ─── */}
-      {showDeleteModal && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 outline-none"
-          style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.7)' }}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="delete-modal-heading"
-          tabIndex={-1}
-          ref={deleteModalRef}
-          onKeyDown={(e) => { if (e.key === 'Escape') setShowDeleteModal(false); }}
-          onClick={(e) => { if (e.target === e.currentTarget) setShowDeleteModal(false); }}
-        >
-          <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl border border-[#C3C6D7]/20 p-8 text-center">
-            <div className="w-16 h-16 bg-red-100/50 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Trash2 size={28} className="text-[#DC2626]" />
-            </div>
-            <h3 id="delete-modal-heading" className="text-lg font-bold text-[#0F172A] mb-2">Delete Customer?</h3>
-            <p className="text-sm text-[#434655] mb-8 px-4">
-              This action cannot be undone. All pending drafts for this customer will be permanently removed.
-            </p>
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={() => handleDelete()}
-                disabled={deleting}
-                autoFocus
-                className="w-full py-3 bg-[#DC2626] text-white font-bold rounded-xl text-sm active:scale-95 transition-transform cursor-pointer hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Delete Customer
-              </button>
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className="w-full py-3 bg-[#ECEEF0] text-[#191C1E] font-bold rounded-xl text-sm hover:bg-[#E6E8EA] transition-colors active:scale-95 cursor-pointer"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      </main>
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={showDeleteModal}
+        onConfirm={() => handleDelete()}
+        onCancel={() => setShowDeleteModal(false)}
+        title="Delete Customer?"
+        message="This action cannot be undone. All pending drafts for this customer will be permanently removed."
+        confirmLabel="Delete Customer"
+        isLoading={deleting}
+      />
     </div>
   );
 };
