@@ -4,7 +4,7 @@ import { generateOrderPDF } from './generateOrderPDF';
 import { useParams, useNavigate, useBlocker } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { sortProducts, capitalizeWords, generateProductCode, DEFAULT_PACKING_TYPE, ALLOWED_PACKING_TYPES, mapPackingType } from '../../utils/productUtils';
+import { sortProducts, capitalizeWords, generateProductCode, DEFAULT_PACKING_TYPE, ALLOWED_PACKING_TYPES } from '../../utils/productUtils';
 import NavigationWarningModal from '../../components/NavigationWarningModal';
 import PrinterSelectionModal from '../../components/PrinterSelectionModal';
 
@@ -40,7 +40,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
       productName: product.name,
       size: product.size || '',
       sellingPrice: (product.selling_price ?? product.sellingPrice ?? 0).toString(),
-      packingType: mapPackingType(product.packing_type || product.packingType),
+      packingType: product.packing_type || product.packingType || DEFAULT_PACKING_TYPE,
     });
     setShowProdDropdown(false);
     setHighlightedIndex(-1);
@@ -313,7 +313,7 @@ const AddCustomerOrder = () => {
               const baseName = item.product_name || item.resolved_name || prod.name || item.product_code;
               const nameWithSpaces = formatName(baseName);
               const quantity = parseFloat(item.quantity).toFixed(2);
-              return { ...item, productName: nameWithSpaces, size: item.product_size || item.resolved_size || prod.size || '', code: item.product_code, quantity, packingType: mapPackingType(item.packing_type || item.resolved_packing_type || prod.packing_type || ''), itemRemark: item.item_remark || '', isTemporary: item.is_temporary === 1 };
+              return { ...item, productName: nameWithSpaces, size: item.product_size || item.resolved_size || prod.size || '', code: item.product_code, quantity, packingType: item.packing_type || item.resolved_packing_type || prod.packing_type || DEFAULT_PACKING_TYPE, itemRemark: item.item_remark || '', isTemporary: item.is_temporary === 1 };
             });
             setorderItems(processedItems);
             setCurrentorderId(orderData.order_id || orderNo);

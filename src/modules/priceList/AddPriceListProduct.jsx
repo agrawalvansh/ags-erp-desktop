@@ -189,6 +189,7 @@ const AddPriceListProduct = () => {
     if (!isoStr) return '—';
     try {
       const d = new Date(isoStr);
+      if (isNaN(d.getTime())) return '—';
       return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
         + ', ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
     } catch { return '—'; }

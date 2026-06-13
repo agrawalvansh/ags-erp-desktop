@@ -174,6 +174,7 @@ const PriceList = () => {
     if (!isoStr) return null;
     try {
       const d = new Date(isoStr);
+      if (isNaN(d.getTime())) return null;
       return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
         + ', ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
     } catch { return null; }
@@ -388,7 +389,7 @@ const PriceList = () => {
                         : 'hover:bg-[#F2F4F6]/50'
                         }`}
                       onClick={() => navigate(`/price-list/edit/${item.code}`)}
-                      title={item.updatedAt ? `Last updated: ${formatTimestamp(item.updatedAt)}` : ''}
+                      title={(() => { const ts = item.updatedAt ? formatTimestamp(item.updatedAt) : null; return ts ? `Last updated: ${ts}` : ''; })()}
                     >
                       <td className="py-5 px-6 text-sm font-medium text-[#434655]">{index + 1}</td>
                       <td className="py-5 px-6">

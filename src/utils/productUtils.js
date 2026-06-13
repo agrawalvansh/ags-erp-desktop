@@ -134,65 +134,86 @@ export const findProductByNameAndSize = (name, size, products) => {
 };
 
 /**
- * Extract numeric value from a size string (e.g., "1 No" -> 1, "10 Kg" -> 10)
- * @param {string} size - Size string
- * @returns {number} - Extracted number, or Infinity if no number found
+ * Extracts a numeric sort key from a size string.
+ *
+ * Handles these cases:
+ *   All-zero strings ("0", "00", "000", "0000"):
+ *     More zeros = smaller size = more negative key
+ *     "0000" → -4,  "000" → -3,  "00" → -2,  "0" → -1
+ *
+ *   Fractions ("1/2 Kg"):
+ *     Parsed as decimal → 0.5
+ *
+ *   Normal integers ("1 No", "10 Kg", "500g"):
+ *     Parsed as integer → 1, 10, 500
+ *
+ *   Decimal numbers ("1.5 Kg"):
+ *     Parsed as float → 1.5
+ *
+ *   No number found ("Large", "Small", null, ""):
+ *     Returns Infinity → sorts to end of list
  */
 export const extractNumericFromSize = (size) => {
-    if (!size) return Infinity; // Products without size go to the end
+  if (!size) return Infinity
 
-    // Match numbers (including decimals) at the start or anywhere in the string
-    const match = size.match(/(\d+\.?\d*)/);
-    if (match) {
-        return parseFloat(match[1]);
-    }
-    return Infinity;
-};
+  const str = size.trim()
+  if (!str) return Infinity
+
+  // Handle fractions first: "1/2 Kg" → 0.5
+  const fractionMatch = str.match(/^(\d+)\/(\d+)/)
+  if (fractionMatch) {
+    const numerator   = parseInt(fractionMatch[1], 10)
+    const denominator = parseInt(fractionMatch[2], 10)
+    if (denominator !== 0) return numerator / denominator
+  }
+
+  // Extract the leading digit string (e.g. "0000" from "0000 No", "500" from "500g")
+  const digitMatch = str.match(/^(\d+)/)
+  if (!digitMatch) return Infinity  // no leading digits → "Large", "Small" etc.
+
+  const digitStr = digitMatch[1]
+
+  // All-zero string: "0", "00", "000", "0000"
+  // More zeros = smaller size
+  // Sort key: -(number of digits) so "0000"→-4 < "000"→-3 < "00"→-2 < "0"→-1
+  if (/^0+$/.test(digitStr)) {
+    return -digitStr.length
+  }
+
+  // Decimal number: "1.5 Kg" — check for decimal point after the leading digits
+  const decimalMatch = str.match(/^(\d+\.\d+)/)
+  if (decimalMatch) {
+    return parseFloat(decimalMatch[1])
+  }
+
+  // Normal integer: "1", "10", "500", "4000"
+  return parseInt(digitStr, 10)
+}
 
 /**
- * Sort products by name (A-Z) and then by numeric size value
- * This ensures "Sami 1 No", "Sami 2 No", "Sami 10 No" are in correct order
- * @param {Array} products - Array of products to sort
- * @param {string} nameKey - Key for product name (default: 'name')
- * @param {string} sizeKey - Key for product size (default: 'size')
- * @returns {Array} - Sorted products
+ * Sorts products by name A→Z, then by size ascending (smallest first).
+ *
+ * Size order example for products with the same name:
+ *   0000 No → 000 No → 00 No → 0 No → 1 No → 2 No → 3 No → 4 No → 10 No → 40 No
+ *
+ * @param {Array}  products  - array of product objects
+ * @param {string} nameKey   - key for the name field (default: 'name')
+ * @param {string} sizeKey   - key for the size field (default: 'size')
+ * @returns {Array} new sorted array (does not mutate the original)
  */
 export const sortProducts = (products, nameKey = 'name', sizeKey = 'size') => {
-    if (!products || !Array.isArray(products)) return [];
+  if (!products || !Array.isArray(products)) return []
 
-    return [...products].sort((a, b) => {
-        // Primary sort: Product name (case-insensitive, A-Z)
-        const nameA = (a[nameKey] || '').toLowerCase();
-        const nameB = (b[nameKey] || '').toLowerCase();
+  return [...products].sort((a, b) => {
+    // Level 1: name A → Z
+    const nameA = (a[nameKey] || '').toLowerCase()
+    const nameB = (b[nameKey] || '').toLowerCase()
+    const nameCmp = nameA.localeCompare(nameB, undefined, { sensitivity: 'base' })
+    if (nameCmp !== 0) return nameCmp
 
-        const nameComparison = nameA.localeCompare(nameB, undefined, { sensitivity: 'base' });
-
-        if (nameComparison !== 0) {
-            return nameComparison;
-        }
-
-        // Secondary sort: Numeric value from size (ascending)
-        const numA = extractNumericFromSize(a[sizeKey]);
-        const numB = extractNumericFromSize(b[sizeKey]);
-
-        return numA - numB;
-    });
-};
-
-/**
- * Maps a legacy or non-canonical packing type string to the nearest
- * allowed packing type. Used in order forms.
- * Extracted from inline duplicates in AddCustomerOrder and AddSupplierOrder.
- */
-export function mapPackingType(type) {
-    if (!type) return DEFAULT_PACKING_TYPE;
-    if (ALLOWED_PACKING_TYPES.includes(type)) return type;
-    const lower = type.toLowerCase();
-    if (lower === 'piece' || lower === 'pieces' || lower === 'pcs') return 'Pc';
-    if (lower === 'dozen' || lower === 'dozens') return 'Dz';
-    if (lower === 'kilogram' || lower === 'kilograms') return 'Kg';
-    if (lower === 'boxes') return 'Box';
-    if (lower === 'packets') return 'Packet';
-    if (lower === 'sets') return 'Set';
-    return DEFAULT_PACKING_TYPE;
-}
+    // Level 2: size ascending (smallest first)
+    const keyA = extractNumericFromSize(a[sizeKey])
+    const keyB = extractNumericFromSize(b[sizeKey])
+    return keyA - keyB
+  })
+}
