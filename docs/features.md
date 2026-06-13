@@ -27,12 +27,11 @@
 |---|---------|-------------|
 | 2.1 | Sidebar Navigation | Fixed left sidebar (240px) with section grouping |
 | 2.2 | Navigation Sections | SALES, CATALOG, ACCOUNTS, ORDERS |
-| 2.3 | Dropdown Menus | Expandable/collapsible sub-menus for Quick Sales, Accounts, Orders with Framer Motion animation (height/opacity, 0.2s easeInOut) |
+| 2.3 | Dropdown Menus | Expandable/collapsible sub-menus for Quick Sales, Accounts, Orders with CSS-based animation (grid-template-rows and opacity transitions, 0.2s easeInOut) |
 | 2.4 | Active Route Highlighting | Current route highlighted with blue badge (`bg-[#2563EB] text-white`). Active dropdown parents get `bg-[#EFF6FF] text-[#2563EB]`. |
 | 2.5 | Auto-Expand Dropdowns | Dropdown auto-expands when active route is inside it |
-| 2.6 | Mobile Responsive Nav | Hamburger menu + slide-in drawer on small screens (Framer Motion x-axis, 0.3s easeInOut) |
-| 2.7 | Mobile Swipe-to-Close | Draggable nav panel on mobile with drag constraints |
-| 2.8 | Print-Hidden Nav | Sidebar hidden during print (`print:hidden`) |
+| 2.6 | Fixed Sidebar Layout | Fixed 240px left sidebar visible at all screen sizes |
+| 2.7 | Print-Hidden Nav | Sidebar hidden during print (`print:hidden`) |
 | 2.9 | Toast Notifications | Global toast system via `react-hot-toast` — dark background (`#0F172A`), positioned top-center, styled success (green) and error (red) icons |
 | 2.10 | Notification Badge | NavBar shows unread notification count badge (`bg-[#DC2626]`), displays `99+` when exceeding 99. Links to `/notifications` |
 | 2.11 | 404 Not Found Page | Fallback page for unmatched routes with "Go Back" button |
@@ -330,11 +329,11 @@
 | 14.10 | Empty State Messages | "No products found" / "No customers found" / etc. in empty tables. Rich empty state with icon in NotificationsPage. |
 | 14.11 | Error Boundary | Global `ErrorBoundary` catches render errors and shows recovery UI |
 | 14.12 | Print Stylesheets | `print:hidden` classes + `@media print` CSS rules to hide all UI controls |
-| 14.13 | Responsive Design | Mobile-first with `md:` breakpoints — sidebar collapses to hamburger menu |
+| 14.13 | Fixed Sidebar Layout | Fixed 240px sidebar always visible; main content adjusts with left margin |
 | 14.14 | Consistent Design System | Documented in `docs/design.md` — colour palette, typography, buttons, forms, tables, modals, status badges, toasts, loading states, print layout |
 | 14.15 | Weight Calculator Popup | Positioned popup (`z-50`) below Qty input for entering multiple weights — used in Invoice and Quick Sales for Kg products |
 | 14.16 | Active Press Feedback | All buttons use `active:scale-95` for tactile press feedback |
-| 14.17 | Framer Motion Animations | NavBar dropdown expand, mobile sidebar slide-in, and smooth transitions |
+| 14.17 | CSS Animations | NavBar dropdown expand using grid-template-rows and opacity transitions |
 
 ---
 

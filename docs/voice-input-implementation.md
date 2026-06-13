@@ -735,7 +735,7 @@ voiceDownload:      ()    => ipcRenderer.invoke('voice:download-model'),
 voiceRefreshVocab:  ()    => ipcRenderer.invoke('voice:refresh-vocab'),
 
 onVoiceProgress: (cb) => ipcRenderer.on('voice:model-progress', (_, d) => cb(d)),
-offVoiceProgress: () => ipcRenderer.removeAllListeners('voice:model-progress'),
+offVoiceProgress: (cb) => ipcRenderer.removeListener('voice:model-progress', cb),
 // ──────────────────────────────────────────────────────────────────────────
 ```
 

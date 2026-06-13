@@ -41,6 +41,7 @@ const PriceList = () => {
           costPrice: p.cost_price,
           packingType: p.packing_type,
           sellingPrice: p.selling_price,
+          updatedAt: p.updated_at,
         }));
         setProducts(normalized);
       } catch (err) {
@@ -147,6 +148,7 @@ const PriceList = () => {
         costPrice: p.cost_price,
         packingType: p.packing_type,
         sellingPrice: p.selling_price,
+        updatedAt: p.updated_at,
       }));
       setProducts(normalized);
       setDeleteTarget(null);
@@ -167,8 +169,19 @@ const PriceList = () => {
     }
   }, [deleteTarget]);
 
+  // Format timestamp for tooltip display
+  const formatTimestamp = (isoStr) => {
+    if (!isoStr) return null;
+    try {
+      const d = new Date(isoStr);
+      return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+        + ', ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+    } catch { return null; }
+  };
+
   // Format currency
   const formatCurrency = (value) => {
+    if (value === null || value === undefined) return '—';
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
@@ -240,12 +253,11 @@ const PriceList = () => {
   return (
     <div className="flex flex-col min-h-screen bg-[#F7F9FB]">
       {/* Page Header */}
-      <div className="px-4 md:px-8 pt-8 pb-2">
+      <div className="sticky top-0 z-10 bg-[#F7F9FB] px-4 md:px-8 pt-8 pb-2">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
             <div>
               <h1 className="text-3xl font-extrabold tracking-tight text-[#191C1E] mb-1">Price List</h1>
-              <p className="text-[#434655] text-sm font-medium">Showing {filteredProducts.length} products</p>
             </div>
             <div className="flex items-center gap-3">
               {/* Search */}
@@ -371,11 +383,12 @@ const PriceList = () => {
                     <tr
                       key={item.id}
                       ref={el => rowRefs.current[item.code] = el}
-                      className={`group transition-colors duration-500 cursor-pointer ${highlightedCode === item.code
+                      className={`group transition-colors duration-500 cursor-pointer relative ${highlightedCode === item.code
                         ? 'bg-yellow-50'
                         : 'hover:bg-[#F2F4F6]/50'
                         }`}
                       onClick={() => navigate(`/price-list/edit/${item.code}`)}
+                      title={item.updatedAt ? `Last updated: ${formatTimestamp(item.updatedAt)}` : ''}
                     >
                       <td className="py-5 px-6 text-sm font-medium text-[#434655]">{index + 1}</td>
                       <td className="py-5 px-6">

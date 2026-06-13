@@ -82,9 +82,10 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
   ipcMain.handle('products:create', wrap(async (prod) => {
     const { code, name, size, packing_type, cost_price, selling_price } = prod;
     if (!code || !name) return { error: 'Missing required fields' };
+    const now = new Date().toISOString();
     db.prepare(`
-        INSERT INTO products (code, name, size, packing_type, cost_price, selling_price, is_deleted)
-        VALUES (?, ?, ?, ?, ?, ?, 0)
+        INSERT INTO products (code, name, size, packing_type, cost_price, selling_price, is_deleted, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, 0, ?)
         ON CONFLICT(code) DO UPDATE SET
             name = excluded.name,
             size = excluded.size,
@@ -92,9 +93,10 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
             cost_price = excluded.cost_price,
             selling_price = excluded.selling_price,
             is_deleted = 0,
+            updated_at = excluded.updated_at,
             marathi_name = CASE WHEN products.name IS NOT excluded.name THEN NULL ELSE products.marathi_name END,
             marathi_status = CASE WHEN products.name IS NOT excluded.name THEN NULL ELSE products.marathi_status END
-      `).run(code, name, size, packing_type, cost_price, selling_price);
+      `).run(code, name, size, packing_type, cost_price, selling_price, now);
 
     // Auto-transliterate to Marathi (non-blocking, never fails product creation)
     try {
@@ -115,14 +117,25 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
   ipcMain.handle('products:update', wrap(async (prod) => {
     const { code, name, size, packing_type, cost_price, selling_price } = prod;
 
-    // Check if name changed to decide whether to re-transliterate
-    const existing = db.prepare('SELECT name FROM products WHERE code = ?').get(code);
+    // Check if name or selling_price changed
+    const existing = db.prepare('SELECT name, selling_price FROM products WHERE code = ?').get(code);
     const nameChanged = existing && existing.name !== name;
+    const priceChanged = existing && existing.selling_price !== selling_price;
 
-    const res = db.prepare(`
-        UPDATE products SET name = ?, size = ?, packing_type = ?, cost_price = ?, selling_price = ? 
-        WHERE code = ? AND (is_deleted = 0 OR is_deleted IS NULL)
-      `).run(name, size, packing_type, cost_price, selling_price, code);
+    // Only update updated_at when selling_price changes
+    let res;
+    if (priceChanged) {
+      const now = new Date().toISOString();
+      res = db.prepare(`
+          UPDATE products SET name = ?, size = ?, packing_type = ?, cost_price = ?, selling_price = ?, updated_at = ?
+          WHERE code = ? AND (is_deleted = 0 OR is_deleted IS NULL)
+        `).run(name, size, packing_type, cost_price, selling_price, now, code);
+    } else {
+      res = db.prepare(`
+          UPDATE products SET name = ?, size = ?, packing_type = ?, cost_price = ?, selling_price = ?
+          WHERE code = ? AND (is_deleted = 0 OR is_deleted IS NULL)
+        `).run(name, size, packing_type, cost_price, selling_price, code);
+    }
 
     if (res.changes && nameChanged) {
       // Name changed — re-transliterate marathi_name (non-blocking)

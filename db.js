@@ -22,9 +22,18 @@ db.prepare(`
     packing_type   TEXT,
     is_deleted     INTEGER DEFAULT 0,
     marathi_name   TEXT    DEFAULT NULL,
-    marathi_status TEXT    DEFAULT 'missing'
+    marathi_status TEXT    DEFAULT 'missing',
+    updated_at     TEXT    DEFAULT NULL
   )
 `).run();
+
+// Migration: add updated_at column if it doesn't exist yet
+try {
+  db.prepare("SELECT updated_at FROM products LIMIT 1").get();
+} catch (e) {
+  db.prepare("ALTER TABLE products ADD COLUMN updated_at TEXT DEFAULT NULL").run();
+}
+
 
 db.prepare(`
   CREATE TABLE IF NOT EXISTS customers (

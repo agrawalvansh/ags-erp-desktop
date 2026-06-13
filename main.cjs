@@ -12,6 +12,7 @@ if (db.pragma) db.pragma('foreign_keys = ON');
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
   app.quit();
+  process.exit(0);
 }
 
 // ─── Startup Cleanup ────────────────────────────────────

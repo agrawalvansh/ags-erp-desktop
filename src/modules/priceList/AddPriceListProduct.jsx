@@ -21,9 +21,10 @@ const AddPriceListProduct = () => {
     size: '',
     code: '',
     packingType: DEFAULT_PACKING_TYPE,
-    costPrice: '',
+    costPrice: '0',
     sellingPrice: ''
   });
+  const [updatedAt, setUpdatedAt] = useState(null);
 
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -59,10 +60,11 @@ const AddPriceListProduct = () => {
           packingType: ALLOWED_PACKING_TYPES.includes(data.packing_type)
             ? data.packing_type
             : DEFAULT_PACKING_TYPE,
-          costPrice: data.cost_price?.toString() || '',
+          costPrice: data.cost_price?.toString() || '0',
           sellingPrice: data.selling_price?.toString() || ''
         });
         setOriginalCode(data.code);
+        setUpdatedAt(data.updated_at || null);
       } catch (err) {
         toast.error(err.message);
         console.error(err);
@@ -138,13 +140,8 @@ const AddPriceListProduct = () => {
         };
         await window.api.createProduct(body);
         toast.success('Product saved successfully');
-        // Reset form and focus back to Product Name for rapid entry
-        setFormData({ productName: '', size: '', code: '', packingType: DEFAULT_PACKING_TYPE, costPrice: '', sellingPrice: '' });
-        setErrors({});
-        setTimeout(() => productNameRef.current?.focus(), 50);
-        return;
       }
-      navigate('/price-list', { state: { editedProductCode: formData.code, focusNext: true } });
+      navigate('/price-list', { state: { editedProductCode: formData.code, focusNext: false } });
     } catch (error) {
       toast.error(error.message);
       console.error('Error saving product:', error);
@@ -187,6 +184,15 @@ const AddPriceListProduct = () => {
 
   const formatCurrency = (val) =>
     new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2 }).format(val || 0);
+
+  const formatTimestamp = (isoStr) => {
+    if (!isoStr) return '—';
+    try {
+      const d = new Date(isoStr);
+      return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+        + ', ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+    } catch { return '—'; }
+  };
 
   return (
     <div className="min-h-screen bg-[#F7F9FB]">
@@ -288,6 +294,18 @@ const AddPriceListProduct = () => {
                   ))}
                 </select>
               </div>
+
+              {/* Last Updated — read only, visible only in edit mode */}
+              {editing && (
+                <div className="col-span-1">
+                  <label className="block text-[10px] font-bold text-[#434655] uppercase tracking-wider mb-1.5 ml-1">
+                    Last Price Update
+                  </label>
+                  <div className="w-full bg-[#F2F4F6] rounded-lg py-2.5 px-3 text-sm text-[#64748B] select-none">
+                    {formatTimestamp(updatedAt)}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* ─── Financials & Margin ─── */}

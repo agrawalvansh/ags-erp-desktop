@@ -4,10 +4,10 @@ import autoTable from 'jspdf-autotable';
 /**
  * Format a number with Indian comma notation: 12,34,567.00
  */
-const formatIndian = (num) => {
+const formatIndian = (num, decimals = 2) => {
   const n = Number(num);
   if (isNaN(n)) return '0';
-  return n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return n.toLocaleString('en-IN', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 };
 
 /**
@@ -28,11 +28,25 @@ const fmtDate = (dateStr) => {
 };
 
 /**
+ * Format ISO date to short readable: "13 Jun 25"
+ */
+const fmtShortDate = (isoStr) => {
+  if (!isoStr) return '—';
+  try {
+    const d = new Date(isoStr);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' });
+  } catch {
+    return '—';
+  }
+};
+
+/**
  * Generate a professional B&W Price List PDF.
  * Returns { pdfBase64, fileName }
  *
  * @param {Object} data
- * @param {Array}  data.products       - [{productName, code, size, costPrice, sellingPrice, packingType}]
+ * @param {Array}  data.products       - [{productName, code, size, costPrice, sellingPrice, packingType, updatedAt}]
  * @param {boolean} data.includeCostPrice - Whether to include cost price column
  */
 export function generatePriceListPDF(data) {
@@ -101,6 +115,7 @@ export function generatePriceListPDF(data) {
     { header: 'Unit', dataKey: 'unit' },
     ...(includeCostPrice ? [{ header: 'Cost Price', dataKey: 'costPrice' }] : []),
     { header: 'Selling Price', dataKey: 'sellingPrice' },
+    { header: 'Price Updated', dataKey: 'updatedAt' },
   ];
 
   const tableRows = products.map((item, index) => ({
@@ -109,7 +124,8 @@ export function generatePriceListPDF(data) {
     size: item.size || '-',
     unit: item.packingType || '',
     costPrice: formatIndian(item.costPrice),
-    sellingPrice: formatIndian(item.sellingPrice),
+    sellingPrice: formatIndian(item.sellingPrice, 0),
+    updatedAt: fmtShortDate(item.updatedAt),
   }));
 
   const columnStyles = {
@@ -121,9 +137,11 @@ export function generatePriceListPDF(data) {
 
   if (includeCostPrice) {
     columnStyles[4] = { halign: 'right', cellWidth: 28, font: 'helvetica' }; // Cost Price
-    columnStyles[5] = { halign: 'right', cellWidth: 28, font: 'helvetica' }; // Selling Price
+    columnStyles[5] = { halign: 'center', cellWidth: 28, font: 'helvetica' }; // Selling Price
+    columnStyles[6] = { halign: 'center', cellWidth: 24, font: 'helvetica' }; // Price Updated
   } else {
-    columnStyles[4] = { halign: 'right', cellWidth: 30, font: 'helvetica' }; // Selling Price
+    columnStyles[4] = { halign: 'center', cellWidth: 30, font: 'helvetica' }; // Selling Price
+    columnStyles[5] = { halign: 'center', cellWidth: 24, font: 'helvetica' }; // Price Updated
   }
 
   autoTable(doc, {
