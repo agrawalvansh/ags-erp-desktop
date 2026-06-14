@@ -280,21 +280,21 @@ const AddAccountEntry = () => {
                   <label className="block text-[10px] font-bold uppercase text-[#434655] tracking-wider mb-1.5 ml-1">
                     Transaction Type <span className="text-[#BA1A1A]">*</span>
                   </label>
-                <div className="relative">
-                  <select
-                    name="txnType"
-                    value={formData.txnType}
-                    onChange={handleChange}
-                    className={`w-full bg-[#F2F4F6] border-none rounded-lg px-3 py-2.5 pr-10 text-sm font-medium focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none appearance-none cursor-pointer ${errors.txnType ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
-                  >
-                    <option value="">Select Transaction Type</option>
-                    <option value="Cash">Cash</option>
-                    <option value="UPI">UPI</option>
-                    <option value="Transfer">Transfer</option>
-                    <option value="RTGS">RTGS</option>
-                  </select>
-                  <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#434655] pointer-events-none" />
-                </div>
+                  <div className="relative">
+                    <select
+                      name="txnType"
+                      value={formData.txnType}
+                      onChange={handleChange}
+                      className={`w-full bg-[#F2F4F6] border-none rounded-lg px-3 py-2.5 pr-10 text-sm font-medium focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none appearance-none cursor-pointer ${errors.txnType ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
+                    >
+                      <option value="">Select Transaction Type</option>
+                      <option value="Cash">Cash</option>
+                      <option value="UPI">UPI</option>
+                      <option value="Transfer">Transfer</option>
+                      <option value="RTGS">RTGS</option>
+                    </select>
+                    <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#434655] pointer-events-none" />
+                  </div>
                   {errors.txnType && <p className="text-xs text-[#BA1A1A] ml-1">{errors.txnType}</p>}
                 </div>
               )}
@@ -333,7 +333,7 @@ const AddAccountEntry = () => {
                         <option value="">Select invoice...</option>
                         {unpaidInvoices.map(inv => (
                           <option key={inv.invoice_id} value={inv.invoice_id}>
-                            {inv.invoice_id} — ₹{(inv.grand_total - inv.total_paid).toFixed(2)} due
+                            {inv.invoice_id} — ₹{(inv.grand_total - (inv.total_paid || 0)).toFixed(2)} due
                             {inv.status === 'overdue' ? ' ⚠ Overdue' : inv.status === 'partially_paid' ? ' (Partial)' : ' (Unpaid)'}
                           </option>
                         ))}

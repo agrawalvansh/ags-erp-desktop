@@ -307,7 +307,7 @@ app.whenReady().then(() => {
         if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
           if (mainWindow.webContents.isLoading()) {
             mainWindow.webContents.once('did-finish-load', () => {
-              if (mainWindow && !mainWindow.isDestroyed()) {
+              if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
                 mainWindow.webContents.send('notifications:countUpdate', unread.count)
               }
             })

@@ -1611,15 +1611,15 @@ const Invoice = () => {
                   ${invoiceStatus === 'paid'
                     ? 'bg-emerald-100 text-emerald-700'
                     : invoiceStatus === 'partially_paid'
-                    ? 'bg-amber-100 text-amber-700'
-                    : invoiceStatus === 'overdue'
-                    ? 'bg-red-100 text-[#BA1A1A]'
-                    : 'bg-blue-100 text-blue-700'}
+                      ? 'bg-amber-100 text-amber-700'
+                      : invoiceStatus === 'overdue'
+                        ? 'bg-red-100 text-[#BA1A1A]'
+                        : 'bg-blue-100 text-blue-700'}
                 `}>
                   {invoiceStatus === 'awaiting_payment' ? 'Awaiting Payment'
                     : invoiceStatus === 'partially_paid' ? 'Partially Paid'
-                    : invoiceStatus === 'paid' ? 'Paid'
-                    : 'Overdue'}
+                      : invoiceStatus === 'paid' ? 'Paid'
+                        : 'Overdue'}
                 </span>
               )}
             </div>
@@ -1964,7 +1964,7 @@ const Invoice = () => {
                               </span>
                             </td>
                             <td className="py-3 px-6 text-right text-sm font-semibold text-[#2563EB]">
-                              ₹{pay.payment_amount.toFixed(2)}
+                              ₹{(parseFloat(pay.payment_amount) || 0).toFixed(2)}
                             </td>
                             <td className="py-3 px-6 text-sm text-[#64748B]">{pay.remark}</td>
                             <td className="py-3 px-6">
