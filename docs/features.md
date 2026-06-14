@@ -1,6 +1,6 @@
 # AGS ERP Desktop — Complete Feature List
 
-> **Version:** 2.0.0  
+> **Version:** 2.3.0  
 > **Platform:** Electron
 > **Database:** SQLite (better-sqlite3)  
 > **Last Updated:** June 2026
@@ -60,11 +60,11 @@
 | 3.14 | Packing / Freight / Rikshaw | Additional charges added to invoice total |
 | 3.15 | Grand Total Calculation | Auto-calculates subtotal + extras, rounds to nearest ₹1 |
 | 3.16 | Round-off Display | Shows round-off amount applied |
-| 3.17 | Payment/Advance Section | Optional: amount, type (Cash/UPI/Transfer/RTGS), date |
+| 3.17 | Payment/Advance Section (Create) | On new invoice: optional single payment form — amount, type (Cash/UPI/Transfer/RTGS), date. Payment is linked to the invoice via `linked_invoice_id` for status tracking. |
 | 3.18 | Remark Field | Free-text remark for the invoice |
-| 3.19 | Save Invoice | Saves header + items + creates maal account entry + optional jama entry for payment |
+| 3.19 | Save Invoice | Saves header + items + creates maal account entry + optional jama entry for payment. After save, automatically refreshes payment/status state from DB. |
 | 3.20 | Update Existing Invoice | Edit and re-save an existing invoice |
-| 3.21 | Delete Invoice | Deletes invoice, items, and linked maal entry. **Delete also payment checkbox:** optional toggle to also delete the linked jama (payment) entry. If unchecked, payment is preserved in the ledger. Recycles the ID. |
+| 3.21 | Delete Invoice | Deletes invoice, items, linked maal entry, and all linked payments (cascade delete). Recycles the ID. |
 | 3.22 | Unsaved Changes Detection | Tracks dirty state via `useMemo` comparison; warns before navigating away |
 | 3.23 | Navigation Blocker | `useBlocker` + `NavigationWarningModal` + `beforeunload` listener when form is dirty |
 | 3.24 | Force New Modal | When clicking "New" with unsaved changes, modal prompts: "Keep Editing" or "Discard & New" |
@@ -78,6 +78,18 @@
 | 3.32 | Price Sync | Changing a price in an invoice prompts a confirmation opt-in toggle before modifying the master catalog. Controlled via global config. |
 | 3.33 | Packing Type Selection | Dropdown with allowed types: Pc, Kg, Dz, Box, Kodi, Theli, Packet, Set |
 | 3.34 | Load by URL | Navigate to `/invoice/{invoiceNo}` to load a specific invoice directly |
+| 3.35 | Invoice Status Tracking | Each invoice tracks status: `awaiting_payment` → `partially_paid` → `paid` / `overdue`. Status auto-calculated from linked payments vs grand total. |
+| 3.36 | Status Badge (Top Bar) | Colour-coded badge next to invoice reference: blue (Awaiting), amber (Partially Paid), green (Paid), red (Overdue) |
+| 3.37 | Payment Due Days | Per-invoice `payment_due_days` field in top bar. Pre-fills from customer's `reminder_days` on selection. Fully editable regardless of customer reminder setting. |
+| 3.38 | Multi-Payment History (Edit) | Edit flow shows full Payment History table — lists all linked payments with date, type, amount, remark. Add/edit/delete individual payments inline. |
+| 3.39 | Add Payment | "+ Add Payment" button (hidden when fully paid). Pre-fills amount with remaining balance, defaults to Cash/today. |
+| 3.40 | Edit Payment | Edit existing payment entry inline (amount, type, date, remark) |
+| 3.41 | Delete Payment | Delete individual payment. Status auto-recalculates after each change. |
+| 3.42 | Payment Summary in Totals | Below Grand Total: each payment shown as a negative line with remark/type on left. Shows "Pending" in red if balance > 0, or "Fully Paid ✓" in green. |
+| 3.43 | Payment Summary in PDF | PDF print shows each payment entry with remark, date, and negative amount. Shows "Pending" or "PAID IN FULL" at bottom. |
+| 3.44 | Overdue Detection | If `payment_due_days > 0` and invoice is not paid by that many days after `invoice_date`, status flips to `overdue` and a notification is created. |
+| 3.45 | Status Auto-Recalculation | `recalculateInvoiceStatus()` runs after every payment add/edit/delete and on invoice update. Manages notification creation/deletion. |
+| 3.46 | Private Note Toggle | Checkbox to mark remark as private (excluded from print) |
 
 ---
 
@@ -85,7 +97,7 @@
 
 | # | Feature | Description |
 |---|---------|-------------|
-| 4.1 | List All Products | Full scrollable table of all active products (no pagination — all rows visible) |
+| 4.1 | List All Products | Full scrollable table of all active products showing Name, Size, Code, Selling Price, and Date/Time (no pagination — all rows visible) |
 | 4.2 | Search Products | Real-time search by name or code with clear button |
 | 4.3 | Sort Products | Click column headers to sort asc/desc with chevron indicator |
 | 4.4 | Smart Name+Size Sort | Products sorted by name alphabetically then by numeric size value |
@@ -149,7 +161,7 @@
 | 6.12 | Inline Edit Maal | Edit date, invoice number, amount, remark directly in the table row |
 | 6.13 | Inline Edit Jama | Edit date, type, amount, remark directly in the table row |
 | 6.14 | Delete Entry | Delete with glass overlay confirmation modal |
-| 6.15 | Delete with Payment Checkbox | For order/invoice-linked entries: optional toggle to also delete the linked payment (jama) entry |
+| 6.15 | Cascade Delete | For invoice/order-linked entries: deleting the source document automatically cascade-deletes all linked payments |
 | 6.16 | Linked Entry Detection | Entries linked to invoices show clickable invoice numbers — clicking navigates to the invoice. Linked entries cannot be inline-edited (edit button navigates to source document instead). |
 | 6.17 | Bulk Delete Order Entries | When deleting an order-linked maal entry, offers to also delete all linked rows in one operation |
 | 6.18 | Grand Total Balance | Calculates Maal Total − Jama Total = Outstanding balance |
@@ -161,6 +173,9 @@
 | 6.24 | Payment Reminder | Toggle-able reminder with configurable days (1–365), clamped input |
 | 6.25 | Reminder Trigger | Generates a notification when an invoice's payment is overdue based on the configured days |
 | 6.26 | Reminder Rollback | Failed save rolls back to last persisted value (via ref) |
+| 6.27 | Invoice Status Badges | Maal entries table shows colour-coded status badges (Awaiting/Partial/Paid/Overdue) next to invoice numbers |
+| 6.28 | Link to Invoice (Jama) | When adding a Jama entry, checkbox + dropdown to link payment to an unpaid invoice. Auto-fills remark, triggers status recalculation. |
+| 6.29 | Unpaid Invoice Dropdown | Fetches invoices with status `awaiting_payment`, `partially_paid`, or `overdue` for the customer. Shows balance due and status indicator. |
 
 ---
 
@@ -179,7 +194,7 @@
 | 7.9 | Jama Entries (Payments) | Debit entries for supplier with running total |
 | 7.10 | Add/Edit/Delete Maal | Full CRUD for supplier maal entries (inline edit + dedicated form) |
 | 7.11 | Add/Edit/Delete Jama | Full CRUD for supplier jama entries (inline edit + dedicated form) |
-| 7.12 | Delete with Payment Checkbox | For order-linked entries: optional toggle to also delete the linked payment entry |
+| 7.12 | Cascade Delete | For order-linked entries: deleting the source document cascade-deletes all linked payments |
 | 7.13 | Bulk Delete Order Entries | Same as customer (6.17) — delete all linked rows in one operation |
 | 7.14 | Linked Entry Guard | Order-linked entries cannot be inline-edited; edit navigates to source order |
 | 7.15 | Grand Total Balance | Outstanding balance calculation |
@@ -204,7 +219,7 @@
 | 8.9 | Payment Section | Advance payment: amount, type (Cash/UPI/Transfer/RTGS), date |
 | 8.10 | Auto-Generate Order ID | Format: `O-C-{N}` with recycling |
 | 8.11 | Edit Customer Order | Full edit with item regeneration and payment update/creation/deletion |
-| 8.12 | Delete Customer Order | Deletes order + items + recycles ID. **Delete also payment checkbox:** optional toggle to also delete the linked jama (advance payment) entry. If unchecked, payment is preserved in the customer's ledger. |
+| 8.12 | Delete Customer Order | Deletes order + items + cascade-deletes linked payments + recycles ID |
 | 8.13 | Status Options | Received, In Progress, Completed |
 | 8.14 | Linked Payment | Payment creates jama entry with "Order {ID}" remark in customer account |
 | 8.15 | Unsaved Changes Detection | `isDirty` tracking with `useBlocker` + `NavigationWarningModal` |
@@ -230,7 +245,7 @@
 | 9.8 | Payment Section | Advance payment with jama entry creation |
 | 9.9 | Auto-Generate Order ID | Format: `O-S-{N}` with recycling |
 | 9.10 | Edit Supplier Order | Full edit with payment update/creation/deletion |
-| 9.11 | Delete Supplier Order | Deletes order + items + recycles ID. **Delete also payment checkbox:** same toggle as customer orders (8.12) — optional deletion of linked jama entry. |
+| 9.11 | Delete Supplier Order | Deletes order + items + cascade-deletes linked payments + recycles ID |
 | 9.12 | Delete from List | Delete from list view with confirmation modal |
 | 9.13 | Print Order | Print-optimized output with printer selection |
 | 9.14 | PDF Download | Download order as PDF |
@@ -255,6 +270,7 @@
 | 10.10 | Pending Amount Display | Shows outstanding ₹ amount on each notification |
 | 10.11 | NavBar Live Count | Unread count syncs in real-time between NotificationsPage and NavBar via `CustomEvent` dispatch |
 | 10.12 | Navigate to Account | Clicking a notification navigates to the related customer/supplier detail page |
+| 10.13 | Overdue Invoice Notifications | Auto-generated when an invoice becomes overdue (past `payment_due_days`). Uses `reminder_key = overdue_invoice_{id}` for idempotency. Auto-cleared when status changes from overdue. |
 
 ---
 
@@ -310,6 +326,7 @@
 | 13.12 | Window Maximization | App starts maximized |
 | 13.13 | Build System | Vite + Electron Builder (NSIS for Windows, DMG for macOS) |
 | 13.14 | Notification Engine | Backend generates payment reminder notifications based on configured days — runs on app startup and periodically |
+| 13.15 | Overdue Invoice Scanner | On app startup (2s delay), scans all non-paid invoices and flips to `overdue` if past due date. Creates notifications with `reminder_key` pattern. Pushes unread count to renderer. |
 
 ---
 

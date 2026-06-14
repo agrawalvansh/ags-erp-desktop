@@ -364,13 +364,13 @@ const PriceList = () => {
                     </div>
                   </th>
                   <th
-                    className="py-5 px-6 cursor-pointer hover:text-[#004AC6] transition-colors"
-                    onClick={() => handleSort('packingType')}
+                    className="py-5 px-6 cursor-pointer hover:text-[#004AC6] transition-colors w-48"
+                    onClick={() => handleSort('updatedAt')}
                   >
                     <div className="flex items-center gap-1">
-                      Packing Type
+                      Date / Time
                       <ChevronDown
-                        className={`transition-transform ${sortConfig.key === 'packingType' && sortConfig.direction === 'desc' ? 'rotate-180' : ''}`}
+                        className={`transition-transform ${sortConfig.key === 'updatedAt' && sortConfig.direction === 'desc' ? 'rotate-180' : ''}`}
                         size={14}
                       />
                     </div>
@@ -403,8 +403,8 @@ const PriceList = () => {
                         <td className="py-5 px-6 text-sm text-[#434655]">{formatCurrency(item.costPrice)}</td>
                       )}
                       <td className="py-5 px-6 text-sm font-bold text-[#004AC6]">{formatCurrency(item.sellingPrice)}</td>
-                      <td className="py-5 px-6 text-center">
-                        <span className="text-xs font-medium px-3 py-1 bg-[#D0E1FB]/30 text-[#54647A] rounded-full">{item.packingType}</span>
+                      <td className="py-5 px-6 text-sm text-[#434655]">
+                        {item.updatedAt ? formatTimestamp(item.updatedAt) : '—'}
                       </td>
                       <td className="py-5 px-6 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-2">

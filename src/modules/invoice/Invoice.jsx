@@ -301,6 +301,21 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
                   className={`w-full pl-7 py-2.5 pr-2 bg-[#F2F4F6] border-none rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all ${formErrors.sellingPrice ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
                   placeholder="0.00"
                 />
+                {newItem.code && (newItem.originalProduct?.updated_at || newItem.originalProduct?.updatedAt) && (
+                  <p className="absolute left-1 top-full mt-1 text-[10px] text-[#64748B] font-semibold whitespace-nowrap">
+                    Updated: {(() => {
+                      const rawDate = newItem.originalProduct?.updated_at || newItem.originalProduct?.updatedAt;
+                      if (!rawDate) return '—';
+                      try {
+                        const d = new Date(rawDate);
+                        if (!isNaN(d.getTime())) {
+                          return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+                        }
+                      } catch {}
+                      return '—';
+                    })()}
+                  </p>
+                )}
               </div>
             </div>
           </div>

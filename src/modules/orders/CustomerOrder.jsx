@@ -179,8 +179,8 @@ const CustomerOrder = () => {
               key={tab}
               onClick={() => setStatusFilter(tab)}
               className={`px-5 py-2 rounded-full text-xs font-bold transition-colors cursor-pointer ${statusFilter === tab
-                  ? 'bg-[#004AC6] text-white shadow-sm'
-                  : 'bg-white text-[#434655] hover:bg-[#F2F4F6] border border-[#C3C6D7]/10'
+                ? 'bg-[#004AC6] text-white shadow-sm'
+                : 'bg-white text-[#434655] hover:bg-[#F2F4F6] border border-[#C3C6D7]/10'
                 }`}
             >
               {tab}

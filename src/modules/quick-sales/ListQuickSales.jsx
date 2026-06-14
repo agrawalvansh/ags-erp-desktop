@@ -266,11 +266,10 @@ const ListQuickSales = () => {
                                             <button
                                                 key={pageNum}
                                                 onClick={() => setCurrentPage(pageNum)}
-                                                className={`w-9 h-9 flex items-center justify-center rounded-lg font-bold text-sm transition-colors cursor-pointer ${
-                                                    currentPage === pageNum
+                                                className={`w-9 h-9 flex items-center justify-center rounded-lg font-bold text-sm transition-colors cursor-pointer ${currentPage === pageNum
                                                         ? 'bg-[#004AC6] text-white'
                                                         : 'hover:bg-white text-[#434655]'
-                                                }`}
+                                                    }`}
                                             >
                                                 {pageNum}
                                             </button>
