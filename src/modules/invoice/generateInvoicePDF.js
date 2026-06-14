@@ -70,6 +70,7 @@ export function generateInvoicePDF(data) {
     invoiceItems, total,
     packing, freight, riksha, roundOff, grandTotal,
     remark, paymentAmount, paymentType,
+    payments: paymentsList, totalPaid: tPaid, balanceDue: bDue,
     printMarathi, marathiNames,
     isPrivateNote
   } = data;
@@ -320,7 +321,6 @@ export function generateInvoicePDF(data) {
   const packingVal = parseFloat(packing || 0);
   const freightVal = parseFloat(freight || 0);
   const rikshaVal = parseFloat(riksha || 0);
-  const payAmt = parseFloat(paymentAmount || 0);
 
   if (packingVal > 0) drawTotalRow('Packing Charges', `Rs. ${fmtNum(packingVal)}`);
   if (freightVal > 0) drawTotalRow('Freight / Delivery', `Rs. ${fmtNum(freightVal)}`);
@@ -335,13 +335,35 @@ export function generateInvoicePDF(data) {
   totalsY += 1;
   drawTotalRow('Grand Total', `Rs. ${formatIndian(grandTotal)}`, { bold: true, large: true });
 
-  // Payment / Balance
-  if (payAmt > 0) {
+  // Payment / Balance — multi-payment support
+  const paymentsArr = paymentsList && paymentsList.length > 0 ? paymentsList : [];
+  const payAmt = parseFloat(paymentAmount || 0);
+
+  if (paymentsArr.length > 0) {
+    // Multi-payment: show each entry
     totalsY += 1;
-    drawTotalRow(`Paid (${paymentType})`, `Rs. ${fmtNum(payAmt)}`);
+    paymentsArr.forEach(pay => {
+      const label = pay.remark || pay.payment_type || 'Payment';
+      const dateStr = pay.payment_date ? ` (${fmtDate(pay.payment_date)})` : '';
+      drawTotalRow(`${label}${dateStr}`, `- Rs. ${fmtNum(pay.payment_amount)}`);
+    });
+    const bal = bDue != null ? bDue : (grandTotal - (tPaid || 0));
+    if (bal > 0) {
+      drawTotalRow('Pending', `Rs. ${formatIndian(bal)}`, { bold: true });
+    } else {
+      setDefaultFont('bold');
+      doc.setFontSize(9);
+      doc.setTextColor(...black);
+      doc.text('PAID IN FULL', totalsValueX, totalsY, { align: 'right' });
+      totalsY += 5;
+    }
+  } else if (payAmt > 0) {
+    // Fallback: single payment (create flow before save)
+    totalsY += 1;
+    drawTotalRow(`Paid (${paymentType})`, `- Rs. ${fmtNum(payAmt)}`);
     const balance = grandTotal - payAmt;
     if (balance > 0) {
-      drawTotalRow('Balance Due', `Rs. ${formatIndian(balance)}`, { bold: true });
+      drawTotalRow('Pending', `Rs. ${formatIndian(balance)}`, { bold: true });
     } else if (balance === 0) {
       setDefaultFont('bold');
       doc.setFontSize(9);
@@ -349,6 +371,10 @@ export function generateInvoicePDF(data) {
       doc.text('PAID IN FULL', totalsValueX, totalsY, { align: 'right' });
       totalsY += 5;
     }
+  } else {
+    // No payments: always show Pending = Grand Total (or 0 if grand total is 0)
+    totalsY += 1;
+    drawTotalRow('Pending', `Rs. ${formatIndian(grandTotal)}`, { bold: true });
   }
 
   y = Math.max(y, totalsY) + 5;

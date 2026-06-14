@@ -21,6 +21,86 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     };
   };
 
+  // ─── Invoice Status Helper ────────────────────────────────────────────────
+  /**
+   * Recalculates and saves the correct status for an invoice.
+   * Called any time payments or invoice total change.
+   * Also manages overdue notifications: creates when overdue, deletes when no longer overdue.
+   * Returns the new status string.
+   */
+  function recalculateInvoiceStatus(invoice_id) {
+    const invoice = db.prepare(`
+      SELECT i.grand_total, i.invoice_date, i.payment_due_days, i.customer_id,
+             i.status AS old_status, c.reminder_enabled, c.name AS customer_name
+      FROM invoices i
+      JOIN customers c ON c.customer_id = i.customer_id
+      WHERE i.invoice_id = ?
+    `).get(invoice_id)
+
+    if (!invoice) return null
+
+    const { total_paid } = db.prepare(`
+      SELECT COALESCE(SUM(jama_amount), 0) AS total_paid
+      FROM customer_jama_account
+      WHERE linked_invoice_id = ?
+    `).get(invoice_id)
+
+    let status
+
+    if (total_paid >= invoice.grand_total && invoice.grand_total > 0) {
+      status = 'paid'
+    } else if (total_paid > 0) {
+      status = 'partially_paid'
+    } else if (
+      invoice.reminder_enabled === 1 &&
+      invoice.payment_due_days > 0
+    ) {
+      const invoiceDate = new Date(invoice.invoice_date)
+      const dueDate = new Date(invoiceDate)
+      dueDate.setDate(dueDate.getDate() + invoice.payment_due_days)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      dueDate.setHours(0, 0, 0, 0)
+      status = today > dueDate ? 'overdue' : 'awaiting_payment'
+    } else {
+      status = 'awaiting_payment'
+    }
+
+    db.prepare('UPDATE invoices SET status = ? WHERE invoice_id = ?')
+      .run(status, invoice_id)
+
+    // Manage overdue notifications
+    const reminderKey = `overdue_invoice_${invoice_id}`
+    if (status === 'overdue' && invoice.old_status !== 'overdue') {
+      // Create notification if not exists
+      const pendingAmount = invoice.grand_total - total_paid
+      try {
+        db.prepare(`
+          INSERT OR IGNORE INTO notifications
+            (type, account_id, account_name, invoice_no, invoice_date,
+             pending_amount, message, is_read, created_at, reminder_key)
+          VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+        `).run(
+          'invoice_overdue',
+          invoice.customer_id,
+          invoice.customer_name,
+          invoice_id,
+          invoice.invoice_date,
+          pendingAmount,
+          `Invoice ${invoice_id} for ${invoice.customer_name}: ₹${pendingAmount.toLocaleString('en-IN')} overdue`,
+          new Date().toISOString(),
+          reminderKey
+        )
+      } catch (e) { /* ignore duplicate key */ }
+    } else if (invoice.old_status === 'overdue' && status !== 'overdue') {
+      // Clear notification when no longer overdue
+      db.prepare('DELETE FROM notifications WHERE reminder_key = ?').run(reminderKey)
+    }
+
+    return status
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   // -----------------------
   // Products CRUD
   // -----------------------
@@ -251,6 +331,8 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
                 i.invoice_date   AS invoice_date,
                 i.grand_total    AS grand_total,
                 i.remark         AS remark,
+                i.status         AS status,
+                i.payment_due_days AS payment_due_days,
                 'invoice'        AS source
             FROM invoices i
           WHERE i.customer_id = ?
@@ -259,6 +341,8 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
                 m.maal_date       AS invoice_date,
                 m.maal_amount     AS grand_total,
                 m.maal_remark     AS remark,
+                NULL              AS status,
+                NULL              AS payment_due_days,
                 'maal_only'      AS source
             FROM customer_maal_account m
           WHERE m.customer_id = ?
@@ -296,85 +380,84 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
   }));
 
   ipcMain.handle('invoices:get', wrap((invoice_id) => {
-    const header = db.prepare('SELECT * FROM invoices WHERE invoice_id = ?').get(invoice_id);
-    if (!header) return { error: 'Invoice not found' };
-    const items = db.prepare(`
-        SELECT ii.invoice_id, ii.product_code, ii.quantity, ii.selling_price,
-              p.name AS product_name, p.size AS size, p.packing_type AS packing_type
-          FROM invoice_items ii
-          LEFT JOIN products p ON p.code = ii.product_code
-        WHERE ii.invoice_id = ?
-      `).all(invoice_id);
+    const header = db.prepare('SELECT * FROM invoices WHERE invoice_id = ?').get(invoice_id)
+    if (!header) return { error: 'Invoice not found' }
 
-    // Check for linked payment (Jama entry with remark "Invoice {invoice_id}" or starting with it)
-    const paymentRemark = `Invoice ${invoice_id}`;
-    const linkedPayment = db.prepare(
-      `SELECT id, jama_date AS payment_date, jama_txn_type AS payment_type, jama_amount AS payment_amount
-        FROM customer_jama_account 
-        WHERE jama_remark = ?`
-    ).get(paymentRemark);
+    const items = db.prepare(`
+      SELECT ii.invoice_id, ii.product_code, ii.quantity, ii.selling_price,
+             p.name AS product_name, p.size AS size, p.packing_type AS packing_type
+      FROM invoice_items ii
+      LEFT JOIN products p ON p.code = ii.product_code
+      WHERE ii.invoice_id = ?
+    `).all(invoice_id)
+
+    // Fetch ALL payments linked to this invoice
+    const payments = db.prepare(`
+      SELECT id, jama_date AS payment_date, jama_txn_type AS payment_type,
+             jama_amount AS payment_amount, jama_remark AS remark
+      FROM customer_jama_account
+      WHERE linked_invoice_id = ?
+      ORDER BY jama_date ASC
+    `).all(invoice_id)
+
+    const totalPaid = payments.reduce((sum, p) => sum + p.payment_amount, 0)
 
     return {
       ...header,
       items,
-      payment_amount: linkedPayment ? linkedPayment.payment_amount : 0,
-      payment_type: linkedPayment ? linkedPayment.payment_type : 'Cash',
-      payment_date: linkedPayment ? linkedPayment.payment_date : null,
-      payment_id: linkedPayment ? linkedPayment.id : null
-    };
+      payments,        // array of all payment entries
+      total_paid: totalPaid,
+      balance_due: Math.max(0, header.grand_total - totalPaid)
+    }
   }));
 
   ipcMain.handle('invoices:update', wrap((invoice) => {
-    const { id: invoice_id, customer_id, invoice_date, remark = '', packing = 0, freight = 0, riksha = 0, items,
-      payment_amount = 0, payment_type = 'Cash', payment_date = null,
-      invoice_time = null, is_private_note = 0 } = invoice;
+    const {
+      id: invoice_id, customer_id, invoice_date, remark = '',
+      packing = 0, freight = 0, riksha = 0, items,
+      invoice_time = null, is_private_note = 0, payment_due_days = 0
+    } = invoice
+
     if (!invoice_id || !customer_id || !invoice_date || !Array.isArray(items) || items.length === 0) {
-      return { error: 'Missing required fields' };
+      return { error: 'Missing required fields' }
     }
+
     const updateTxn = db.transaction(() => {
-      const itemsTotal = items.reduce((s, it) => s + it.quantity * it.selling_price, 0);
-      const grandTotal = itemsTotal + parseFloat(packing) + parseFloat(freight) + parseFloat(riksha);
-      db.prepare(`UPDATE invoices SET customer_id = ?, invoice_date = ?, remark = ?, packing = ?, freight = ?, riksha = ?, grand_total = ?, invoice_time = ?, is_private_note = ? WHERE invoice_id = ?`)
-        .run(customer_id, invoice_date, remark, packing, freight, riksha, grandTotal, invoice_time, is_private_note ? 1 : 0, invoice_id);
+      const itemsTotal = items.reduce((s, it) => s + it.quantity * it.selling_price, 0)
+      const grandTotal = itemsTotal + parseFloat(packing) + parseFloat(freight) + parseFloat(riksha)
 
-      // Refresh items
-      db.prepare('DELETE FROM invoice_items WHERE invoice_id = ?').run(invoice_id);
-      const insertItem = db.prepare('INSERT INTO invoice_items (invoice_id, product_code, quantity, selling_price) VALUES (?, ?, ?, ?)');
+      db.prepare(`
+        UPDATE invoices
+        SET customer_id = ?, invoice_date = ?, remark = ?, packing = ?, freight = ?,
+            riksha = ?, grand_total = ?, invoice_time = ?, is_private_note = ?,
+            payment_due_days = ?
+        WHERE invoice_id = ?
+      `).run(
+        customer_id, invoice_date, remark, packing, freight, riksha,
+        grandTotal, invoice_time, is_private_note ? 1 : 0,
+        payment_due_days, invoice_id
+      )
+
+      db.prepare('DELETE FROM invoice_items WHERE invoice_id = ?').run(invoice_id)
+      const insertItem = db.prepare(
+        'INSERT INTO invoice_items (invoice_id, product_code, quantity, selling_price) VALUES (?, ?, ?, ?)'
+      )
       for (const it of items) {
-        insertItem.run(invoice_id, it.product_code, it.quantity, it.selling_price);
+        insertItem.run(invoice_id, it.product_code, it.quantity, it.selling_price)
       }
 
-      // Keep maal mirror row in sync — hide remark if marked private
-      const publicRemark = is_private_note ? '' : remark;
-      db.prepare(`UPDATE customer_maal_account SET customer_id = ?, maal_date = ?, maal_amount = ?, maal_remark = ? WHERE maal_invoice_no = ?`)
-        .run(customer_id, invoice_date, grandTotal, publicRemark, invoice_id);
+      const publicRemark = is_private_note ? '' : remark
+      db.prepare(`
+        UPDATE customer_maal_account
+        SET customer_id = ?, maal_date = ?, maal_amount = ?, maal_remark = ?
+        WHERE maal_invoice_no = ?
+      `).run(customer_id, invoice_date, grandTotal, publicRemark, invoice_id)
+    })
 
-      // Handle payment/advance (Jama entry management)
-      const paymentRemark = `Invoice ${invoice_id}`;
-      const existingPayment = db.prepare(
-        `SELECT id FROM customer_jama_account WHERE jama_remark = ?`
-      ).get(paymentRemark);
-
-      const paymentAmt = parseFloat(payment_amount) || 0;
-
-      if (paymentAmt > 0) {
-        const payDate = payment_date || invoice_date;
-        if (existingPayment) {
-          // Update existing Jama entry
-          db.prepare(`UPDATE customer_jama_account SET customer_id = ?, jama_date = ?, jama_txn_type = ?, jama_amount = ? WHERE id = ?`)
-            .run(customer_id, payDate, payment_type, paymentAmt, existingPayment.id);
-        } else {
-          // Create new Jama entry
-          db.prepare(`INSERT INTO customer_jama_account (customer_id, jama_date, jama_txn_type, jama_amount, jama_remark) VALUES (?, ?, ?, ?, ?)`)
-            .run(customer_id, payDate, payment_type, paymentAmt, paymentRemark);
-        }
-      } else if (existingPayment) {
-        // Payment amount is 0/empty - delete existing Jama entry
-        db.prepare('DELETE FROM customer_jama_account WHERE id = ?').run(existingPayment.id);
-      }
-    });
-    updateTxn();
-    return { success: true };
+    updateTxn()
+    // Grand total may have changed — recalculate status
+    recalculateInvoiceStatus(invoice_id)
+    return { success: true }
   }));
 
 
@@ -569,89 +652,220 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
 
 
   ipcMain.handle('invoices:create', wrap((data) => {
-    const { customer_id, invoice_date, remark = '', packing = 0, freight = 0, riksha = 0, items,
-      payment_amount = 0, payment_type = 'Cash', payment_date = null,
-      invoice_time = null, is_private_note = 0 } = data;
+    const {
+      customer_id, invoice_date, remark = '', packing = 0, freight = 0, riksha = 0,
+      items, payment_amount = 0, payment_type = 'Cash', payment_date = null,
+      invoice_time = null, is_private_note = 0, payment_due_days = 0
+    } = data
+
     if (!customer_id || !invoice_date || !Array.isArray(items) || items.length === 0) {
-      return { error: 'Missing required fields' };
+      return { error: 'Missing required fields' }
     }
 
-    const insertItemStmt = db.prepare('INSERT INTO invoice_items (invoice_id, product_code, quantity, selling_price) VALUES (?, ?, ?, ?)');
+    const insertItemStmt = db.prepare(
+      'INSERT INTO invoice_items (invoice_id, product_code, quantity, selling_price) VALUES (?, ?, ?, ?)'
+    )
+
     const createTxn = db.transaction(() => {
-      // Generate invoice_id: always last_number + 1
-      db.prepare("UPDATE document_sequences SET last_number = last_number + 1 WHERE doc_type = 'invoice'").run();
-      const seq = db.prepare("SELECT last_number FROM document_sequences WHERE doc_type = 'invoice'").get();
-      const invoiceNum = seq.last_number;
+      db.prepare("UPDATE document_sequences SET last_number = last_number + 1 WHERE doc_type = 'invoice'").run()
+      const seq = db.prepare("SELECT last_number FROM document_sequences WHERE doc_type = 'invoice'").get()
+      const invoice_id = `E-${seq.last_number}`
 
-      const invoice_id = `E-${invoiceNum}`;
-
-      const itemsTotal = items.reduce((sum, it) => sum + (it.quantity * it.selling_price), 0);
-      const grandTotal = itemsTotal + parseFloat(packing) + parseFloat(freight) + parseFloat(riksha);
+      const itemsTotal = items.reduce((sum, it) => sum + (it.quantity * it.selling_price), 0)
+      const grandTotal = itemsTotal + parseFloat(packing) + parseFloat(freight) + parseFloat(riksha)
 
       db.prepare(`
-          INSERT INTO invoices (invoice_id, customer_id, invoice_date, remark, packing, freight, riksha, grand_total, invoice_time, is_private_note)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(invoice_id, customer_id, invoice_date, remark, packing, freight, riksha, grandTotal, invoice_time, is_private_note ? 1 : 0);
+        INSERT INTO invoices
+          (invoice_id, customer_id, invoice_date, remark, packing, freight, riksha,
+           grand_total, invoice_time, is_private_note, status, payment_due_days)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'awaiting_payment', ?)
+      `).run(
+        invoice_id, customer_id, invoice_date, remark, packing, freight, riksha,
+        grandTotal, invoice_time, is_private_note ? 1 : 0, payment_due_days
+      )
 
       for (const it of items) {
-        insertItemStmt.run(invoice_id, it.product_code, it.quantity, it.selling_price);
+        insertItemStmt.run(invoice_id, it.product_code, it.quantity, it.selling_price)
       }
 
-      // Create Maal entry — hide remark if marked private
-      const publicRemark = is_private_note ? '' : remark;
-      db.prepare(`INSERT INTO customer_maal_account (customer_id, maal_date, maal_invoice_no, maal_amount, maal_remark)
-                    VALUES (?, ?, ?, ?, ?)`)
-        .run(customer_id, invoice_date, invoice_id, grandTotal, publicRemark);
+      const publicRemark = is_private_note ? '' : remark
+      db.prepare(`
+        INSERT INTO customer_maal_account
+          (customer_id, maal_date, maal_invoice_no, maal_amount, maal_remark)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(customer_id, invoice_date, invoice_id, grandTotal, publicRemark)
 
-      // Create Jama entry if payment amount > 0
-      const paymentAmt = parseFloat(payment_amount) || 0;
+      // Initial payment — creates a linked jama entry
+      const paymentAmt = parseFloat(payment_amount) || 0
       if (paymentAmt > 0) {
-        const payDate = payment_date || invoice_date;
-        const paymentRemark = `Invoice ${invoice_id}`;
-        db.prepare(`INSERT INTO customer_jama_account (customer_id, jama_date, jama_txn_type, jama_amount, jama_remark)
-                      VALUES (?, ?, ?, ?, ?)`)
-          .run(customer_id, payDate, payment_type, paymentAmt, paymentRemark);
+        const payDate = payment_date || invoice_date
+        db.prepare(`
+          INSERT INTO customer_jama_account
+            (customer_id, jama_date, jama_txn_type, jama_amount, jama_remark, linked_invoice_id)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `).run(
+          customer_id, payDate, payment_type, paymentAmt,
+          `Invoice ${invoice_id}`, invoice_id
+        )
       }
 
-      return invoice_id;
-    });
+      return invoice_id
+    })
 
-    const invoice_id = createTxn();
-    return { success: true, invoice_id };
+    const invoice_id = createTxn()
+    // Recalculate status after creation (handles initial payment)
+    recalculateInvoiceStatus(invoice_id)
+    return { success: true, invoice_id }
   }));
 
 
 
   // Hard delete invoice with all related data (invoice_items, customer_maal_account, optionally linked Jama entry)
   ipcMain.handle('invoices:delete', wrap((data) => {
-    // Support both string (invoice_id) and object { invoice_id, deletePayment }
-    const invoice_id = typeof data === 'string' ? data : data.invoice_id;
-    const deletePayment = typeof data === 'object' ? !!data.deletePayment : true; // default true for backward compat
-    if (!invoice_id) return { error: 'Invoice ID is required' };
+    // Support both string (invoice_id) and object { invoice_id }
+    const invoice_id = typeof data === 'string' ? data : data.invoice_id
+    if (!invoice_id) return { error: 'Invoice ID is required' }
 
     const deleteTxn = db.transaction(() => {
       // Step 1: Delete all invoice items
-      db.prepare('DELETE FROM invoice_items WHERE invoice_id = ?').run(invoice_id);
+      db.prepare('DELETE FROM invoice_items WHERE invoice_id = ?').run(invoice_id)
 
-      // Step 2: Delete related maal entry (matches by maal_invoice_no = invoice_id)
-      db.prepare('DELETE FROM customer_maal_account WHERE maal_invoice_no = ?').run(invoice_id);
+      // Step 2: Delete related maal entry
+      db.prepare('DELETE FROM customer_maal_account WHERE maal_invoice_no = ?').run(invoice_id)
 
-      // Step 3: Conditionally delete linked Jama entry (payment associated with this invoice)
-      if (deletePayment) {
-        const paymentRemark = `Invoice ${invoice_id}`;
-        db.prepare('DELETE FROM customer_jama_account WHERE jama_remark = ?')
-          .run(paymentRemark);
-      }
+      // Step 3: Delete ALL linked jama payment entries for this invoice
+      db.prepare('DELETE FROM customer_jama_account WHERE linked_invoice_id = ?').run(invoice_id)
 
-      // Step 4: Delete the invoice header
-      const res = db.prepare('DELETE FROM invoices WHERE invoice_id = ?').run(invoice_id);
+      // Step 4: Clear any overdue notification for this invoice
+      db.prepare('DELETE FROM notifications WHERE reminder_key = ?')
+        .run(`overdue_invoice_${invoice_id}`)
 
-      return res.changes;
-    });
+      // Step 5: Delete the invoice header
+      const res = db.prepare('DELETE FROM invoices WHERE invoice_id = ?').run(invoice_id)
 
-    const changes = deleteTxn();
-    return changes ? { success: true } : { error: 'Invoice not found' };
+      return res.changes
+    })
+
+    const changes = deleteTxn()
+    return changes ? { success: true } : { error: 'Invoice not found' }
   }));
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // INVOICE PAYMENT HANDLERS
+  // ════════════════════════════════════════════════════════════════════════════
+
+  // Add a payment entry linked to an invoice
+  ipcMain.handle('invoices:addPayment', wrap((data) => {
+    const { invoice_id, customer_id, payment_amount, payment_type, payment_date, remark } = data
+
+    if (!invoice_id || !customer_id || !payment_amount || !payment_date) {
+      return { error: 'Missing required payment fields' }
+    }
+
+    const amt = parseFloat(payment_amount)
+    if (isNaN(amt) || amt <= 0) return { error: 'Invalid payment amount' }
+
+    // Verify invoice exists and belongs to this customer
+    const invoice = db.prepare(
+      'SELECT invoice_id FROM invoices WHERE invoice_id = ? AND customer_id = ?'
+    ).get(invoice_id, customer_id)
+    if (!invoice) return { error: 'Invoice not found' }
+
+    db.prepare(`
+      INSERT INTO customer_jama_account
+        (customer_id, jama_date, jama_txn_type, jama_amount, jama_remark, linked_invoice_id)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(
+      customer_id, payment_date, payment_type, amt,
+      remark || `Invoice ${invoice_id}`,
+      invoice_id
+    )
+
+    const newStatus = recalculateInvoiceStatus(invoice_id)
+    return { success: true, new_status: newStatus }
+  }))
+
+  // Update a specific payment entry
+  ipcMain.handle('invoices:updatePayment', wrap((data) => {
+    const { payment_id, invoice_id, payment_amount, payment_type, payment_date, remark } = data
+
+    if (!payment_id || !invoice_id) return { error: 'Missing payment_id or invoice_id' }
+
+    const amt = parseFloat(payment_amount)
+    if (isNaN(amt) || amt <= 0) return { error: 'Invalid payment amount' }
+
+    const existing = db.prepare(
+      'SELECT id, linked_invoice_id FROM customer_jama_account WHERE id = ?'
+    ).get(payment_id)
+
+    if (!existing) return { error: 'Payment not found' }
+    if (existing.linked_invoice_id !== invoice_id) return { error: 'Payment does not belong to this invoice' }
+
+    db.prepare(`
+      UPDATE customer_jama_account
+      SET jama_date = ?, jama_txn_type = ?, jama_amount = ?, jama_remark = ?
+      WHERE id = ?
+    `).run(payment_date, payment_type, amt, remark || `Invoice ${invoice_id}`, payment_id)
+
+    const newStatus = recalculateInvoiceStatus(invoice_id)
+    return { success: true, new_status: newStatus }
+  }))
+
+  // Delete a specific payment entry
+  ipcMain.handle('invoices:deletePayment', wrap((data) => {
+    const { payment_id, invoice_id } = data
+
+    if (!payment_id || !invoice_id) return { error: 'Missing payment_id or invoice_id' }
+
+    const existing = db.prepare(
+      'SELECT id, linked_invoice_id FROM customer_jama_account WHERE id = ?'
+    ).get(payment_id)
+
+    if (!existing) return { error: 'Payment not found' }
+    if (existing.linked_invoice_id !== invoice_id) return { error: 'Payment does not belong to this invoice' }
+
+    db.prepare('DELETE FROM customer_jama_account WHERE id = ?').run(payment_id)
+
+    const newStatus = recalculateInvoiceStatus(invoice_id)
+    return { success: true, new_status: newStatus }
+  }))
+
+  // Fetch unpaid/partially paid invoices for a customer (for AddAccountEntry dropdown)
+  ipcMain.handle('invoices:getUnpaidByCustomer', wrap((customer_id) => {
+    if (!customer_id) return []
+    return db.prepare(`
+      SELECT invoice_id, invoice_date, grand_total, status,
+             COALESCE(
+               (SELECT SUM(jama_amount) FROM customer_jama_account
+                WHERE linked_invoice_id = invoices.invoice_id),
+               0
+             ) AS total_paid
+      FROM invoices
+      WHERE customer_id = ?
+      AND status IN ('awaiting_payment', 'partially_paid', 'overdue')
+      ORDER BY invoice_date DESC
+    `).all(customer_id)
+  }))
+
+  // Recalculate overdue status for all non-paid invoices (called on app startup)
+  ipcMain.handle('invoices:refreshOverdueStatuses', wrap(() => {
+    const nonPaidInvoices = db.prepare(`
+      SELECT invoice_id FROM invoices
+      WHERE status IN ('awaiting_payment', 'partially_paid', 'overdue')
+    `).all()
+
+    let updatedCount = 0
+    for (const inv of nonPaidInvoices) {
+      const oldStatus = db.prepare('SELECT status FROM invoices WHERE invoice_id = ?')
+        .get(inv.invoice_id)?.status
+      const newStatus = recalculateInvoiceStatus(inv.invoice_id)
+      if (newStatus !== oldStatus) updatedCount++
+    }
+
+    return { success: true, updated: updatedCount }
+  }))
+
+  // ════════════════════════════════════════════════════════════════════════════
 
   // -----------------------
   // Quick Sales
@@ -857,13 +1071,19 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
   }));
 
   ipcMain.handle('customers:txnCreate', wrap((data) => {
-    const { customer_id, date, txn_type, amount, remark } = data;
+    const { customer_id, date, txn_type, amount, remark, linked_invoice_id = null } = data;
     if (!customer_id || !date || !txn_type || amount == null) {
       return { error: 'Missing required fields' };
     }
-    const info = db.prepare(`INSERT INTO customer_jama_account (customer_id, jama_date, jama_txn_type, jama_amount, jama_remark)
-                              VALUES (?, ?, ?, ?, ?)`)
-      .run(customer_id, date, txn_type, amount, remark || '');
+    const info = db.prepare(`INSERT INTO customer_jama_account (customer_id, jama_date, jama_txn_type, jama_amount, jama_remark, linked_invoice_id)
+                              VALUES (?, ?, ?, ?, ?, ?)`)
+      .run(customer_id, date, txn_type, amount, remark || '', linked_invoice_id);
+
+    // Recalculate invoice status if linked
+    if (linked_invoice_id) {
+      recalculateInvoiceStatus(linked_invoice_id)
+    }
+
     return {
       transaction_id: info.lastInsertRowid,
       customer_id,
@@ -882,21 +1102,29 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     const res = db.prepare(`UPDATE customer_jama_account 
                               SET jama_date = ?, jama_txn_type = ?, jama_amount = ?, jama_remark = ?
                             WHERE id = ?`).run(date, txn_type, amount, remark || '', id);
+
+    // Recalculate linked invoice status if any
+    const updated = db.prepare(
+      'SELECT linked_invoice_id FROM customer_jama_account WHERE id = ?'
+    ).get(id)
+    if (updated?.linked_invoice_id) {
+      recalculateInvoiceStatus(updated.linked_invoice_id)
+    }
+
     return res.changes ? { success: true } : { error: 'Transaction not found' };
   }));
 
   ipcMain.handle('customers:txnDelete', wrap((id) => {
-    // Guard: block deletion only if the linked invoice or order still exists
-    const row = db.prepare('SELECT jama_remark FROM customer_jama_account WHERE id = ?').get(id);
-    if (row && row.jama_remark) {
-      if (row.jama_remark.startsWith('Invoice ')) {
-        const invoiceId = row.jama_remark.replace('Invoice ', '');
-        const invoiceExists = db.prepare('SELECT 1 FROM invoices WHERE invoice_id = ?').get(invoiceId);
+    // Get linked info before deleting
+    const row = db.prepare('SELECT jama_remark, linked_invoice_id FROM customer_jama_account WHERE id = ?').get(id);
+    if (row) {
+      // Guard: block deletion if linked invoice or order still exists
+      if (row.linked_invoice_id) {
+        const invoiceExists = db.prepare('SELECT 1 FROM invoices WHERE invoice_id = ?').get(row.linked_invoice_id);
         if (invoiceExists) {
           return { success: false, error: 'Cannot delete: this payment is linked to an existing invoice. Delete the invoice first.' };
         }
-      }
-      if (row.jama_remark.startsWith('Order ')) {
+      } else if (row.jama_remark && row.jama_remark.startsWith('Order ')) {
         const orderId = row.jama_remark.replace('Order ', '');
         const orderExists = db.prepare('SELECT 1 FROM customer_orders WHERE order_id = ?').get(orderId);
         if (orderExists) {
@@ -904,7 +1132,15 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
         }
       }
     }
+
+    const linkedInvoiceId = row?.linked_invoice_id
     const res = db.prepare('DELETE FROM customer_jama_account WHERE id = ?').run(id);
+
+    // Recalculate linked invoice status after delete
+    if (linkedInvoiceId) {
+      recalculateInvoiceStatus(linkedInvoiceId)
+    }
+
     return res.changes ? { success: true } : { error: 'Transaction not found' };
   }));
 

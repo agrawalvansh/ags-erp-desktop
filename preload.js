@@ -21,6 +21,13 @@ exposed.getCustomers   = (p) => ipcRenderer.invoke('customers:getAll', p);
 exposed.getInvoice       = (p) => ipcRenderer.invoke('invoices:get', p);
 exposed.getNextInvoiceId = (p) => ipcRenderer.invoke('invoices:getNextId', p);
 
+// Invoice payment methods
+exposed.invoiceAddPayment      = (data)        => ipcRenderer.invoke('invoices:addPayment', data);
+exposed.invoiceUpdatePayment   = (data)        => ipcRenderer.invoke('invoices:updatePayment', data);
+exposed.invoiceDeletePayment   = (data)        => ipcRenderer.invoke('invoices:deletePayment', data);
+exposed.invoiceGetUnpaid       = (customer_id) => ipcRenderer.invoke('invoices:getUnpaidByCustomer', customer_id);
+exposed.invoiceRefreshOverdue  = ()            => ipcRenderer.invoke('invoices:refreshOverdueStatuses');
+
 // Auth
 exposed.login = (credentials) => ipcRenderer.invoke('auth:login', credentials);
 

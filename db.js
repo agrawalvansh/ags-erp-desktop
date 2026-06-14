@@ -297,6 +297,67 @@ if (!existingUser) {
   db.prepare('INSERT INTO users (username, password_hash) VALUES (?, ?)').run('amit_agrawal', hash);
 }
 
+// ─── MIGRATION: Invoice Status + Payment Linking ─────────────────────────
+
+// 1. Add status column to invoices
+try {
+  db.prepare('SELECT status FROM invoices LIMIT 1').get()
+} catch (e) {
+  db.prepare(`ALTER TABLE invoices ADD COLUMN status TEXT DEFAULT 'awaiting_payment'`).run()
+  console.log('[Migration] Added invoices.status column')
+}
+
+// 2. Add payment_due_days column to invoices
+try {
+  db.prepare('SELECT payment_due_days FROM invoices LIMIT 1').get()
+} catch (e) {
+  db.prepare('ALTER TABLE invoices ADD COLUMN payment_due_days INTEGER DEFAULT 0').run()
+  console.log('[Migration] Added invoices.payment_due_days column')
+}
+
+// 3. Add linked_invoice_id column to customer_jama_account
+try {
+  db.prepare('SELECT linked_invoice_id FROM customer_jama_account LIMIT 1').get()
+} catch (e) {
+  db.prepare('ALTER TABLE customer_jama_account ADD COLUMN linked_invoice_id TEXT DEFAULT NULL').run()
+  console.log('[Migration] Added customer_jama_account.linked_invoice_id column')
+}
+
+// 4. Add index on linked_invoice_id for fast payment lookups
+db.prepare(`
+  CREATE INDEX IF NOT EXISTS idx_jama_linked_invoice
+  ON customer_jama_account(linked_invoice_id)
+`).run()
+
+// 5. Backfill linked_invoice_id from existing remark text
+// Existing entries have remark like "Invoice E-28" or "Invoice AGS-I-11"
+const needsBackfill = db.prepare(`
+  SELECT id, jama_remark
+  FROM customer_jama_account
+  WHERE jama_remark LIKE 'Invoice %'
+  AND linked_invoice_id IS NULL
+`).all()
+
+if (needsBackfill.length > 0) {
+  const updateLink = db.prepare(
+    'UPDATE customer_jama_account SET linked_invoice_id = ? WHERE id = ?'
+  )
+  const verifyInvoice = db.prepare(
+    'SELECT invoice_id FROM invoices WHERE invoice_id = ?'
+  )
+  let backfilled = 0
+  for (const entry of needsBackfill) {
+    const invoiceId = entry.jama_remark.replace(/^Invoice\s+/, '').trim()
+    if (verifyInvoice.get(invoiceId)) {
+      updateLink.run(invoiceId, entry.id)
+      backfilled++
+    }
+  }
+  console.log(`[Migration] Backfilled linked_invoice_id for ${backfilled} jama entries`)
+}
+
+// ─── END MIGRATION ────────────────────────────────────────────────────────
+
 // ─── Export ──────────────────────────────────────────────
 
 module.exports = db;

@@ -43,7 +43,6 @@ const BuyerAccountDetail = () => {
   const deleteModalRef = useRef(null);
   const bulkDeleteModalRef = useRef(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [deleteAlsoPayment, setDeleteAlsoPayment] = useState(false);
 
   // Bulk delete state
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
@@ -172,6 +171,7 @@ const BuyerAccountDetail = () => {
         maalInvoiceNumber: inv.invoice_id,
         maalAmount: inv.grand_total,
         maalRemark: remark,
+        status: inv.status || null,
       };
     });
 
@@ -265,15 +265,12 @@ const BuyerAccountDetail = () => {
       let result;
       if (row.type === 'maal') {
         if (row.isLinkedToInvoice) {
-          // Delete the full invoice (items + maal + optionally payment)
-          result = await window.api.invoke('invoices:delete', { invoice_id: row.invoiceId, deletePayment: deleteAlsoPayment });
+          result = await window.api.invoke('invoices:delete', { invoice_id: row.invoiceId });
         } else if (row.isLinkedToOrder) {
           result = await window.api.invoke('cusOrders:delete', {
             order_id: row.invoiceId,
-            deletePayment: deleteAlsoPayment,
           });
         } else {
-          // Delete standalone maal entry
           result = await window.api.invoke('customers:maalDelete', row.invoiceId);
         }
       } else {
@@ -283,13 +280,7 @@ const BuyerAccountDetail = () => {
         toast.error(result?.error || 'Failed to delete entry.');
         return false;
       }
-      const isLinked = row.type === 'maal' && (row.isLinkedToInvoice || row.isLinkedToOrder);
-      toast.success(
-        isLinked
-          ? (deleteAlsoPayment ? 'Entry & linked payment deleted' : 'Entry deleted (payment kept in ledger)')
-          : 'Entry deleted successfully'
-      );
-      setDeleteAlsoPayment(false);
+      toast.success('Entry deleted successfully');
       fetchInvoices();
       fetchTransactions();
       return true;
@@ -936,10 +927,29 @@ const BuyerAccountDetail = () => {
                         {editingRow === row.id ? (
                           <input type="text" className="w-full px-2 py-1 border border-[#C3C6D7]/30 rounded-lg text-sm focus:ring-2 focus:ring-[#004AC6]/20 focus:border-[#004AC6] outline-none" value={editDraft.maalInvoiceNumber || ''} onChange={(e) => setEditDraft({ ...editDraft, maalInvoiceNumber: e.target.value })} />
                         ) : (
-                          <span
-                            className={row.isLinkedToInvoice ? 'cursor-pointer hover:underline' : ''}
-                            onClick={() => row.isLinkedToInvoice && handleInvoiceNavigate(row.maalInvoiceNumber)}
-                          >{row.maalInvoiceNumber}</span>
+                          <span className="flex items-center gap-2">
+                            <span
+                              className={row.isLinkedToInvoice ? 'cursor-pointer hover:underline' : ''}
+                              onClick={() => row.isLinkedToInvoice && handleInvoiceNavigate(row.maalInvoiceNumber)}
+                            >{row.maalInvoiceNumber}</span>
+                            {row.status && (
+                              <span className={`
+                                px-1.5 py-0.5 rounded-full text-[9px] font-bold leading-none whitespace-nowrap
+                                ${row.status === 'paid'
+                                  ? 'bg-emerald-100 text-emerald-700'
+                                  : row.status === 'partially_paid'
+                                  ? 'bg-amber-100 text-amber-700'
+                                  : row.status === 'overdue'
+                                  ? 'bg-red-100 text-red-700'
+                                  : 'bg-blue-100 text-blue-700'}
+                              `}>
+                                {row.status === 'awaiting_payment' ? 'Awaiting'
+                                  : row.status === 'partially_paid' ? 'Partial'
+                                  : row.status === 'paid' ? 'Paid'
+                                  : 'Overdue'}
+                              </span>
+                            )}
+                          </span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-sm text-right font-semibold text-[#191C1E]">
@@ -1064,8 +1074,8 @@ const BuyerAccountDetail = () => {
           aria-labelledby="delete-entry-heading"
           tabIndex={-1}
           ref={deleteModalRef}
-          onKeyDown={(e) => { if (e.key === 'Escape' && !isDeleting) { setDeleteTarget(null); setDeleteAlsoPayment(false); } }}
-          onClick={(e) => { if (e.target === e.currentTarget && !isDeleting) { setDeleteTarget(null); setDeleteAlsoPayment(false); } }}
+          onKeyDown={(e) => { if (e.key === 'Escape' && !isDeleting) { setDeleteTarget(null); } }}
+          onClick={(e) => { if (e.target === e.currentTarget && !isDeleting) { setDeleteTarget(null); } }}
         >
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#C3C6D7]/20 p-8">
             <div className="w-12 h-12 rounded-full bg-red-100/50 flex items-center justify-center text-red-600 mb-6">
@@ -1077,42 +1087,16 @@ const BuyerAccountDetail = () => {
             </h2>
             <p className="text-[#434655] leading-relaxed mb-6">
               {deleteTarget?.type === 'maal' && deleteTarget?.isLinkedToInvoice ? (
-                <>Are you sure you want to permanently delete invoice <span className="font-bold text-[#191C1E]">"{deleteTarget.invoiceId}"</span>? This action cannot be undone.</>
+                <>Are you sure you want to permanently delete invoice <span className="font-bold text-[#191C1E]">"{deleteTarget.invoiceId}"</span>? All items, maal entries, and linked payments will be removed. This action cannot be undone.</>
               ) : deleteTarget?.type === 'maal' && deleteTarget?.isLinkedToOrder ? (
                 <>Are you sure you want to permanently delete this order entry <span className="font-bold text-[#191C1E]">"{deleteTarget.maalRemark}"</span>? This action cannot be undone.</>
               ) : (
                 <>Are you sure you want to delete this <span className="font-bold text-[#191C1E]">{deleteTarget?.type === 'maal' ? 'maal' : 'jama'}</span> entry? This action cannot be undone.</>
               )}
             </p>
-            {/* Show payment checkbox for linked invoices or orders that have a payment */}
-            {deleteTarget?.type === 'maal' && (deleteTarget?.isLinkedToInvoice || deleteTarget?.isLinkedToOrder) && (() => {
-              const paymentRemark = deleteTarget.isLinkedToInvoice
-                ? `Invoice ${deleteTarget.invoiceId}`
-                : deleteTarget.maalRemark; // e.g. "Order O-C-001"
-              const linkedPayment = transactions.find(t => (t.remark || '') === paymentRemark);
-              if (linkedPayment) {
-                return (
-                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
-                    <label className="flex items-start gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={deleteAlsoPayment}
-                        onChange={(e) => setDeleteAlsoPayment(e.target.checked)}
-                        className="w-5 h-5 mt-0.5 rounded border-amber-300 text-red-600 focus:ring-red-500/20 cursor-pointer shrink-0"
-                      />
-                      <div>
-                        <span className="text-sm font-bold text-amber-800 block">Also delete ₹{Number(linkedPayment.amount || 0).toLocaleString('en-IN')} linked payment from ledger (Jama)</span>
-                        <span className="text-xs text-amber-600 mt-1 block">If unchecked, only this entry will be deleted. The payment will remain in the ledger.</span>
-                      </div>
-                    </label>
-                  </div>
-                );
-              }
-              return null;
-            })()}
             <div className="flex items-center gap-3">
               <button
-                onClick={() => { setDeleteTarget(null); setDeleteAlsoPayment(false); }}
+                onClick={() => { setDeleteTarget(null); }}
                 className="flex-1 px-6 py-3 bg-[#E6E8EA] text-[#191C1E] font-bold rounded-xl hover:bg-[#E0E3E5] transition-all text-sm cursor-pointer"
               >Cancel</button>
               <button
@@ -1121,7 +1105,7 @@ const BuyerAccountDetail = () => {
                   setIsDeleting(true);
                   try {
                     const success = await handleDeleteEntry(target);
-                    if (success) { setDeleteTarget(null); setDeleteAlsoPayment(false); }
+                    if (success) { setDeleteTarget(null); }
                   } finally {
                     setIsDeleting(false);
                   }

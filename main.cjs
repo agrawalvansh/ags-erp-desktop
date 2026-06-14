@@ -243,6 +243,84 @@ app.whenReady().then(() => {
     }
   } catch (e) { console.error('[Notifications] Scanner error:', e.message); }
 
+  // ─── Per-Invoice Overdue Status Refresh ────────────────────
+  // Non-blocking — runs on every startup to catch invoices that became overdue overnight
+  setTimeout(() => {
+    try {
+      const nonPaid = db.prepare(`
+        SELECT i.invoice_id, i.invoice_date, i.payment_due_days, i.status,
+               i.grand_total, i.customer_id, c.reminder_enabled, c.name AS customer_name
+        FROM invoices i
+        JOIN customers c ON c.customer_id = i.customer_id
+        WHERE i.status IN ('awaiting_payment', 'partially_paid', 'overdue')
+      `).all()
+
+      let overdueCount = 0
+      const insertNotif = db.prepare(`
+        INSERT OR IGNORE INTO notifications
+          (type, account_id, account_name, invoice_no, invoice_date,
+           pending_amount, message, is_read, created_at, reminder_key)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+      `)
+
+      for (const inv of nonPaid) {
+        if (inv.reminder_enabled !== 1 || inv.payment_due_days <= 0) continue
+
+        const totalPaid = db.prepare(`
+          SELECT COALESCE(SUM(jama_amount), 0) AS total_paid
+          FROM customer_jama_account WHERE linked_invoice_id = ?
+        `).get(inv.invoice_id)?.total_paid || 0
+
+        if (totalPaid >= inv.grand_total) continue // already paid
+
+        const dueDate = new Date(inv.invoice_date)
+        dueDate.setDate(dueDate.getDate() + inv.payment_due_days)
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        dueDate.setHours(0, 0, 0, 0)
+
+        if (today > dueDate && inv.status !== 'overdue') {
+          db.prepare(`UPDATE invoices SET status = 'overdue' WHERE invoice_id = ?`)
+            .run(inv.invoice_id)
+
+          const pendingAmount = inv.grand_total - totalPaid
+          const reminderKey = `overdue_invoice_${inv.invoice_id}`
+          insertNotif.run(
+            'invoice_overdue',
+            inv.customer_id,
+            inv.customer_name,
+            inv.invoice_id,
+            inv.invoice_date,
+            pendingAmount,
+            `Invoice ${inv.invoice_id} for ${inv.customer_name}: ₹${Math.round(pendingAmount).toLocaleString('en-IN')} overdue`,
+            new Date().toISOString(),
+            reminderKey
+          )
+          overdueCount++
+        }
+      }
+
+      if (overdueCount > 0) {
+        console.log(`[Overdue] Marked ${overdueCount} invoice(s) as overdue`)
+        // Push updated unread count to renderer
+        const unread = db.prepare('SELECT COUNT(*) AS count FROM notifications WHERE is_read = 0').get()
+        if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+          if (mainWindow.webContents.isLoading()) {
+            mainWindow.webContents.once('did-finish-load', () => {
+              if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send('notifications:countUpdate', unread.count)
+              }
+            })
+          } else {
+            mainWindow.webContents.send('notifications:countUpdate', unread.count)
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[Overdue] Invoice overdue refresh error:', err.message)
+    }
+  }, 2000)
+
   // Batch transliterate any products missing Marathi names (non-blocking)
   setTimeout(async () => {
     try {

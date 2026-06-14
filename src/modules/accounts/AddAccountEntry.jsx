@@ -28,6 +28,11 @@ const AddAccountEntry = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [originalFormData, setOriginalFormData] = useState(null);
+
+  // Link to Invoice state (Jama entries only)
+  const [linkToInvoice, setLinkToInvoice] = useState(false);
+  const [unpaidInvoices, setUnpaidInvoices] = useState([]);
+  const [linkedInvoiceId, setLinkedInvoiceId] = useState('');
   const [saved, setSaved] = useState(false);
 
   // Load existing entry when editing
@@ -58,6 +63,17 @@ const AddAccountEntry = () => {
     };
     load();
   }, [id, isEditing, type]);
+
+  // Fetch unpaid invoices for Link to Invoice feature
+  useEffect(() => {
+    if (slug && type === 'jama' && !isEditing) {
+      window.api.invoiceGetUnpaid(slug).then(setUnpaidInvoices).catch(() => setUnpaidInvoices([]));
+    } else {
+      setUnpaidInvoices([]);
+      setLinkToInvoice(false);
+      setLinkedInvoiceId('');
+    }
+  }, [slug, type, isEditing]);
 
   // Unsaved changes detection
   const isDirty = useMemo(() => {
@@ -121,6 +137,11 @@ const AddAccountEntry = () => {
       } else {
         channel = isEditing ? 'customers:txnUpdate' : 'customers:txnCreate';
         payload.txn_type = formData.txnType;
+        // Link to invoice support
+        if (linkToInvoice && linkedInvoiceId) {
+          payload.linked_invoice_id = linkedInvoiceId;
+          if (!payload.remark) payload.remark = `Invoice ${linkedInvoiceId}`;
+        }
       }
       // For maalUpdate, backend expects invoice_id (the maal_invoice_no), not generic id
       const editPayload = isEditing
@@ -275,6 +296,50 @@ const AddAccountEntry = () => {
                   <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#434655] pointer-events-none" />
                 </div>
                   {errors.txnType && <p className="text-xs text-[#BA1A1A] ml-1">{errors.txnType}</p>}
+                </div>
+              )}
+
+              {/* Link to Invoice (Jama entries only, create mode) */}
+              {!isMaal && !isEditing && unpaidInvoices.length > 0 && (
+                <div className="md:col-span-2 space-y-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    <input
+                      type="checkbox"
+                      id="linkInvoice"
+                      checked={linkToInvoice}
+                      onChange={e => {
+                        setLinkToInvoice(e.target.checked);
+                        if (!e.target.checked) setLinkedInvoiceId('');
+                      }}
+                      className="w-4 h-4 accent-[#004AC6] cursor-pointer"
+                    />
+                    <label htmlFor="linkInvoice"
+                      className="text-[10px] font-bold text-[#434655] uppercase tracking-wider cursor-pointer">
+                      Link to Invoice
+                    </label>
+                  </div>
+
+                  {linkToInvoice && (
+                    <div>
+                      <label className="text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1 block">
+                        Select Invoice
+                      </label>
+                      <select
+                        value={linkedInvoiceId}
+                        onChange={e => setLinkedInvoiceId(e.target.value)}
+                        className="w-full py-2.5 px-3 bg-[#F2F4F6] border-none rounded-lg text-sm
+                                   focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all"
+                      >
+                        <option value="">Select invoice...</option>
+                        {unpaidInvoices.map(inv => (
+                          <option key={inv.invoice_id} value={inv.invoice_id}>
+                            {inv.invoice_id} — ₹{(inv.grand_total - inv.total_paid).toFixed(2)} due
+                            {inv.status === 'overdue' ? ' ⚠ Overdue' : inv.status === 'partially_paid' ? ' (Partial)' : ' (Unpaid)'}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
               )}
 

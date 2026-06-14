@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Printer, Plus, Trash2, Save, Edit, AlertTriangle, Languages, CircleX, ArrowLeft, Calculator } from 'lucide-react';
+import { Printer, Plus, Trash2, Save, Edit, AlertTriangle, Languages, CircleX, ArrowLeft, Calculator, SquarePen } from 'lucide-react';
 import { useParams, useNavigate, useLocation, useBlocker } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
 import { Search } from 'lucide-react';
@@ -383,11 +383,26 @@ const Invoice = () => {
   const [similarCustomers, setSimilarCustomers] = useState([]);
 
 
-  // Payment/Advance state
+  // Payment/Advance state (create flow — single optional payment)
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentType, setPaymentType] = useState('Cash');
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
   const PAYMENT_TYPES = ['Cash', 'UPI', 'Transfer', 'RTGS'];
+
+  // Multi-payment state (edit flow)
+  const [payments, setPayments] = useState([]);
+  const [totalPaid, setTotalPaid] = useState(0);
+  const [balanceDue, setBalanceDue] = useState(0);
+  const [invoiceStatus, setInvoiceStatus] = useState('awaiting_payment');
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [editingPayment, setEditingPayment] = useState(null);
+  const [payForm, setPayForm] = useState({
+    payment_amount: '',
+    payment_type: 'Cash',
+    payment_date: new Date().toISOString().split('T')[0],
+    remark: ''
+  });
+  const [paymentDueDays, setPaymentDueDays] = useState(0);
 
   // Time field state
   const [invoiceTime, setInvoiceTime] = useState(new Date().toTimeString().slice(0, 5));
@@ -401,7 +416,6 @@ const Invoice = () => {
   // Delete modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeletePending, setIsDeletePending] = useState(false);
-  const [deleteAlsoPayment, setDeleteAlsoPayment] = useState(false);
   const deleteModalRef = useRef(null);
 
   // Original invoice data for dirty state detection (when editing existing invoice)
@@ -427,9 +441,7 @@ const Invoice = () => {
     if (parseFloat(packing || 0) !== parseFloat(originalInvoiceData.packing || 0)) return true;
     if (parseFloat(freight || 0) !== parseFloat(originalInvoiceData.freight || 0)) return true;
     if (parseFloat(riksha || 0) !== parseFloat(originalInvoiceData.riksha || 0)) return true;
-    if (parseFloat(paymentAmount || 0) !== parseFloat(originalInvoiceData.payment_amount || 0)) return true;
-    if (paymentType !== (originalInvoiceData.payment_type || 'Cash')) return true;
-    if (paymentDate !== (originalInvoiceData.payment_date || originalInvoiceData.invoice_date)) return true;
+    if (paymentDueDays !== (originalInvoiceData.payment_due_days || 0)) return true;
     if (invoiceTime !== (originalInvoiceData.invoice_time || '')) return true;
     if ((isPrivateNote ? 1 : 0) !== (originalInvoiceData.is_private_note || 0)) return true;
 
@@ -445,7 +457,7 @@ const Invoice = () => {
     }
 
     return false;
-  }, [isNewInvoice, customerId, invoiceItems, originalInvoiceData, remark, invoiceDate, packing, freight, riksha, paymentAmount, paymentType, paymentDate, invoiceTime, isPrivateNote]);
+  }, [isNewInvoice, customerId, invoiceItems, originalInvoiceData, remark, invoiceDate, packing, freight, riksha, paymentDueDays, invoiceTime, isPrivateNote]);
 
   // Backward compatibility - keep hasUnsavedChanges for navigation blocker
   const hasUnsavedChanges = useCallback(() => {
@@ -646,16 +658,12 @@ const Invoice = () => {
           setInvoiceTime(inv.invoice_time || '');
           setIsPrivateNote(inv.is_private_note === 1);
 
-          // Load payment info if exists
-          if (inv.payment_amount && inv.payment_amount > 0) {
-            setPaymentAmount(inv.payment_amount.toString());
-            setPaymentType(inv.payment_type || 'Cash');
-            setPaymentDate(inv.payment_date || inv.invoice_date);
-          } else {
-            setPaymentAmount('');
-            setPaymentType('Cash');
-            setPaymentDate(inv.invoice_date);
-          }
+          // Load payment info — multi-payment system
+          setPayments(inv.payments || []);
+          setTotalPaid(inv.total_paid || 0);
+          setBalanceDue(inv.balance_due || 0);
+          setInvoiceStatus(inv.status || 'awaiting_payment');
+          setPaymentDueDays(inv.payment_due_days || 0);
 
           // Store original data for dirty state detection
           setOriginalInvoiceData(inv);
@@ -961,6 +969,10 @@ const Invoice = () => {
     setMobileNo(cust.mobile);
     setShowCustDropdown(false);
     setHighlightedCustIndex(-1);
+    // Pre-fill due days from customer's reminder_days (regardless of reminder_enabled)
+    if (isNewInvoice) {
+      setPaymentDueDays(cust.reminder_days || 0);
+    }
   };
 
   // Handle customer input blur — detect unmatched customer name
@@ -1112,14 +1124,18 @@ const Invoice = () => {
         quantity: parseFloat(i.quantity),
         selling_price: parseFloat(i.sellingPrice)
       })),
-      // Payment/Advance fields
-      payment_amount: parseFloat(paymentAmount || 0),
-      payment_type: paymentType,
-      payment_date: paymentDate || invoiceDate,
       // Time and private note
       invoice_time: currentTime,
-      is_private_note: isPrivateNote ? 1 : 0
+      is_private_note: isPrivateNote ? 1 : 0,
+      payment_due_days: paymentDueDays
     };
+
+    // Only include initial payment fields on CREATE (not update)
+    if (!currentInvoiceId) {
+      payload.payment_amount = parseFloat(paymentAmount || 0);
+      payload.payment_type = paymentType;
+      payload.payment_date = paymentDate || invoiceDate;
+    }
 
     try {
       const data = await window.api.invoke(
@@ -1133,9 +1149,6 @@ const Invoice = () => {
         return; // Keep data, do NOT clear or navigate
       }
 
-      // Only on confirmed success
-      toast.success(`Invoice saved successfully (ID: ${data.invoice_id || currentInvoiceId})`);
-
       const savedInvoiceId = data.invoice_id || currentInvoiceId;
 
       // if it was a create request, persist the returned id for future updates
@@ -1144,18 +1157,11 @@ const Invoice = () => {
         setCustomInvoiceNo(data.invoice_id);
       }
 
-      // Update original data to reflect saved state (makes isDirty = false)
-      setOriginalInvoiceData({
-        ...payload,
-        invoice_id: savedInvoiceId,
-        invoice_time: currentTime,
-        is_private_note: isPrivateNote ? 1 : 0,
-        items: invoiceItems.map(i => ({
-          product_code: i.code || i.product_code,
-          quantity: parseFloat(i.quantity),
-          selling_price: parseFloat(i.sellingPrice)
-        }))
-      });
+      // Refresh payment/status state from the database (critical after create)
+      await loadInvoice(savedInvoiceId);
+
+      toast.success(`Invoice saved successfully (ID: ${savedInvoiceId})`);
+
       setIsNewInvoice(false);
       setIsSaved(true);
       setIsEditing(false);
@@ -1192,7 +1198,7 @@ const Invoice = () => {
     if (!currentInvoiceId) { toast.error('No invoice to delete'); return; }
     setIsDeletePending(true);
     try {
-      const result = await window.api.invoke('invoices:delete', { invoice_id: currentInvoiceId, deletePayment: deleteAlsoPayment });
+      const result = await window.api.invoke('invoices:delete', { invoice_id: currentInvoiceId });
       if (!result || result.error || result.success === false) {
         toast.error(result?.error || 'Failed to delete invoice');
         return;
@@ -1200,8 +1206,7 @@ const Invoice = () => {
       // Clear dirty state BEFORE navigating so useBlocker allows navigation
       resetInvoiceState();
       setShowDeleteModal(false);
-      setDeleteAlsoPayment(false);
-      toast.success(deleteAlsoPayment ? 'Invoice & linked payment deleted' : 'Invoice deleted (payment kept in ledger)');
+      toast.success('Invoice deleted successfully');
       // Navigate to create new invoice after short delay
       setTimeout(() => { navigate('/invoice'); }, 500);
     } catch (err) {
@@ -1211,6 +1216,61 @@ const Invoice = () => {
       setIsDeletePending(false);
     }
   };
+
+  // Load / reload invoice data (used after payment changes)
+  const loadInvoice = async (id) => {
+    try {
+      const inv = await window.api.getInvoice(id);
+      if (!inv || inv.error) return;
+      setPayments(inv.payments || []);
+      setTotalPaid(inv.total_paid || 0);
+      setBalanceDue(inv.balance_due || 0);
+      setInvoiceStatus(inv.status || 'awaiting_payment');
+      setPaymentDueDays(inv.payment_due_days || 0);
+      setOriginalInvoiceData(inv);
+    } catch (err) {
+      console.error('Error reloading invoice:', err);
+    }
+  };
+
+  // Multi-payment: save (add or edit)
+  async function handleSavePayment() {
+    const amt = parseFloat(payForm.payment_amount);
+    if (!amt || amt <= 0) { toast.error('Enter a valid amount'); return; }
+
+    if (editingPayment) {
+      const res = await window.api.invoiceUpdatePayment({
+        payment_id: editingPayment.id,
+        invoice_id: currentInvoiceId,
+        ...payForm,
+        payment_amount: amt
+      });
+      if (res.error) { toast.error(res.error); return; }
+      toast.success('Payment updated successfully');
+    } else {
+      const res = await window.api.invoiceAddPayment({
+        invoice_id: currentInvoiceId,
+        customer_id: customerId,
+        ...payForm,
+        payment_amount: amt
+      });
+      if (res.error) { toast.error(res.error); return; }
+      toast.success('Payment saved successfully');
+    }
+
+    setShowPaymentForm(false);
+    setEditingPayment(null);
+    // Reload invoice to refresh payment list and status
+    await loadInvoice(currentInvoiceId);
+  }
+
+  // Multi-payment: delete
+  async function handleDeletePayment(payment_id) {
+    const res = await window.api.invoiceDeletePayment({ payment_id, invoice_id: currentInvoiceId });
+    if (res.error) { toast.error(res.error); return; }
+    toast.success('Payment deleted successfully');
+    await loadInvoice(currentInvoiceId);
+  }
 
   // Marathi print state
   const [printMarathi, setPrintMarathi] = useState(false);
@@ -1243,6 +1303,9 @@ const Invoice = () => {
       remark,
       paymentAmount,
       paymentType,
+      payments,
+      totalPaid,
+      balanceDue,
       printMarathi,
       marathiNames: marathiNamesMap,
       isPrivateNote,
@@ -1542,9 +1605,38 @@ const Invoice = () => {
               )}
               <p className="text-xs font-medium text-[#64748B] uppercase tracking-wider">Reference</p>
               <p className="text-sm font-bold text-[#2563EB]">{customInvoiceNo || '...'}</p>
+              {currentInvoiceId && invoiceStatus && (
+                <span className={`
+                  mt-1 inline-block px-2.5 py-1 rounded-full text-xs font-bold
+                  ${invoiceStatus === 'paid'
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : invoiceStatus === 'partially_paid'
+                    ? 'bg-amber-100 text-amber-700'
+                    : invoiceStatus === 'overdue'
+                    ? 'bg-red-100 text-[#BA1A1A]'
+                    : 'bg-blue-100 text-blue-700'}
+                `}>
+                  {invoiceStatus === 'awaiting_payment' ? 'Awaiting Payment'
+                    : invoiceStatus === 'partially_paid' ? 'Partially Paid'
+                    : invoiceStatus === 'paid' ? 'Paid'
+                    : 'Overdue'}
+                </span>
+              )}
             </div>
             <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A] tracking-wide">ESTIMATE</h1>
             <div className="flex items-center gap-4 text-right">
+              {customerId && (
+                <div className="print:hidden">
+                  <p className="text-xs font-medium text-[#64748B] uppercase tracking-wider mb-1 text-left">Due Days</p>
+                  <input
+                    type="number"
+                    min={0}
+                    value={paymentDueDays}
+                    onChange={e => setPaymentDueDays(parseInt(e.target.value) || 0)}
+                    className="w-16 text-sm font-semibold text-[#0F172A] border border-[#E2E8F0] rounded-md px-2 py-1 text-center focus:ring-2 focus:ring-[#2563EB] focus:border-transparent"
+                  />
+                </div>
+              )}
               <div>
                 <p className="text-xs font-medium text-[#64748B] uppercase tracking-wider mb-1 text-left">Date</p>
                 <input
@@ -1589,6 +1681,7 @@ const Invoice = () => {
                       setCustomerId(cust.customer_id);
                       setAddress(cust.address);
                       setMobileNo(cust.mobile);
+                      if (isNewInvoice) setPaymentDueDays(cust.reminder_days || 0);
                     } else {
                       setCustomerId('');
                       setAddress('');
@@ -1765,44 +1858,234 @@ const Invoice = () => {
           <div className="grid grid-cols-12 gap-8">
             {/* Left Column (col-span-7) — Payment Details + Remarks */}
             <div className="col-span-12 md:col-span-7 space-y-6">
-              {/* Payment Details */}
-              <div className="print:hidden">
-                <label className="block text-xs font-bold text-[#434655] uppercase mb-2 ml-1">Payment Details</label>
-                <div className="bg-white p-6 rounded-xl border border-[#C3C6D7]/10 grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-[10px] text-[#434655] font-bold mb-1">Paid Amount</label>
-                    <input
-                      type="number"
-                      value={paymentAmount}
-                      onChange={(e) => setPaymentAmount(e.target.value)}
-                      className="w-full py-2.5 px-3 bg-[#F2F4F6] border-none rounded-lg text-sm font-bold text-[#004AC6] focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all"
-                      placeholder="₹ 0.00"
-                      min="0"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-[#434655] font-bold mb-1">Payment Type</label>
-                    <select
-                      value={paymentType}
-                      onChange={(e) => setPaymentType(e.target.value)}
-                      className="w-full py-2.5 px-3 bg-[#F2F4F6] border-none rounded-lg text-sm appearance-none"
-                    >
-                      {PAYMENT_TYPES.map(type => (
-                        <option key={type} value={type}>{type}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-[#434655] font-bold mb-1">Pay Date</label>
-                    <input
-                      type="date"
-                      value={paymentDate}
-                      onChange={(e) => setPaymentDate(e.target.value)}
-                      className="w-full py-2.5 px-3 bg-[#F2F4F6] border-none rounded-lg text-sm"
-                    />
+              {/* Payment Details — CREATE flow: single optional payment */}
+              {isNewInvoice && (
+                <div className="print:hidden">
+                  <label className="block text-xs font-bold text-[#434655] uppercase mb-2 ml-1">Payment Details</label>
+                  <div className="bg-white p-6 rounded-xl border border-[#C3C6D7]/10 grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-[10px] text-[#434655] font-bold mb-1">Paid Amount</label>
+                      <input
+                        type="number"
+                        value={paymentAmount}
+                        onChange={(e) => setPaymentAmount(e.target.value)}
+                        className="w-full py-2.5 px-3 bg-[#F2F4F6] border-none rounded-lg text-sm font-bold text-[#004AC6] focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all"
+                        placeholder="₹ 0.00"
+                        min="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-[#434655] font-bold mb-1">Payment Type</label>
+                      <select
+                        value={paymentType}
+                        onChange={(e) => setPaymentType(e.target.value)}
+                        className="w-full py-2.5 px-3 bg-[#F2F4F6] border-none rounded-lg text-sm appearance-none"
+                      >
+                        {PAYMENT_TYPES.map(type => (
+                          <option key={type} value={type}>{type}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-[#434655] font-bold mb-1">Pay Date</label>
+                      <input
+                        type="date"
+                        value={paymentDate}
+                        onChange={(e) => setPaymentDate(e.target.value)}
+                        className="w-full py-2.5 px-3 bg-[#F2F4F6] border-none rounded-lg text-sm"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
+
+              {/* Payment History — EDIT flow: multi-payment system */}
+              {!isNewInvoice && currentInvoiceId && (
+                <section className="bg-white rounded-xl border border-[#C3C6D7]/10 shadow-sm overflow-hidden print:hidden">
+                  {/* Header */}
+                  <div className="px-6 py-4 bg-[#F2F4F6]/50 border-b border-[#C3C6D7]/10
+                                  flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-bold text-[#191C1E]">Payment History</h3>
+                      <p className="text-xs text-[#64748B] mt-0.5">
+                        Paid: <strong className="text-[#0F172A]">₹{totalPaid.toFixed(2)}</strong>
+                        {' · '}
+                        Balance: <strong className={balanceDue > 0 ? 'text-[#BA1A1A]' : 'text-emerald-600'}>
+                          ₹{balanceDue.toFixed(2)}
+                        </strong>
+                      </p>
+                    </div>
+                    {invoiceStatus !== 'paid' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingPayment(null);
+                          setPayForm({
+                            payment_amount: balanceDue > 0 ? balanceDue.toFixed(2) : '',
+                            payment_type: 'Cash',
+                            payment_date: new Date().toISOString().split('T')[0],
+                            remark: ''
+                          });
+                          setShowPaymentForm(true);
+                        }}
+                        className="px-4 py-2 text-white text-xs font-bold rounded-lg
+                                   shadow-lg shadow-[#004AC6]/20 active:scale-95 transition-all cursor-pointer"
+                        style={{ background: 'linear-gradient(135deg, #004AC6 0%, #2563EB 100%)' }}
+                      >
+                        + Add Payment
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Payment list */}
+                  {payments.length === 0 ? (
+                    <div className="px-6 py-8 text-center">
+                      <p className="text-sm text-[#64748B]">No payments recorded yet</p>
+                    </div>
+                  ) : (
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-[#F2F4F6]">
+                          <th className="py-3 px-6 text-left text-[10px] font-extrabold text-[#434655] uppercase tracking-wider">Date</th>
+                          <th className="py-3 px-6 text-left text-[10px] font-extrabold text-[#434655] uppercase tracking-wider">Type</th>
+                          <th className="py-3 px-6 text-right text-[10px] font-extrabold text-[#434655] uppercase tracking-wider">Amount</th>
+                          <th className="py-3 px-6 text-left text-[10px] font-extrabold text-[#434655] uppercase tracking-wider">Remark</th>
+                          <th className="py-3 px-6" />
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#ECEEF0]">
+                        {payments.map(pay => (
+                          <tr key={pay.id} className="hover:bg-[#F2F4F6]/50 transition-colors">
+                            <td className="py-3 px-6 text-sm text-[#64748B]">{pay.payment_date}</td>
+                            <td className="py-3 px-6">
+                              <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5
+                                               rounded text-[10px] font-bold">
+                                {pay.payment_type}
+                              </span>
+                            </td>
+                            <td className="py-3 px-6 text-right text-sm font-semibold text-[#2563EB]">
+                              ₹{pay.payment_amount.toFixed(2)}
+                            </td>
+                            <td className="py-3 px-6 text-sm text-[#64748B]">{pay.remark}</td>
+                            <td className="py-3 px-6">
+                              <div className="flex items-center justify-end gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingPayment(pay);
+                                    setPayForm({
+                                      payment_amount: pay.payment_amount.toString(),
+                                      payment_type: pay.payment_type,
+                                      payment_date: pay.payment_date,
+                                      remark: pay.remark || ''
+                                    });
+                                    setShowPaymentForm(true);
+                                  }}
+                                  className="p-2 rounded-full text-[#434655] hover:text-[#004AC6]
+                                             hover:bg-white hover:shadow-sm transition-all cursor-pointer"
+                                >
+                                  <SquarePen size={14} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeletePayment(pay.id)}
+                                  className="p-2 rounded-full text-[#434655] hover:text-[#DC2626]
+                                             hover:bg-white hover:shadow-sm transition-all cursor-pointer"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+
+                  {/* Add/Edit payment inline form */}
+                  {showPaymentForm && (
+                    <div className="px-6 py-4 bg-[#F8FAFC] border-t border-[#E2E8F0]">
+                      <p className="text-xs font-bold text-[#434655] uppercase tracking-wider mb-3">
+                        {editingPayment ? 'Edit Payment' : 'New Payment'}
+                      </p>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div>
+                          <label className="text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1 block">
+                            Amount
+                          </label>
+                          <input
+                            type="number"
+                            value={payForm.payment_amount}
+                            onChange={e => setPayForm(p => ({ ...p, payment_amount: e.target.value }))}
+                            className="w-full py-2.5 px-3 bg-[#F2F4F6] border-none rounded-lg text-sm
+                                       focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1 block">
+                            Type
+                          </label>
+                          <select
+                            value={payForm.payment_type}
+                            onChange={e => setPayForm(p => ({ ...p, payment_type: e.target.value }))}
+                            className="w-full py-2.5 px-3 bg-[#F2F4F6] border-none rounded-lg text-sm
+                                       focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all"
+                          >
+                            <option>Cash</option>
+                            <option>UPI</option>
+                            <option>Transfer</option>
+                            <option>RTGS</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1 block">
+                            Date
+                          </label>
+                          <input
+                            type="date"
+                            value={payForm.payment_date}
+                            onChange={e => setPayForm(p => ({ ...p, payment_date: e.target.value }))}
+                            className="w-full py-2.5 px-3 bg-[#F2F4F6] border-none rounded-lg text-sm
+                                       focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1 block">
+                            Remark
+                          </label>
+                          <input
+                            type="text"
+                            value={payForm.remark}
+                            onChange={e => setPayForm(p => ({ ...p, remark: e.target.value }))}
+                            placeholder="Optional"
+                            className="w-full py-2.5 px-3 bg-[#F2F4F6] border-none rounded-lg text-sm
+                                       focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-2 mt-3">
+                        <button
+                          type="button"
+                          onClick={handleSavePayment}
+                          className="px-5 py-2 text-white font-bold text-xs rounded-lg
+                                     shadow-lg shadow-[#004AC6]/20 active:scale-95 transition-all cursor-pointer"
+                          style={{ background: 'linear-gradient(135deg, #004AC6 0%, #2563EB 100%)' }}
+                        >
+                          {editingPayment ? 'Update Payment' : 'Save Payment'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setShowPaymentForm(false); setEditingPayment(null); }}
+                          className="px-5 py-2 bg-[#E6E8EA] text-[#191C1E] font-bold text-xs
+                                     rounded-lg hover:bg-[#E0E3E5] transition-colors cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </section>
+              )}
 
               {/* Remarks / Notes */}
               <div>
@@ -1891,12 +2174,58 @@ const Invoice = () => {
                     </div>
                   </div>
 
-                  {/* Balance Due (if payment made) */}
-                  {parseFloat(paymentAmount || 0) > 0 && (
-                    <div className="flex justify-between pt-3 border-t border-dashed border-[#ECEEF0] print:hidden">
-                      <span className="text-sm font-semibold text-green-700">Balance Due</span>
-                      <span className="text-sm font-semibold text-green-700">₹ {formatIndian(grandTotal - parseFloat(paymentAmount || 0))}</span>
-                    </div>
+                  {/* Payment entries below Grand Total */}
+                  {/* CREATE flow: single payment entry */}
+                  {isNewInvoice && parseFloat(paymentAmount || 0) > 0 && (
+                    <>
+                      <div className="flex justify-between items-center pt-3 border-t border-dashed border-[#ECEEF0]">
+                        <span className="text-sm text-[#434655]">
+                          Payment ({paymentType})
+                        </span>
+                        <span className="text-sm font-semibold text-emerald-600">
+                          − ₹ {formatIndian(parseFloat(paymentAmount || 0))}
+                        </span>
+                      </div>
+                      {grandTotal - parseFloat(paymentAmount || 0) > 0 && (
+                        <div className="flex justify-between items-center pt-2">
+                          <span className="text-sm font-extrabold text-[#191C1E] uppercase">Pending</span>
+                          <span className="text-lg font-black text-[#BA1A1A]">
+                            ₹ {formatIndian(grandTotal - parseFloat(paymentAmount || 0))}
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* EDIT flow: multi-payment entries */}
+                  {!isNewInvoice && payments.length > 0 && (
+                    <>
+                      {payments.map((pay, idx) => (
+                        <div key={pay.id || idx} className="flex justify-between items-center pt-3 border-t border-dashed border-[#ECEEF0]">
+                          <span className="text-sm text-[#434655]">
+                            {pay.remark || pay.payment_type || 'Payment'}
+                            <span className="text-[10px] text-[#94A3B8] ml-1.5">({pay.payment_date})</span>
+                          </span>
+                          <span className="text-sm font-semibold text-emerald-600">
+                            − ₹ {formatIndian(pay.payment_amount)}
+                          </span>
+                        </div>
+                      ))}
+                      {balanceDue > 0 && (
+                        <div className="flex justify-between items-center pt-3 border-t border-[#ECEEF0]">
+                          <span className="text-sm font-extrabold text-[#191C1E] uppercase">Pending</span>
+                          <span className="text-lg font-black text-[#BA1A1A]">
+                            ₹ {formatIndian(balanceDue)}
+                          </span>
+                        </div>
+                      )}
+                      {balanceDue <= 0 && (
+                        <div className="flex justify-between items-center pt-3 border-t border-[#ECEEF0]">
+                          <span className="text-sm font-extrabold text-emerald-700 uppercase">Fully Paid</span>
+                          <span className="text-sm font-bold text-emerald-700">✓</span>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -1904,18 +2233,24 @@ const Invoice = () => {
           </div>
         </div>
 
-        {/* Print-only: Payment & Balance Due (read-only text for print) */}
-        {parseFloat(paymentAmount || 0) > 0 && (
+        {/* Print-only: Payment & Balance Due */}
+        {totalPaid > 0 && (
           <div className="hidden print:block px-6 pb-4">
             <div className="border-t border-gray-200 pt-3">
-              <div className="flex justify-between mb-2">
-                <span className="text-sm text-gray-600">Payment / Advance Received ({paymentType}):</span>
-                <span className="text-sm font-medium">₹{formatNumber(parseFloat(paymentAmount || 0))}</span>
-              </div>
-              <div className="flex justify-between font-semibold text-green-700">
-                <span>Balance Due:</span>
-                <span>₹{formatIndian(grandTotal - parseFloat(paymentAmount || 0))}</span>
-              </div>
+              {payments.map((pay, idx) => (
+                <div key={pay.id || idx} className="flex justify-between mb-1">
+                  <span className="text-sm text-gray-600">
+                    {pay.remark || pay.payment_type || 'Payment'} ({pay.payment_date}):
+                  </span>
+                  <span className="text-sm font-medium">− ₹{formatNumber(pay.payment_amount)}</span>
+                </div>
+              ))}
+              {balanceDue > 0 && (
+                <div className="flex justify-between font-semibold text-green-700 mt-2 pt-2 border-t border-gray-200">
+                  <span>Balance Due:</span>
+                  <span>₹{formatIndian(balanceDue)}</span>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1995,8 +2330,8 @@ const Invoice = () => {
           aria-labelledby="delete-invoice-heading"
           tabIndex={-1}
           ref={deleteModalRef}
-          onKeyDown={(e) => { if (e.key === 'Escape' && !isDeletePending) { setShowDeleteModal(false); setDeleteAlsoPayment(false); } }}
-          onClick={(e) => { if (e.target === e.currentTarget && !isDeletePending) { setShowDeleteModal(false); setDeleteAlsoPayment(false); } }}
+          onKeyDown={(e) => { if (e.key === 'Escape' && !isDeletePending) { setShowDeleteModal(false); } }}
+          onClick={(e) => { if (e.target === e.currentTarget && !isDeletePending) { setShowDeleteModal(false); } }}
         >
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#C3C6D7]/20 p-8">
             <div className="w-12 h-12 rounded-full bg-red-100/50 flex items-center justify-center text-red-600 mb-6 mx-auto">
@@ -2006,28 +2341,11 @@ const Invoice = () => {
               Delete Estimate?
             </h2>
             <p className="text-[#434655] leading-relaxed mb-6 text-center">
-              Are you sure you want to permanently delete <span className="font-bold text-[#191C1E]">"{currentInvoiceId}"</span>? All items and maal entries will be removed. This action cannot be undone.
+              Are you sure you want to permanently delete <span className="font-bold text-[#191C1E]">"{currentInvoiceId}"</span>? All items, maal entries, and linked payments will be removed. This action cannot be undone.
             </p>
-            {/* Show payment checkbox only when there's a linked payment */}
-            {parseFloat(originalInvoiceData?.payment_amount || 0) > 0 && (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-left">
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={deleteAlsoPayment}
-                    onChange={(e) => setDeleteAlsoPayment(e.target.checked)}
-                    className="w-5 h-5 mt-0.5 rounded border-amber-300 text-red-600 focus:ring-red-500/20 cursor-pointer shrink-0"
-                  />
-                  <div>
-                    <span className="text-sm font-bold text-amber-800 block">Also delete ₹{Number(originalInvoiceData.payment_amount).toLocaleString('en-IN')} linked payment from ledger (Jama)</span>
-                    <span className="text-xs text-amber-600 mt-1 block">If unchecked, only the invoice is deleted. The payment stays in the ledger.</span>
-                  </div>
-                </label>
-              </div>
-            )}
             <div className="flex items-center gap-3">
               <button
-                onClick={() => { setShowDeleteModal(false); setDeleteAlsoPayment(false); }}
+                onClick={() => { setShowDeleteModal(false); }}
                 disabled={isDeletePending}
                 className="flex-1 px-6 py-3 bg-[#E6E8EA] text-[#191C1E] font-bold rounded-xl hover:bg-[#E0E3E5] transition-all text-sm cursor-pointer disabled:opacity-50"
               >Cancel</button>
