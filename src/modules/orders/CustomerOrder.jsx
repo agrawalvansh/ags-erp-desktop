@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Search, ChevronDown, Plus, Edit, Trash2, X } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import { naturalCompare } from '../../utils/productUtils';
 
 const CustomerOrder = () => {
   const navigate = useNavigate();
@@ -31,7 +32,7 @@ const CustomerOrder = () => {
 
   useEffect(() => { fetchOrders(); }, []);
 
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const [sortConfig, setSortConfig] = useState({ key: 'orderNo', direction: 'desc' });
 
   const processedOrders = useMemo(() => {
     let merged = orders.map(o => ({
@@ -54,8 +55,10 @@ const CustomerOrder = () => {
 
     if (sortConfig.key) {
       filtered.sort((a, b) => {
-        if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'asc' ? -1 : 1;
-        if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'asc' ? 1 : -1;
+        const dir = sortConfig.direction === 'asc' ? 1 : -1;
+        if (sortConfig.key === 'orderNo') return dir * naturalCompare(a.orderNo, b.orderNo);
+        if (a[sortConfig.key] < b[sortConfig.key]) return -dir;
+        if (a[sortConfig.key] > b[sortConfig.key]) return dir;
         return 0;
       });
     }

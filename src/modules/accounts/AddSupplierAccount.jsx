@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useNavigate, useParams, useBlocker } from 'react-router-dom';
 import { ArrowLeft, Save, Trash2, Lock } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal';
+import NavigationWarningModal from '../../components/NavigationWarningModal';
 
 // Form to create / edit a supplier (mirrors AddBuyerAccount but hits /api/suppliers)
 const AddSupplierAccount = () => {
@@ -20,6 +21,8 @@ const AddSupplierAccount = () => {
   const [errors, setErrors] = useState({});
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [originalValues, setOriginalValues] = useState(null);
+  const [saved, setSaved] = useState(false);
 
   // Focus the delete modal when it opens
   useEffect(() => {
@@ -39,12 +42,17 @@ const AddSupplierAccount = () => {
             setName(found.name || '');
             setAddress(found.address || '');
             setMobile(found.mobile || '');
+            setOriginalValues({ name: found.name || '', address: found.address || '', mobile: found.mobile || '' });
           } else {
             setErrors({ general: 'Supplier not found' });
           }
         } else {
-          const nextNum = data.length + 1;
-          setSupplierId(`AGS-S-${nextNum}`);
+          let maxNum = 0;
+          for (const s of data) {
+            const m = s.supplier_id.match(/^AGS-S-(\d+)$/);
+            if (m) maxNum = Math.max(maxNum, parseInt(m[1]));
+          }
+          setSupplierId(`AGS-S-${maxNum + 1}`);
         }
       } catch (err) {
         console.error(err);
@@ -54,6 +62,24 @@ const AddSupplierAccount = () => {
     };
     fetchData();
   }, [isEdit, paramId]);
+
+  // Unsaved changes detection
+  const isDirty = useMemo(() => {
+    if (saved) return false;
+    if (!isEdit) return name.trim() !== '';
+    if (!originalValues) return false;
+    return name !== originalValues.name || address !== originalValues.address || mobile !== originalValues.mobile;
+  }, [name, address, mobile, originalValues, isEdit, saved]);
+
+  const blocker = useBlocker(({ currentLocation, nextLocation }) =>
+    isDirty && currentLocation.pathname !== nextLocation.pathname
+  );
+
+  useEffect(() => {
+    const handler = (e) => { if (isDirty) { e.preventDefault(); e.returnValue = ''; } };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -71,7 +97,8 @@ const AddSupplierAccount = () => {
       await window.api.invoke(channel, { supplier_id: supplierId, name, address, mobile });
 
       toast.success(isEdit ? 'Supplier updated successfully' : 'Supplier added successfully');
-      navigate('/accounts/suppliers');
+      setSaved(true);
+      setTimeout(() => navigate('/accounts/suppliers'), 0);
     } catch (err) {
       toast.error(err.message);
       setErrors({ general: err.message });
@@ -225,6 +252,7 @@ const AddSupplierAccount = () => {
         confirmLabel="Delete Supplier"
         isLoading={deleting}
       />
+      <NavigationWarningModal blocker={blocker} />
     </div>
   );
 };

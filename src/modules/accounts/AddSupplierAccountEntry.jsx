@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate, useParams, useBlocker } from 'react-router-dom';
 import { ArrowLeft, Trash2, Save, ChevronDown } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import NavigationWarningModal from '../../components/NavigationWarningModal';
 
 // Reusable form for creating supplier maal / jama entries
 const AddSupplierAccountEntry = () => {
@@ -27,6 +28,8 @@ const AddSupplierAccountEntry = () => {
   const [recordId, setRecordId] = useState(id);
   const [loading, setLoading] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [originalFormData, setOriginalFormData] = useState(null);
+  const [saved, setSaved] = useState(false);
 
   // Load existing entry for editing
   useEffect(() => {
@@ -61,12 +64,43 @@ const AddSupplierAccountEntry = () => {
             remark: record.remark || record.jama_remark || '',
           });
         }
+        setOriginalFormData({
+          date: type === 'maal' ? (record.maal_date || record.invoice_date || '') : (record.date || record.jama_date || ''),
+          invoiceNumber: type === 'maal' ? (record.maal_invoice_no || record.invoice_id || '') : '',
+          txnType: type === 'jama' ? (record.txn_type || record.jama_txn_type || '') : '',
+          amount: String(type === 'maal' ? (record.maal_amount || record.grand_total || '') : (record.amount || record.jama_amount || '')),
+          remark: type === 'maal' ? (record.maal_remark || record.remark || '') : (record.remark || record.jama_remark || ''),
+        });
       } catch (err) {
         console.error('Load entry error', err);
       }
     };
     load();
   }, [isEditing, id, slug, type]);
+
+  // Unsaved changes detection
+  const isDirty = useMemo(() => {
+    if (saved) return false;
+    if (!isEditing) {
+      return formData.date !== '' || formData.amount !== '' || formData.invoiceNumber !== '' || formData.txnType !== '' || formData.remark !== '';
+    }
+    if (!originalFormData) return false;
+    return formData.date !== originalFormData.date
+      || formData.invoiceNumber !== originalFormData.invoiceNumber
+      || formData.txnType !== originalFormData.txnType
+      || String(formData.amount) !== String(originalFormData.amount)
+      || formData.remark !== originalFormData.remark;
+  }, [formData, originalFormData, isEditing, saved]);
+
+  const blocker = useBlocker(({ currentLocation, nextLocation }) =>
+    isDirty && currentLocation.pathname !== nextLocation.pathname
+  );
+
+  useEffect(() => {
+    const handler = (e) => { if (isDirty) { e.preventDefault(); e.returnValue = ''; } };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
 
   const validate = () => {
     const e = {};
@@ -108,7 +142,8 @@ const AddSupplierAccountEntry = () => {
 
       // Only on confirmed success
       toast.success(isEditing ? 'Entry updated successfully' : 'Entry added successfully');
-      navigate(`/accounts/suppliers/${slug}`);
+      setSaved(true);
+      setTimeout(() => navigate(`/accounts/suppliers/${slug}`), 0);
     } catch (err) {
       toast.error('An error occurred while saving. Please try again.');
       // Keep data, do NOT navigate
@@ -338,6 +373,7 @@ const AddSupplierAccountEntry = () => {
           </div>
         </div>
       )}
+      <NavigationWarningModal blocker={blocker} />
     </div>
   );
 };

@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate, useParams, useBlocker } from 'react-router-dom';
 import { ArrowLeft, Trash2, Save, ChevronDown } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import NavigationWarningModal from '../../components/NavigationWarningModal';
 
 const AddAccountEntry = () => {
   const { slug, type, id } = useParams(); // type => 'maal' | 'jama'; id present when editing
@@ -26,6 +27,8 @@ const AddAccountEntry = () => {
   const [deleting, setDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [originalFormData, setOriginalFormData] = useState(null);
+  const [saved, setSaved] = useState(false);
 
   // Load existing entry when editing
   useEffect(() => {
@@ -42,12 +45,43 @@ const AddAccountEntry = () => {
           amount: data.amount || data.grand_total || '',
           remark: data.remark || '',
         });
+        setOriginalFormData({
+          date: data.date || data.invoice_date || '',
+          invoiceNumber: data.invoice_number || '',
+          txnType: data.txn_type || '',
+          amount: String(data.amount || data.grand_total || ''),
+          remark: data.remark || '',
+        });
       } catch (err) {
         console.error('Load entry error', err);
       }
     };
     load();
   }, [id, isEditing, type]);
+
+  // Unsaved changes detection
+  const isDirty = useMemo(() => {
+    if (saved) return false;
+    if (!isEditing) {
+      return formData.date !== '' || formData.amount !== '' || formData.invoiceNumber !== '' || formData.txnType !== '' || formData.remark !== '';
+    }
+    if (!originalFormData) return false;
+    return formData.date !== originalFormData.date
+      || formData.invoiceNumber !== originalFormData.invoiceNumber
+      || formData.txnType !== originalFormData.txnType
+      || String(formData.amount) !== String(originalFormData.amount)
+      || formData.remark !== originalFormData.remark;
+  }, [formData, originalFormData, isEditing, saved]);
+
+  const blocker = useBlocker(({ currentLocation, nextLocation }) =>
+    isDirty && currentLocation.pathname !== nextLocation.pathname
+  );
+
+  useEffect(() => {
+    const handler = (e) => { if (isDirty) { e.preventDefault(); e.returnValue = ''; } };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -102,7 +136,8 @@ const AddAccountEntry = () => {
 
       // Only on confirmed success
       toast.success(isEditing ? 'Entry updated successfully' : 'Entry added successfully');
-      navigate(`/accounts/customers/${slug}`);
+      setSaved(true);
+      setTimeout(() => navigate(`/accounts/customers/${slug}`), 0);
     } catch (err) {
       toast.error('An error occurred while saving. Please try again.');
       console.error('Error saving entry:', err);
@@ -340,6 +375,7 @@ const AddAccountEntry = () => {
           </div>
         </div>
       )}
+      <NavigationWarningModal blocker={blocker} />
     </div>
   );
 };

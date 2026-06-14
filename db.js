@@ -9,6 +9,7 @@ const userDataPath = app.getPath('userData');
 const dbPath = path.join(userDataPath, 'erp.db');
 // `verbose: console.log` logs all SQL statements for debugging.
 const db = new Database(dbPath, { verbose: console.log });
+db.pragma('foreign_keys = ON');
 
 // ─── 1. Master Data ────────────────────────────────────────
 

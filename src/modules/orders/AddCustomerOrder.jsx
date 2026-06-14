@@ -82,9 +82,9 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
   return (
     <section className="bg-white p-6 rounded-xl border border-[#2563EB]/20 shadow-[0_8px_30px_rgb(37,99,235,0.04)] print:hidden">
       <h3 className="text-xs font-bold text-[#434655] uppercase tracking-wider mb-6">Quick Add Item</h3>
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end">
+      <div className="grid grid-cols-1 lg:grid-cols-[3fr_1.5fr_1.5fr_1fr_3fr_2fr] gap-4 items-end">
         {/* Product Name */}
-        <div className="lg:col-span-3 space-y-2 relative" ref={prodWrapperRef}>
+        <div className="space-y-2 relative" ref={prodWrapperRef}>
           <label className="text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Product Name</label>
           <div className="relative">
             <input
@@ -137,14 +137,14 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
         </div>
 
         {/* Size */}
-        <div className="lg:col-span-1 space-y-2">
+        <div className="space-y-2">
           <label className="text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Size</label>
           <input ref={sizeInputRef} type="text" value={newItem.size || ''} onChange={(e) => setNewItem({ ...newItem, size: e.target.value })} className="w-full bg-[#F2F4F6] border-none rounded-lg py-2.5 px-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none" placeholder="e.g. 1Kg" />
           <div className="h-5"></div>
         </div>
 
         {/* Qty */}
-        <div className="lg:col-span-1 space-y-2">
+        <div className="space-y-2">
           <label className="text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Qty</label>
           <input
             ref={quantityInputRef} type="number" min="0.001" step="0.001" value={newItem.quantity}
@@ -159,7 +159,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
         </div>
 
         {/* Unit */}
-        <div className="lg:col-span-1 space-y-2">
+        <div className="space-y-2">
           <label className="text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Unit</label>
           <select value={newItem.packingType} onChange={(e) => setNewItem({ ...newItem, packingType: e.target.value })} className="w-full bg-[#F2F4F6] border-none rounded-lg py-2.5 px-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 appearance-none transition-all outline-none">
             {ALLOWED_PACKING_TYPES.map((type) => (<option key={type} value={type}>{type}</option>))}
@@ -168,14 +168,14 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
         </div>
 
         {/* Item Remark */}
-        <div className="lg:col-span-3 space-y-2">
+        <div className="space-y-2">
           <label className="text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Item Remark</label>
           <input type="text" value={newItem.itemRemark || ''} onChange={(e) => setNewItem({ ...newItem, itemRemark: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddItem(); } }} className="w-full bg-[#F2F4F6] border-none rounded-lg py-2.5 px-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none" placeholder="Optional note..." />
           <div className="h-5"></div>
         </div>
 
         {/* Add Button */}
-        <div className="lg:col-span-3">
+        <div>
           <button onClick={handleAddItem} className="w-full text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-all active:scale-95 shadow-md shadow-[#2563EB]/20 cursor-pointer" style={{ background: 'linear-gradient(135deg, #004AC6 0%, #2563EB 100%)' }}>
             <Plus size={16} />
             <span>Add Item</span>

@@ -3,11 +3,12 @@ import { Plus, Search, ChevronDown, Edit, Trash2, CircleX } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal';
+import { naturalCompare } from '../../utils/productUtils';
 
 // List of suppliers (copy of BuyerAccount but using suppliers endpoints)
 const SupplierAccount = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const [sortConfig, setSortConfig] = useState({ key: 'id', direction: 'asc' });
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const deleteModalRef = useRef(null);
@@ -64,8 +65,10 @@ const SupplierAccount = () => {
 
     if (sortConfig.key) {
       filtered.sort((a, b) => {
-        if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'asc' ? -1 : 1;
-        if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'asc' ? 1 : -1;
+        const dir = sortConfig.direction === 'asc' ? 1 : -1;
+        if (sortConfig.key === 'id') return dir * naturalCompare(a.id, b.id);
+        if (a[sortConfig.key] < b[sortConfig.key]) return -dir;
+        if (a[sortConfig.key] > b[sortConfig.key]) return dir;
         return 0;
       });
     }

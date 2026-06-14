@@ -2,13 +2,14 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Search, ChevronDown, Plus, Edit, Trash2, AlertTriangle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import { naturalCompare } from '../../utils/productUtils';
 
 const ListQuickSales = () => {
     const navigate = useNavigate();
 
     const [searchTerm, setSearchTerm] = useState('');
     const [sales, setSales] = useState([]);
-    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+    const [sortConfig, setSortConfig] = useState({ key: 'qs_id', direction: 'asc' });
     const [currentPage, setCurrentPage] = useState(1);
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -48,10 +49,12 @@ const ListQuickSales = () => {
 
         if (sortConfig.key) {
             sorted.sort((a, b) => {
+                const dir = sortConfig.direction === 'asc' ? 1 : -1;
+                if (sortConfig.key === 'qs_id') return dir * naturalCompare(a.qs_id, b.qs_id);
                 const aVal = a[sortConfig.key] ?? '';
                 const bVal = b[sortConfig.key] ?? '';
-                if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
-                if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+                if (aVal < bVal) return -dir;
+                if (aVal > bVal) return dir;
                 return 0;
             });
         }

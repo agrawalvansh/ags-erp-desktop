@@ -4,7 +4,8 @@ import { Routes, Route } from 'react-router-dom';
 import NotFound from '../pages/NotFound';
 
 // Route-level code splitting via React.lazy() — each module loads on demand
-const Invoice = React.lazy(() => import('./invoice/Invoice'));
+// Invoice is imported eagerly because it is the default landing page
+import Invoice from './invoice/Invoice';
 const PriceList = React.lazy(() => import('./priceList/PriceList'));
 const CustomerOrder = React.lazy(() => import('./orders/CustomerOrder'));
 const AddCustomerOrder = React.lazy(() => import('./orders/AddCustomerOrder'));

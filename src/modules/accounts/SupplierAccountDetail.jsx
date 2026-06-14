@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import PageLoader from '../../components/PageLoader';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { naturalCompare } from '../../utils/productUtils';
 
 // Utility to parse various date formats to a Date object
 export const parseDate = (dateStr) => {
@@ -223,9 +224,22 @@ const SupplierAccountDetail = () => {
     return filtered;
   }, [accountData, fromDate, toDate, searchQuery]);
 
-  // Data calculations
-  const maalData = useMemo(() => filteredData.filter(item => item.type === 'maal'), [filteredData]);
-  const jamaData = useMemo(() => filteredData.filter(item => item.type === 'jama'), [filteredData]);
+  // Data calculations — sort maal: date DESC then invoice number ASC; jama: date DESC
+  const maalData = useMemo(() => {
+    const data = filteredData.filter(item => item.type === 'maal');
+    data.sort((a, b) => {
+      const dateDiff = b.sortDate - a.sortDate;
+      if (dateDiff !== 0) return dateDiff;
+      // Same date → sort by invoice number ascending (natural numeric)
+      return naturalCompare(a.maalInvoiceNumber, b.maalInvoiceNumber);
+    });
+    return data;
+  }, [filteredData]);
+  const jamaData = useMemo(() => {
+    const data = filteredData.filter(item => item.type === 'jama');
+    data.sort((a, b) => b.sortDate - a.sortDate);
+    return data;
+  }, [filteredData]);
 
   const maalTotal = useMemo(() => maalData.reduce((sum, m) => sum + (Number(m.maalAmount) || 0), 0), [maalData]);
   const jamaTotal = useMemo(() => jamaData.reduce((sum, j) => sum + (Number(j.jamaAmount) || 0), 0), [jamaData]);
@@ -398,7 +412,7 @@ const SupplierAccountDetail = () => {
     const startY = dateRange ? 38 : 33;
 
     const tableStyle = {
-      styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak', valign: 'middle', textColor: black, lineColor: borderGray, lineWidth: 0.2, fillColor: white, font: 'helvetica' },
+      styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak', halign: 'center', valign: 'middle', textColor: black, lineColor: borderGray, lineWidth: 0.2, fillColor: white, font: 'helvetica' },
       headStyles: { fillColor: white, textColor: black, fontSize: 8, fontStyle: 'bold', cellPadding: 2.5, halign: 'center', valign: 'middle', lineColor: borderGray, lineWidth: 0.2, font: 'helvetica' },
       footStyles: { fillColor: white, textColor: black, fontStyle: 'bold', halign: 'center', valign: 'middle', lineColor: borderGray, lineWidth: 0.2, font: 'helvetica' },
       alternateRowStyles: { fillColor: white },
@@ -423,7 +437,7 @@ const SupplierAccountDetail = () => {
         formatIndian(r.maalAmount),
       ]),
       foot: [['', 'Total', formatIndian(maalTotal)]],
-      columnStyles: { 2: { halign: 'left' } },
+      columnStyles: {},
     });
 
     // ─── Payments Table (Right) ───
@@ -444,7 +458,7 @@ const SupplierAccountDetail = () => {
         formatIndian(r.jamaAmount),
       ]),
       foot: [['', 'Total', formatIndian(jamaTotal)]],
-      columnStyles: { 2: { halign: 'left' } },
+      columnStyles: {},
     });
 
     const balanceY = pageHeight - 15;

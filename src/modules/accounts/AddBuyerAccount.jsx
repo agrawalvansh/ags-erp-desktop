@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useNavigate, useParams, useBlocker } from 'react-router-dom';
 import { ArrowLeft, Save, Trash2, Lock } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal';
+import NavigationWarningModal from '../../components/NavigationWarningModal';
 
 const AddBuyerAccount = () => {
   const navigate = useNavigate();
@@ -19,6 +20,8 @@ const AddBuyerAccount = () => {
   const [errors, setErrors] = useState({});
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [originalValues, setOriginalValues] = useState(null);
+  const [saved, setSaved] = useState(false);
 
   // Focus the delete modal when it opens
   useEffect(() => {
@@ -39,12 +42,17 @@ const AddBuyerAccount = () => {
             setName(found.name || '');
             setAddress(found.address || '');
             setMobile(found.mobile || '');
+            setOriginalValues({ name: found.name || '', address: found.address || '', mobile: found.mobile || '' });
           } else {
             setErrors({ general: 'Customer not found' });
           }
         } else {
-          const nextNum = data.length + 1;
-          setCustomerId(`AGS-C-${nextNum}`);
+          let maxNum = 0;
+          for (const c of data) {
+            const m = c.customer_id.match(/^AGS-C-(\d+)$/);
+            if (m) maxNum = Math.max(maxNum, parseInt(m[1]));
+          }
+          setCustomerId(`AGS-C-${maxNum + 1}`);
         }
       } catch (err) {
         console.error(err);
@@ -54,6 +62,24 @@ const AddBuyerAccount = () => {
     };
     fetchData();
   }, [isEdit, paramId]);
+
+  // Unsaved changes detection
+  const isDirty = useMemo(() => {
+    if (saved) return false;
+    if (!isEdit) return name.trim() !== '';
+    if (!originalValues) return false;
+    return name !== originalValues.name || address !== originalValues.address || mobile !== originalValues.mobile;
+  }, [name, address, mobile, originalValues, isEdit, saved]);
+
+  const blocker = useBlocker(({ currentLocation, nextLocation }) =>
+    isDirty && currentLocation.pathname !== nextLocation.pathname
+  );
+
+  useEffect(() => {
+    const handler = (e) => { if (isDirty) { e.preventDefault(); e.returnValue = ''; } };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -72,8 +98,8 @@ const AddBuyerAccount = () => {
       await window.api.invoke(channel, payload);
 
       toast.success(isEdit ? 'Customer updated successfully' : 'Customer added successfully');
-      // success – back to list page
-      navigate('/accounts/customers');
+      setSaved(true);
+      setTimeout(() => navigate('/accounts/customers'), 0);
     } catch (err) {
       toast.error(err.message);
       setErrors({ general: err.message });
@@ -226,6 +252,7 @@ const AddBuyerAccount = () => {
         confirmLabel="Delete Customer"
         isLoading={deleting}
       />
+      <NavigationWarningModal blocker={blocker} />
     </div>
   );
 };

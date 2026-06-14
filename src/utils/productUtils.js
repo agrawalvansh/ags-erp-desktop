@@ -1,6 +1,27 @@
 // src/utils/productUtils.js
 // Centralized product utility functions shared between Invoice and PriceList modules
 
+/**
+ * Extract the trailing number from an ID string like "AGS-C-12", "E-1015", "QS-5", "O-C-3".
+ * Returns the number, or Infinity if no number is found (so non-numeric IDs sort last).
+ */
+export const extractTrailingNumber = (id) => {
+    if (!id) return Infinity;
+    const m = id.match(/(\d+)$/);
+    return m ? parseInt(m[1], 10) : Infinity;
+};
+
+/**
+ * Natural compare for ID strings. Extracts the trailing numeric part and
+ * compares numerically so "AGS-C-2" sorts before "AGS-C-10".
+ * @param {string} a
+ * @param {string} b
+ * @returns {number} negative if a < b, positive if a > b, 0 if equal
+ */
+export const naturalCompare = (a, b) => {
+    return extractTrailingNumber(a) - extractTrailingNumber(b);
+};
+
 const slugify = (str) => {
     if (!str) return '';
     return str
