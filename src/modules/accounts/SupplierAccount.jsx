@@ -81,6 +81,7 @@ const SupplierAccount = () => {
 
   // Auto-scroll and highlight when returning from supplier detail
   useEffect(() => {
+    let scrollTimer, fadeTimer;
     if (location.state?.returnedFromAccount && suppliers.length > 0) {
       const returnedId = location.state.returnedFromAccount;
       setHighlightedId(returnedId);
@@ -91,16 +92,17 @@ const SupplierAccount = () => {
         setCurrentPage(targetPage);
       }
 
-      setTimeout(() => {
+      scrollTimer = setTimeout(() => {
         const rowElement = rowRefs.current[returnedId];
         if (rowElement) {
           rowElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-        setTimeout(() => setHighlightedId(null), 2000);
+        fadeTimer = setTimeout(() => setHighlightedId(null), 2000);
       }, 150);
 
       window.history.replaceState({}, document.title);
     }
+    return () => { clearTimeout(scrollTimer); clearTimeout(fadeTimer); };
   }, [location.state, suppliers, filteredSuppliers]);
 
   const handleSort = (key) => {

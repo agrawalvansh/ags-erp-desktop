@@ -89,6 +89,7 @@ const PriceList = () => {
 
   // Auto-scroll to edited product (or next row if focusNext) when returning from edit page
   useEffect(() => {
+    let scrollTimer, fadeTimer;
     if (location.state?.editedProductCode && products.length > 0) {
       const code = location.state.editedProductCode;
       const focusNext = location.state.focusNext;
@@ -106,14 +107,14 @@ const PriceList = () => {
       setHighlightedCode(targetCode);
 
       // Wait for render then scroll
-      setTimeout(() => {
+      scrollTimer = setTimeout(() => {
         const rowElement = rowRefs.current[targetCode];
         if (rowElement) {
           rowElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
         // Remove highlight after 2 seconds
-        setTimeout(() => {
+        fadeTimer = setTimeout(() => {
           setHighlightedCode(null);
         }, 2000);
       }, 100);
@@ -121,6 +122,7 @@ const PriceList = () => {
       // Clear location state
       window.history.replaceState({}, document.title);
     }
+    return () => { clearTimeout(scrollTimer); clearTimeout(fadeTimer); };
   }, [location.state, products, filteredProducts]);
 
   const handleSort = (key) => {

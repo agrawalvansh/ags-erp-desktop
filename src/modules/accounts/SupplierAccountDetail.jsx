@@ -91,8 +91,10 @@ const SupplierAccountDetail = () => {
       try {
         setIsLoading(true);
         const found = await window.api.invoke('suppliers:get', slug);
-        if (!found || found.error) {
+        if (!found) {
           setError('Supplier not found');
+        } else if (found.error) {
+          setError(found.error || 'Failed to load supplier details');
         } else {
           setSupplier(found);
           setReminderEnabled(!!found.reminder_enabled);

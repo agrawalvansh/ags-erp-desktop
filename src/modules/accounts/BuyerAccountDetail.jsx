@@ -90,8 +90,10 @@ const BuyerAccountDetail = () => {
       try {
         setIsLoading(true);
         const found = await window.api.invoke('customers:get', slug);
-        if (!found || found.error) {
+        if (!found) {
           setError('Customer not found');
+        } else if (found.error) {
+          setError(found.error || 'Failed to load customer details');
         } else {
           setBuyer(found);
           setReminderEnabled(!!found.reminder_enabled);

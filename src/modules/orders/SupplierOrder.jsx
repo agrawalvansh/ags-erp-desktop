@@ -37,20 +37,22 @@ const SupplierOrder = () => {
 
   // Auto-scroll and highlight when returning from order detail
   useEffect(() => {
+    let scrollTimer, fadeTimer;
     if (location.state?.returnedFromOrder && orders.length > 0) {
       const returnedId = location.state.returnedFromOrder;
       setHighlightedId(returnedId);
 
-      setTimeout(() => {
+      scrollTimer = setTimeout(() => {
         const rowElement = rowRefs.current[returnedId];
         if (rowElement) {
           rowElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-        setTimeout(() => setHighlightedId(null), 2000);
+        fadeTimer = setTimeout(() => setHighlightedId(null), 2000);
       }, 150);
 
       window.history.replaceState({}, document.title);
     }
+    return () => { clearTimeout(scrollTimer); clearTimeout(fadeTimer); };
   }, [location.state, orders]);
 
   const [sortConfig, setSortConfig] = useState({ key: 'orderNo', direction: 'desc' });
