@@ -12,12 +12,15 @@ A lightweight, offline-first ERP application built with **Electron**, **React** 
 |--------|-----------|
 | **Product Master** | Maintain products with code, size, packing type, cost & selling price. Soft-delete with scheduled cleanup. |
 | **GST-ready Invoices** | Create, edit, print invoices. Auto-incremental IDs (`E-1`, `E-2`…) with number reuse on deletion. |
+| **Quick Sales** | Simplified POS-style ad-hoc sales without customer assignment. |
 | **Customer & Supplier Accounts** | Full Maal (sales/purchases) and Jama (payments) ledgers with running balances. |
 | **Linked Entry Protection** | Invoice/order-linked ledger entries are guarded — edit and delete blocked with clear feedback. |
 | **Sales & Purchase Orders** | Draft and manage orders for customers and suppliers. Track order status (Placed → Received). |
 | **Price List** | Standard rate card management with inline editing. |
 | **Search & Filters** | Instant search across all masters, date-range filtering on accounts. |
 | **Print Friendly** | Crisp, formatted invoice printing via `react-to-print`. |
+| **Notification System** | **Desktop Notifications** for payment reminders, **In-app Notification Center**, **Unread Badge** in NavBar, **Mark as Read / Clear All**, **Link to Account**, **Auto-Clearing** on payment update, **Rich Empty State**, **Relative Time Display**, and **Live Count Sync** between NavBar and NotificationsPage. |
+| **Marathi Translation** | **Inline Product Name Translation** with an AI-powered translation assistant. Supports auto-translation of existing product names via CSV import and provides a guided real-time translation workflow for new products during creation. Translations are persisted in the database and displayed alongside English names in relevant sections. |
 
 ---
 
@@ -55,7 +58,7 @@ ags-erp-desktop/
 │   └── main.jsx
 ├── package.json          # Scripts, deps, electron-builder config
 ├── vite.config.mjs       # Vite build config
-└── release/              # Built installers (.exe / .dmg)
+└── release/              # Built installers
 ```
 
 ---
@@ -150,8 +153,10 @@ customer_maal_account    customer_jama_account
 └───────────────────┘    └──────────────────────┘
 
 customer_orders / supplier_orders  (+ _order_items)
+quick_sales (+ _items)
 supplier_maal_account / supplier_jama_account
 document_sequences / reusable_invoice_numbers / migration_history
+notifications / app_state
 ```
 
 ---

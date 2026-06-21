@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useParams, useBlocker } from 'react-router-dom';
-import { ArrowLeft, Trash2, Save, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Trash2, Save } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import NavigationWarningModal from '../../components/NavigationWarningModal';
+import SelectDropdown from '../../components/SelectDropdown';
 
 const AddAccountEntry = () => {
   const { slug, type, id } = useParams(); // type => 'maal' | 'jama'; id present when editing
@@ -280,22 +281,14 @@ const AddAccountEntry = () => {
                   <label className="block text-[10px] font-bold uppercase text-[#434655] tracking-wider mb-1.5 ml-1">
                     Transaction Type <span className="text-[#BA1A1A]">*</span>
                   </label>
-                  <div className="relative">
-                    <select
-                      name="txnType"
-                      value={formData.txnType}
-                      onChange={handleChange}
-                      className={`w-full bg-[#F2F4F6] border-none rounded-lg px-3 py-2.5 pr-10 text-sm font-medium focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none appearance-none cursor-pointer ${errors.txnType ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
-                    >
-                      <option value="">Select Transaction Type</option>
-                      <option value="Cash">Cash</option>
-                      <option value="UPI">UPI</option>
-                      <option value="Transfer">Transfer</option>
-                      <option value="RTGS">RTGS</option>
-                    </select>
-                    <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#434655] pointer-events-none" />
-                  </div>
-                  {errors.txnType && <p className="text-xs text-[#BA1A1A] ml-1">{errors.txnType}</p>}
+                  <SelectDropdown
+                    name="txnType"
+                    value={formData.txnType}
+                    onChange={handleChange}
+                    placeholder="Select Transaction Type"
+                    options={['Cash', 'UPI', 'Transfer', 'RTGS']}
+                    error={errors.txnType}
+                  />
                 </div>
               )}
 
@@ -324,20 +317,15 @@ const AddAccountEntry = () => {
                       <label className="text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1 block">
                         Select Invoice
                       </label>
-                      <select
+                      <SelectDropdown
                         value={linkedInvoiceId}
                         onChange={e => setLinkedInvoiceId(e.target.value)}
-                        className="w-full py-2.5 px-3 bg-[#F2F4F6] border-none rounded-lg text-sm
-                                   focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all"
-                      >
-                        <option value="">Select invoice...</option>
-                        {unpaidInvoices.map(inv => (
-                          <option key={inv.invoice_id} value={inv.invoice_id}>
-                            {inv.invoice_id} — ₹{(inv.grand_total - (inv.total_paid || 0)).toFixed(2)} due
-                            {inv.status === 'overdue' ? ' ⚠ Overdue' : inv.status === 'partially_paid' ? ' (Partial)' : ' (Unpaid)'}
-                          </option>
-                        ))}
-                      </select>
+                        placeholder="Select invoice..."
+                        options={unpaidInvoices.map(inv => ({
+                          value: inv.invoice_id,
+                          label: `${inv.invoice_id} — ₹${(inv.grand_total - (inv.total_paid || 0)).toFixed(2)} due${inv.status === 'overdue' ? ' ⚠ Overdue' : inv.status === 'partially_paid' ? ' (Partial)' : ' (Unpaid)'}`
+                        }))}
+                      />
                     </div>
                   )}
                 </div>

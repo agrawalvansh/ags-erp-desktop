@@ -1,6 +1,6 @@
 # AGS ERP Desktop — Complete Feature List
 
-> **Version:** 2.3.0  
+> **Version:** 2.4.0  
 > **Platform:** Electron
 > **Database:** SQLite (better-sqlite3)  
 > **Last Updated:** June 2026
@@ -35,8 +35,9 @@
 | 2.9 | Toast Notifications | Global toast system via `react-hot-toast` — dark background (`#0F172A`), positioned top-center, styled success (green) and error (red) icons |
 | 2.10 | Notification Badge | NavBar shows unread notification count badge (`bg-[#DC2626]`), displays `99+` when exceeding 99. Links to `/notifications` |
 | 2.11 | 404 Not Found Page | Fallback page for unmatched routes with "Go Back" button |
-| 2.12 | Error Boundary | Global `ErrorBoundary` wrapping all routes — catches React render errors and shows recovery UI with "Reload Application" button |
-| 2.13 | Route-Level Code Splitting | All module pages are lazy-loaded via `React.lazy()` with a `PageLoader` fallback — reduces initial bundle size |
+| 2.12 | Record Not Found Guard | All detail pages (Invoice, Quick Sale, Customer/Supplier Order, Account Detail) show a `RecordNotFound` component — with page-specific context message — when the requested ID does not exist in the database, instead of crashing or showing an empty form |
+| 2.13 | Error Boundary | Global `ErrorBoundary` wrapping all routes — catches React render errors and shows recovery UI with "Reload Application" button |
+| 2.14 | Route-Level Code Splitting | All module pages are lazy-loaded via `React.lazy()` with a `PageLoader` fallback — reduces initial bundle size |
 
 ---
 
@@ -269,7 +270,7 @@
 | 10.9 | Invoice & Type Badges | Each notification shows invoice number badge and customer/supplier type badge |
 | 10.10 | Pending Amount Display | Shows outstanding ₹ amount on each notification |
 | 10.11 | NavBar Live Count | Unread count syncs in real-time between NotificationsPage and NavBar via `CustomEvent` dispatch |
-| 10.12 | Navigate to Account | Clicking a notification navigates to the related customer/supplier detail page |
+| 10.12 | Navigate to Account | Clicking a notification navigates to the related customer/supplier detail page using the primary key ID (`AGS-C-{N}` / `AGS-S-{N}`), never name-based slugs |
 | 10.13 | Overdue Invoice Notifications | Auto-generated when an invoice becomes overdue (past `payment_due_days`). Uses `reminder_key = overdue_invoice_{id}` for idempotency. Auto-cleared when status changes from overdue. |
 
 ---
@@ -339,18 +340,20 @@
 | 14.3 | Escape to Close Modal | All modals dismiss on Escape key |
 | 14.4 | Backdrop Click to Close | Click outside modal to dismiss |
 | 14.5 | Auto-Focus on Modal Open | Modal receives focus automatically via `ref` |
-| 14.6 | Keyboard Product/Customer Dropdown | Arrow keys + Enter + Escape in all searchable dropdowns |
-| 14.7 | Toast Notifications | Styled dark toasts (`#0F172A` bg, `#fff` text) for success/error with consistent messaging conventions |
-| 14.8 | Loading States — Buttons | Disabled buttons with "Saving…" / "Updating…" / "Deleting…" text — no spinner icons |
-| 14.9 | Loading States — Pages | `PageLoader` component with 4 variants: `page`, `section`, `overlay`, `inline` |
-| 14.10 | Empty State Messages | "No products found" / "No customers found" / etc. in empty tables. Rich empty state with icon in NotificationsPage. |
-| 14.11 | Error Boundary | Global `ErrorBoundary` catches render errors and shows recovery UI |
-| 14.12 | Print Stylesheets | `print:hidden` classes + `@media print` CSS rules to hide all UI controls |
-| 14.13 | Fixed Sidebar Layout | Fixed 240px sidebar always visible; main content adjusts with left margin |
-| 14.14 | Consistent Design System | Documented in `docs/design.md` — colour palette, typography, buttons, forms, tables, modals, status badges, toasts, loading states, print layout |
-| 14.15 | Weight Calculator Popup | Positioned popup (`z-50`) below Qty input for entering multiple weights — used in Invoice and Quick Sales for Kg products |
-| 14.16 | Active Press Feedback | All buttons use `active:scale-95` for tactile press feedback |
-| 14.17 | CSS Animations | NavBar dropdown expand using grid-template-rows and opacity transitions |
+| 14.6 | Universal SearchableDropdown | `src/components/SearchableDropdown.jsx` — reusable autocomplete input + floating list. Parent controls all state; component renders input, Search/CircleX icon, and panel. Used for: Product Name (Invoice, Orders, Quick Sales), Customer Name (Invoice, Customer Order), Supplier Name (Supplier Order). Styled pixel-identical to Invoice product dropdown (gold standard). |
+| 14.7 | Universal SelectDropdown | `src/components/SelectDropdown.jsx` — reusable custom dropdown (no native `<select>`). Renders a styled button trigger + floating listbox with keyboard nav (ArrowUp/Down/Enter/Escape), animated ChevronDown, selected-item blue indicator. Panel uses `min-w-full w-max` so it expands to fit content regardless of trigger width. Used for: Packing Type, Order Status, Payment Type, Transaction Type, Select Invoice, across all form pages. |
+| 14.8 | Keyboard Dropdown Navigation | Arrow keys + Enter + Escape in all `SearchableDropdown` and `SelectDropdown` instances. Current item highlighted in `bg-[#EFF6FF]`. |
+| 14.9 | Toast Notifications | Styled dark toasts (`#0F172A` bg, `#fff` text) for success/error with consistent messaging conventions |
+| 14.10 | Loading States — Buttons | Disabled buttons with "Saving…" / "Updating…" / "Deleting…" text — no spinner icons |
+| 14.11 | Loading States — Pages | `PageLoader` component with 4 variants: `page`, `section`, `overlay`, `inline` |
+| 14.12 | Empty State Messages | "No products found" / "No customers found" / etc. in empty tables. Rich empty state with icon in NotificationsPage. |
+| 14.13 | Error Boundary | Global `ErrorBoundary` catches render errors and shows recovery UI |
+| 14.14 | Print Stylesheets | `print:hidden` classes + `@media print` CSS rules to hide all UI controls |
+| 14.15 | Fixed Sidebar Layout | Fixed 240px sidebar always visible; main content adjusts with left margin |
+| 14.16 | Consistent Design System | Documented in `docs/design.md` — colour palette, typography, buttons, forms, tables, modals, status badges, toasts, loading states, print layout |
+| 14.17 | Weight Calculator Popup | Positioned popup (`z-50`) below Qty input for entering multiple weights — used in Invoice and Quick Sales for Kg products |
+| 14.18 | Active Press Feedback | All buttons use `active:scale-95` for tactile press feedback |
+| 14.19 | CSS Animations | NavBar dropdown expand using grid-template-rows and opacity transitions |
 
 ---
 

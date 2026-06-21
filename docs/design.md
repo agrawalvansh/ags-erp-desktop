@@ -1,7 +1,8 @@
 # AGS ERP — Design System Reference
 
 > **Who is this for?** Any developer (or AI assistant) maintaining or extending this app.  
-> All UI must follow these exact tokens. When in doubt, open `Invoice.jsx` — it is the canonical reference page.
+> All UI must follow these exact tokens. When in doubt, open `Invoice.jsx` — it is the canonical reference page.  
+> **Last Updated:** June 2026
 
 ---
 
@@ -68,7 +69,7 @@ Every text element has a fixed class combination. Do not mix and match.
 
 ## 3 — Form Inputs
 
-All `<input>`, `<select>`, and `<textarea>` elements use this base:
+All `<input>` and `<textarea>` elements use this base. **Never use a native `<select>` element** — use `<SelectDropdown>` instead (see Section 11).
 
 ```
 bg-[#F2F4F6] border-none rounded-lg text-sm
@@ -321,19 +322,122 @@ Account entry forms (AddAccountEntry, AddSupplierAccountEntry) have a coloured b
 
 ---
 
-## 11 — Dropdowns (search / autocomplete)
+## 11 — Dropdown Components
 
+> **Rule:** Never use a native `<select>` or custom one-off dropdown JSX. Always use one of the two universal components below.
+
+---
+
+### `<SelectDropdown>` — `src/components/SelectDropdown.jsx`
+
+For all fixed-choice dropdowns (packing type, status, payment type, transaction type, etc.).
+
+**Props:**
+
+| Prop | Type | Description |
+|---|---|---|
+| `name` | string | Field name — included in synthetic `onChange` event (`e.target.name`) |
+| `label` | string | Label rendered above the trigger (optional) |
+| `required` | bool | Adds red `*` to label |
+| `value` | string | Controlled selected value |
+| `onChange` | `fn(e)` | Called with synthetic `{ target: { name, value } }` — compatible with all existing handlers |
+| `options` | array | Plain strings **or** `[{ value, label }]` objects |
+| `placeholder` | string | Displayed when nothing selected (greyed out) |
+| `error` | string | Validation error message shown below trigger |
+| `disabled` | bool | Disables the control |
+| `className` | string | Extra classes on the outer wrapper div |
+| `selectClassName` | string | Extra classes on the trigger button |
+
+**Behaviour:**
+- Button trigger with `ChevronDown` icon (rotates 180° when open)
+- Floating listbox panel: `left-0 min-w-full w-max max-w-[22rem]` — always at least as wide as the trigger, expands to fit content
+- Selected item shown in `text-[#004AC6] font-semibold` with a blue dot indicator on the right
+- Highlighted row: `bg-[#EFF6FF]`; hover: `hover:bg-[#F2F4F6]`
+- Keyboard: `ArrowDown/Up` to navigate, `Enter` to select, `Escape` to close
+- Click-outside closes the panel
+
+**Styling tokens (trigger button):**
 ```
-List container:  absolute z-50 w-full bg-white border border-[#C3C6D7]/20
-                 rounded-xl shadow-lg overflow-hidden mt-1
-
-Row:             px-4 py-3 text-sm cursor-pointer transition-colors
-                 hover:bg-[#F2F4F6]
-
-Highlighted row: bg-[#EFF6FF]   ← keyboard navigation highlight
-
-Empty state:     px-4 py-3 text-sm text-[#64748B] italic
+bg-[#F2F4F6] border-none rounded-lg px-3 py-2.5 pr-10
+text-sm font-medium text-left
+focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15
 ```
+
+**Styling tokens (panel):**
+```
+absolute z-50 left-0 min-w-full w-max max-w-[22rem] mt-1
+bg-white border border-[#C3C6D7]/30 rounded-lg shadow-lg
+max-h-60 overflow-y-auto
+```
+
+**Row:**
+```
+px-4 py-3 text-sm flex items-center justify-between
+highlighted: bg-[#EFF6FF]
+selected:    bg-[#F0F7FF]
+hover:       hover:bg-[#F2F4F6]
+```
+
+**Label** (when `label` prop provided — same as all input labels):
+```
+text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1
+```
+
+---
+
+### `<SearchableDropdown>` — `src/components/SearchableDropdown.jsx`
+
+For all autocomplete / type-ahead fields (product name, customer name, supplier name).
+
+> **The parent owns all state.** This component is purely visual. The parent manages: open/closed, filtered options, highlighted index, keyboard events.
+
+**Props:**
+
+| Prop | Type | Description |
+|---|---|---|
+| `inputRef` | ref | Forwarded to the `<input>` |
+| `wrapperRef` | ref | Forwarded to outer div (for click-outside in parent) |
+| `label` | string | Label above the input (optional) |
+| `required` | bool | Adds red `*` to label |
+| `value` | string | Controlled text input value |
+| `placeholder` | string | Input placeholder |
+| `error` | string | Validation error shown below |
+| `onFocus` | `fn()` | Called on input focus |
+| `onChange` | `fn(val)` | Called with string value on input change |
+| `onClear` | `fn()` | Called when `CircleX` is clicked |
+| `onKeyDown` | `fn(e)` | Key handler — parent handles ArrowUp/Down/Enter/Escape |
+| `onBlur` | `fn(e)` | Blur handler (optional) |
+| `isOpen` | bool | Whether the panel is visible |
+| `options` | array | Items to show — can be any shape |
+| `highlightedIndex` | number | Index of highlighted row |
+| `onSelect` | `fn(item)` | Called when a row is clicked |
+| `onMouseEnter` | `fn(idx)` | Called on row hover (parent updates highlight) |
+| `renderOption` | `fn(item, idx) → ReactNode` | Renders content inside each row button |
+| `emptyContent` | ReactNode | Shown inside the panel when `options` is empty |
+
+**Styling tokens (input):**
+```
+w-full py-2.5 px-3 pr-10 bg-[#F2F4F6] border-none rounded-lg text-sm
+focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all
+```
+
+**Right icon:** `CircleX` (text-[#434655] hover:text-red-500) when `value` is non-empty; `Search` (text-[#434655]) when empty.
+
+**Panel** (same tokens as SelectDropdown):
+```
+absolute z-50 w-full mt-1 bg-white
+border border-[#C3C6D7]/30 rounded-lg shadow-lg
+max-h-60 overflow-y-auto
+```
+
+**Row:**
+```
+px-4 py-3 text-sm flex items-center justify-between
+highlighted: bg-[#EFF6FF]
+hover:       hover:bg-[#F2F4F6]
+```
+
+> **Gold standard reference:** Invoice `AddItemForm` Product Name dropdown. When in doubt compare to that implementation.
 
 ---
 
@@ -369,6 +473,9 @@ Delete button:     bg-[#DC2626]  (never bg-red-600 or bg-red-700 as base colour)
 | `<DeleteConfirmModal>` | `src/components/DeleteConfirmModal.jsx` | All delete confirmations |
 | `<NavigationWarningModal>` | `src/components/NavigationWarningModal.jsx` | Unsaved-changes navigation block |
 | `<PrinterSelectionModal>` | `src/components/PrinterSelectionModal.jsx` | Printer picker before PDF print |
+| `<SelectDropdown>` | `src/components/SelectDropdown.jsx` | All fixed-choice dropdowns (replaces native `<select>`) |
+| `<SearchableDropdown>` | `src/components/SearchableDropdown.jsx` | All autocomplete / type-ahead fields |
+| `<RecordNotFound>` | `src/components/RecordNotFound.jsx` | Shown when a requested record ID does not exist in DB |
 | `<VoiceInput>` | `src/components/VoiceInput.jsx` | Mic button + voice-to-form on add-item forms |
 
 ---
@@ -383,10 +490,14 @@ Delete button:     bg-[#DC2626]  (never bg-red-600 or bg-red-700 as base colour)
 | Use `shadow-sm` for cards | Use `shadow` or `shadow-md` |
 | Use glass overlay for modals | Use `bg-black/40` overlay |
 | Use `<DeleteConfirmModal>` | Inline delete modal JSX |
+| Use `<SelectDropdown>` for all fixed-choice selects | Use native `<select>` elements |
+| Use `<SearchableDropdown>` for all autocomplete fields | Custom one-off autocomplete JSX |
+| Use `<RecordNotFound>` when a DB record is missing | Show empty form or crash |
 | Use `py-2.5 px-3` for inputs | Use `py-3 px-4` |
 | Use `text-[10px]` for input labels | Use `text-xs` (12px — too large) |
 | Use `font-bold` on all button text | Use `font-medium` on buttons |
 | Add `active:scale-95` on all buttons | Leave out press feedback |
+| Use `border-[#C3C6D7]/30` for dropdown panels | Use `/20` or `/10` on dropdown borders |
 
 ---
 

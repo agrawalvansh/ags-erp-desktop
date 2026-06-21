@@ -5,6 +5,7 @@ import { AlertCircle } from 'lucide-react';
 import { Search } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import PageLoader from '../../components/PageLoader';
+import RecordNotFound from '../../components/RecordNotFound';
 import NavigationWarningModal from '../../components/NavigationWarningModal';
 import PrinterSelectionModal from '../../components/PrinterSelectionModal';
 import { generateInvoicePDF } from './generateInvoicePDF';
@@ -17,6 +18,7 @@ import {
   DEFAULT_PACKING_TYPE,
   sortProducts
 } from '../../utils/productUtils';
+import SelectDropdown from '../../components/SelectDropdown';
 
 // Add Item Form Component
 // Improved Add Item Form Component
@@ -273,16 +275,13 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
 
             {/* Unit (20%) */}
             <div className="col-span-1">
-              <label className="block text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1 truncate">Unit</label>
-              <select
+              <SelectDropdown
+                label="Unit"
                 value={newItem.packingType}
                 onChange={(e) => setNewItem({ ...newItem, packingType: e.target.value })}
-                className="w-full py-2.5 px-1 bg-[#F2F4F6] border-none rounded-lg text-[11px] font-bold appearance-none text-center"
-              >
-                {ALLOWED_PACKING_TYPES.map(type => (
-                  <option key={type} value={type}>{type}</option>
-                ))}
-              </select>
+                options={ALLOWED_PACKING_TYPES}
+                selectClassName="text-[11px] font-bold text-center"
+              />
             </div>
 
             {/* Rate (40%) */}
@@ -436,6 +435,7 @@ const Invoice = () => {
   // Original invoice data for dirty state detection (when editing existing invoice)
   const [originalInvoiceData, setOriginalInvoiceData] = useState(null);
   const [isNewInvoice, setIsNewInvoice] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -627,7 +627,7 @@ const Invoice = () => {
       const fetchInvoice = async () => {
         try {
           const inv = await window.api.getInvoice(invoiceNo);
-          if (!inv) return;
+          if (!inv || inv.error) { setNotFound(true); return; }
           const formatName = (name) => {
             if (!name) return '';
             return name
@@ -686,18 +686,24 @@ const Invoice = () => {
 
           // Try to fetch full customer details
           let cust = customers.find(c => c.customer_id === inv.customer_id);
-          if (!cust) {
+          if (cust) {
+            // Found locally — set buyer details from local cache
+            setBuyer(cust.name);
+            setAddress(cust.address || '');
+            setMobileNo(cust.mobile || '');
+          } else {
+            // Not in local cache — fetch from DB
             try {
               cust = await window.api.invoke('customers:get', inv.customer_id);
             } catch (err) {
               console.error('Error fetching customer details:', err);
             }
-            if (cust) {
+            if (cust && !cust.error) {
               setBuyer(cust.name);
               setAddress(cust.address || '');
               setMobileNo(cust.mobile || '');
             } else {
-              setBuyer(inv.customer_id); // fallback
+              setBuyer(inv.customer_id); // fallback to ID
             }
           }
 
@@ -1447,6 +1453,17 @@ const Invoice = () => {
     setPendingPDFData(null);
   };
 
+  if (notFound) {
+    return (
+      <RecordNotFound
+        recordType="Invoice"
+        recordId={invoiceNo}
+        backPath="/invoice"
+        backLabel="Back to Invoice"
+      />
+    );
+  }
+
   const { roundOff, grandTotal } = calculateGrandTotal();
   return (
     <div className="p-2 sm:p-6 min-h-screen bg-[#F7F9FB] print:bg-white print:p-0 print:text-black">
@@ -1891,15 +1908,11 @@ const Invoice = () => {
                     </div>
                     <div>
                       <label className="block text-[10px] text-[#434655] font-bold mb-1">Payment Type</label>
-                      <select
+                      <SelectDropdown
                         value={paymentType}
                         onChange={(e) => setPaymentType(e.target.value)}
-                        className="w-full py-2.5 px-3 bg-[#F2F4F6] border-none rounded-lg text-sm appearance-none"
-                      >
-                        {PAYMENT_TYPES.map(type => (
-                          <option key={type} value={type}>{type}</option>
-                        ))}
-                      </select>
+                        options={PAYMENT_TYPES}
+                      />
                     </div>
                     <div>
                       <label className="block text-[10px] text-[#434655] font-bold mb-1">Pay Date</label>
@@ -2040,17 +2053,11 @@ const Invoice = () => {
                           <label className="text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1 block">
                             Type
                           </label>
-                          <select
+                          <SelectDropdown
                             value={payForm.payment_type}
                             onChange={e => setPayForm(p => ({ ...p, payment_type: e.target.value }))}
-                            className="w-full py-2.5 px-3 bg-[#F2F4F6] border-none rounded-lg text-sm
-                                       focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all"
-                          >
-                            <option>Cash</option>
-                            <option>UPI</option>
-                            <option>Transfer</option>
-                            <option>RTGS</option>
-                          </select>
+                            options={['Cash', 'UPI', 'Transfer', 'RTGS']}
+                          />
                         </div>
                         <div>
                           <label className="text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1 block">

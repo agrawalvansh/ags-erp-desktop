@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Printer, Plus, Trash2, Save, Edit, AlertTriangle, X, Search, ArrowLeft, ChevronDown } from 'lucide-react';
+import { Printer, Plus, Trash2, Save, Edit, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { generateOrderPDF } from './generateOrderPDF';
 import { useParams, useNavigate, useBlocker } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
@@ -7,6 +7,9 @@ import { toast } from 'react-hot-toast';
 import { sortProducts, capitalizeWords, generateProductCode, DEFAULT_PACKING_TYPE, ALLOWED_PACKING_TYPES } from '../../utils/productUtils';
 import NavigationWarningModal from '../../components/NavigationWarningModal';
 import PrinterSelectionModal from '../../components/PrinterSelectionModal';
+import RecordNotFound from '../../components/RecordNotFound';
+import SearchableDropdown from '../../components/SearchableDropdown';
+import SelectDropdown from '../../components/SelectDropdown';
 
 // ─── Stitch-styled Add Item Form ───
 const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors, productNameInputRef }) => {
@@ -89,68 +92,46 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
       <h3 className="text-xs font-bold text-[#434655] uppercase tracking-wider mb-6">Quick Add Item</h3>
       <div className="grid grid-cols-1 lg:grid-cols-[3fr_1.5fr_1.5fr_1fr_3fr_2fr] gap-4 items-end">
         {/* Product Name */}
-        <div className="space-y-2 relative" ref={prodWrapperRef}>
-          <label className="text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Product Name</label>
-          <div className="relative">
-            <input
-              ref={productNameInputRef}
-              type="text"
-              value={newItem.productName}
-              onFocus={() => { setShowProdDropdown(true); setHighlightedIndex(0); }}
-              onChange={(e) => { setNewItem({ ...newItem, productName: e.target.value }); setShowProdDropdown(true); setHighlightedIndex(0); }}
-              onKeyDown={handleKeyDown}
-              className={`w-full bg-[#F2F4F6] border-none rounded-lg py-2.5 px-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none ${formErrors.productName ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
-              placeholder="Start typing product..."
-              aria-autocomplete="list"
-              aria-expanded={showProdDropdown}
-            />
-            {newItem.productName ? (
-              <button type="button" onClick={clearProductSearch} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#434655]/40 hover:text-[#BA1A1A] cursor-pointer" tabIndex={-1}>
-                <X size={16} />
-              </button>
-            ) : (
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-[#434655]/30" size={16} />
-            )}
-            {showProdDropdown && (
-              <div className="absolute z-50 w-full mt-1 bg-white border border-[#C3C6D7]/20 rounded-lg shadow-lg max-h-60 overflow-y-auto" role="listbox">
-                {filteredProducts.length > 0 ? (
-                  filteredProducts.map((p, index) => (
-                    <button
-                      key={p.code} data-so-prod-index={index} role="option" aria-selected={highlightedIndex === index}
-                      className={`cursor-pointer w-full text-left px-4 py-3 transition-colors flex items-center justify-between ${highlightedIndex === index ? 'bg-[#EFF6FF]' : 'hover:bg-[#F2F4F6]'} ${index === 0 ? 'rounded-t-lg' : ''} ${index === filteredProducts.length - 1 ? 'rounded-b-lg' : ''}`}
-                      onClick={() => handleProductSelect(p)}
-                      onMouseEnter={() => setHighlightedIndex(index)}
-                    >
-                      <div>
-                        <span className="font-medium block text-sm">{formatName(p.name)}</span>
-                        {p.size && <span className="text-xs text-[#434655]">Size: {p.size}</span>}
-                      </div>
-                      <span className="text-xs font-bold text-[#434655]">₹{(() => { const v = parseFloat(p.selling_price ?? p.sellingPrice ?? 0); return Number.isInteger(v) ? v.toString() : v.toFixed(2); })()}</span>
-                    </button>
-                  ))
-                ) : (<div className="p-3 text-sm text-[#434655]">No products found</div>)}
+        <SearchableDropdown
+          inputRef={productNameInputRef}
+          wrapperRef={prodWrapperRef}
+          label="Product Name"
+          value={newItem.productName}
+          placeholder="Start typing product..."
+          error={formErrors.productName}
+          isOpen={showProdDropdown}
+          highlightedIndex={highlightedIndex}
+          options={filteredProducts}
+          onFocus={() => { setShowProdDropdown(true); setHighlightedIndex(0); }}
+          onChange={(val) => { setNewItem({ ...newItem, productName: val }); setShowProdDropdown(true); setHighlightedIndex(0); }}
+          onClear={clearProductSearch}
+          onKeyDown={handleKeyDown}
+          onSelect={handleProductSelect}
+          onMouseEnter={(idx) => setHighlightedIndex(idx)}
+          renderOption={(p) => (
+            <>
+              <div>
+                <span className="font-semibold block text-[#191C1E]">{formatName(p.name)}</span>
+                {p.size && <span className="text-xs text-[#434655] mt-0.5">{p.size}</span>}
               </div>
-            )}
-          </div>
-          <div className="h-5">
-            {formErrors.productName && (
-              <p className="text-xs text-[#BA1A1A] flex items-center gap-1 mt-0.5">
-                <AlertCircle size={12} />{formErrors.productName}
-              </p>
-            )}
-          </div>
-        </div>
+              <span className="text-xs font-semibold text-[#434655]">
+                ₹{(() => { const v = parseFloat(p.selling_price ?? p.sellingPrice ?? 0); return Number.isInteger(v) ? v.toString() : v.toFixed(2); })()}
+              </span>
+            </>
+          )}
+          emptyContent="No products found"
+          aria-controls="so-product-options"
+        />
 
         {/* Size */}
-        <div className="space-y-2">
-          <label className="text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Size</label>
+        <div className="space-y-1.5">
+          <label className="block text-[10px] font-bold text-[#434655] uppercase tracking-wider mb-1.5 ml-1">Size</label>
           <input ref={sizeInputRef} type="text" value={newItem.size || ''} onChange={(e) => setNewItem({ ...newItem, size: e.target.value })} className="w-full bg-[#F2F4F6] border-none rounded-lg py-2.5 px-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none" placeholder="e.g. 1Kg" />
-          <div className="h-5"></div>
         </div>
 
         {/* Qty */}
-        <div className="space-y-2">
-          <label className="text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Qty</label>
+        <div className="space-y-1.5">
+          <label className="block text-[10px] font-bold text-[#434655] uppercase tracking-wider mb-1.5 ml-1">Qty</label>
           <input
             ref={quantityInputRef} type="number" min="0.001" step="0.001" value={newItem.quantity}
             onChange={(e) => setNewItem({ ...newItem, quantity: e.target.value })}
@@ -158,34 +139,29 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
             className={`w-full bg-[#F2F4F6] border-none rounded-lg py-2.5 px-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none ${formErrors.quantity ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
             placeholder="0"
           />
-          <div className="h-5">
-            {formErrors.quantity && <p className="text-xs text-[#BA1A1A] flex items-center gap-1 mt-0.5"><AlertCircle size={12} />{formErrors.quantity}</p>}
-          </div>
+          {formErrors.quantity && <p className="text-xs text-[#BA1A1A] flex items-center gap-1 mt-0.5"><AlertCircle size={12} />{formErrors.quantity}</p>}
         </div>
 
         {/* Unit */}
-        <div className="space-y-2">
-          <label className="text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Unit</label>
-          <select value={newItem.packingType} onChange={(e) => setNewItem({ ...newItem, packingType: e.target.value })} className="w-full bg-[#F2F4F6] border-none rounded-lg py-2.5 px-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 appearance-none transition-all outline-none">
-            {ALLOWED_PACKING_TYPES.map((type) => (<option key={type} value={type}>{type}</option>))}
-          </select>
-          <div className="h-5"></div>
-        </div>
+        <SelectDropdown
+          label="Unit"
+          value={newItem.packingType}
+          onChange={(e) => setNewItem({ ...newItem, packingType: e.target.value })}
+          options={ALLOWED_PACKING_TYPES}
+        />
 
         {/* Item Remark */}
-        <div className="space-y-2">
-          <label className="text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Item Remark</label>
+        <div className="space-y-1.5">
+          <label className="block text-[10px] font-bold text-[#434655] uppercase tracking-wider mb-1.5 ml-1">Item Remark</label>
           <input type="text" value={newItem.itemRemark || ''} onChange={(e) => setNewItem({ ...newItem, itemRemark: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddItem(); } }} className="w-full bg-[#F2F4F6] border-none rounded-lg py-2.5 px-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none" placeholder="Optional note..." />
-          <div className="h-5"></div>
         </div>
 
         {/* Add Button */}
         <div>
-          <button onClick={handleAddItem} className="w-full text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-all active:scale-95 shadow-md shadow-[#2563EB]/20 cursor-pointer" style={{ background: 'linear-gradient(135deg, #004AC6 0%, #2563EB 100%)' }}>
+          <button onClick={handleAddItem} className="w-full text-white py-[11px] rounded-lg font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-all active:scale-95 shadow-md shadow-[#2563EB]/20 cursor-pointer" style={{ background: 'linear-gradient(135deg, #004AC6 0%, #2563EB 100%)' }}>
             <Plus size={16} />
             <span>Add Item</span>
           </button>
-          <div className="h-5"></div>
         </div>
       </div>
     </section>
@@ -234,6 +210,7 @@ const AddSupplierOrder = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaved, setIsSaved] = useState(true);
   const [currentorderId, setCurrentorderId] = useState(orderNo || '');
+  const [notFound, setNotFound] = useState(false);
   const [editIndex, setEditIndex] = useState(-1);
 
   // Payment/Advance state
@@ -309,6 +286,7 @@ const AddSupplierOrder = () => {
       const fetchorder = async () => {
         try {
           const orderData = await window.api.invoke('supOrders:get', orderNo);
+          if (!orderData || orderData.error) { setNotFound(true); return; }
           if (orderData && !orderData.error) {
             const processedItems = orderData.items.map((item) => {
               const prod = !item.is_temporary ? (products.find((p) => p.code === item.product_code) || {}) : {};
@@ -553,6 +531,17 @@ const AddSupplierOrder = () => {
     return 'bg-amber-50 text-amber-700 border-amber-200';
   };
 
+  if (notFound) {
+    return (
+      <RecordNotFound
+        recordType="Supplier Order"
+        recordId={orderNo}
+        backPath="/orders/suppliers"
+        backLabel="Back to Supplier Orders"
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F7F9FB] print:bg-white print:p-0 print:text-black">
       {/* Navigation Warning Modal */}
@@ -599,49 +588,42 @@ const AddSupplierOrder = () => {
           <h3 className="text-[0.65rem] font-bold text-[#434655] uppercase tracking-[0.1em] mb-6 print:hidden">Supplier Details</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-6 print:gap-y-2 print:gap-x-4">
             {/* Supplier Name */}
-            <div className="flex flex-col space-y-2 relative" ref={wrapperRef}>
-              <label className="text-[0.65rem] font-bold text-[#434655] uppercase tracking-[0.05em]">Supplier Name</label>
-              <div className="relative">
-                <input
-                  type="text" value={buyer}
-                  onFocus={() => { setShowCustDropdown(true); setHighlightedCustIndex(0); }}
-                  onChange={(e) => {
-                    const name = e.target.value; setBuyer(name); setShowCustDropdown(true); setHighlightedCustIndex(0);
-                    const cust = suppliers.find(c => c.name.toLowerCase() === name.toLowerCase());
-                    if (cust) { setsupplierId(cust.supplier_id); setAddress(cust.address); setMobileNo(cust.mobile); } else { setsupplierId(''); setAddress(''); setMobileNo(''); }
-                  }}
-                  onKeyDown={(e) => {
-                    if (!showCustDropdown) return;
-                    const filteredSupps = suppliers.filter(c => c.name.toLowerCase().includes(buyer.toLowerCase()));
-                    switch (e.key) {
-                      case 'ArrowDown': e.preventDefault(); setHighlightedCustIndex(prev => Math.min(prev + 1, filteredSupps.length - 1)); break;
-                      case 'ArrowUp': e.preventDefault(); setHighlightedCustIndex(prev => Math.max(prev - 1, 0)); break;
-                      case 'Enter': e.preventDefault(); if (highlightedCustIndex >= 0 && filteredSupps[highlightedCustIndex]) { handleSelectsupplier(filteredSupps[highlightedCustIndex]); } break;
-                      case 'Escape': e.preventDefault(); setShowCustDropdown(false); setHighlightedCustIndex(-1); break;
-                    }
-                  }}
-                  className="w-full bg-[#F2F4F6] border-none rounded-lg py-2.5 px-3 focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all text-sm outline-none"
-                  placeholder="Search supplier..."
-                />
-                {buyer ? (
-                  <button type="button" tabIndex={-1} onClick={() => { setBuyer(''); setsupplierId(''); setAddress(''); setMobileNo(''); setShowCustDropdown(false); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#434655]/40 hover:text-[#BA1A1A] cursor-pointer transition-colors">
-                    <X size={16} />
-                  </button>
-                ) : (
-                  <Search size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#434655]/40" />
-                )}
-              </div>
-              {showCustDropdown && (
-                <ul className="absolute z-50 w-full top-full mt-1 overflow-y-auto bg-white border border-[#C3C6D7]/20 rounded-lg shadow-lg" style={{ maxHeight: '9rem' }}>
-                  {suppliers.filter((c) => c.name.toLowerCase().includes(buyer.toLowerCase())).map((c, idx) => (
-                    <li key={c.supplier_id} data-so-cust-index={idx} className={`px-4 py-2.5 cursor-pointer text-sm font-medium transition-colors ${highlightedCustIndex === idx ? 'bg-[#EFF6FF]' : 'hover:bg-[#F2F4F6]'}`} onClick={() => handleSelectsupplier(c)} onMouseEnter={() => setHighlightedCustIndex(idx)}>{c.name}</li>
-                  ))}
-                  {suppliers.filter((c) => c.name.toLowerCase().includes(buyer.toLowerCase())).length === 0 && (
-                    <li className="px-4 py-2.5 text-[#434655] text-sm">No suppliers found</li>
-                  )}
-                </ul>
+            <SearchableDropdown
+              wrapperRef={wrapperRef}
+              label="Supplier Name"
+              value={buyer}
+              placeholder="Search supplier..."
+              isOpen={showCustDropdown}
+              highlightedIndex={highlightedCustIndex}
+              options={suppliers.filter(c => c.name.toLowerCase().includes(buyer.toLowerCase()))}
+              onFocus={() => { setShowCustDropdown(true); setHighlightedCustIndex(0); }}
+              onChange={(val) => {
+                setBuyer(val); setShowCustDropdown(true); setHighlightedCustIndex(0);
+                const cust = suppliers.find(c => c.name.toLowerCase() === val.toLowerCase());
+                if (cust) { setsupplierId(cust.supplier_id); setAddress(cust.address); setMobileNo(cust.mobile); } else { setsupplierId(''); setAddress(''); setMobileNo(''); }
+              }}
+              onClear={() => { setBuyer(''); setsupplierId(''); setAddress(''); setMobileNo(''); setShowCustDropdown(false); }}
+              onKeyDown={(e) => {
+                if (!showCustDropdown) return;
+                const filteredSupps = suppliers.filter(c => c.name.toLowerCase().includes(buyer.toLowerCase()));
+                switch (e.key) {
+                  case 'ArrowDown': e.preventDefault(); setHighlightedCustIndex(prev => Math.min(prev + 1, filteredSupps.length - 1)); break;
+                  case 'ArrowUp': e.preventDefault(); setHighlightedCustIndex(prev => Math.max(prev - 1, 0)); break;
+                  case 'Enter': e.preventDefault(); if (highlightedCustIndex >= 0 && filteredSupps[highlightedCustIndex]) { handleSelectsupplier(filteredSupps[highlightedCustIndex]); } break;
+                  case 'Escape': e.preventDefault(); setShowCustDropdown(false); setHighlightedCustIndex(-1); break;
+                }
+              }}
+              onSelect={handleSelectsupplier}
+              onMouseEnter={(idx) => setHighlightedCustIndex(idx)}
+              renderOption={(c) => (
+                <>
+                  <span className="font-semibold text-[#191C1E]">{c.name}</span>
+                  {c.mobile && <span className="text-xs text-[#434655]">{c.mobile}</span>}
+                </>
               )}
-            </div>
+              emptyContent="No suppliers found"
+              aria-controls="so-supplier-options"
+            />
 
             {/* Mobile Number */}
             <div className="flex flex-col space-y-2">
@@ -668,15 +650,12 @@ const AddSupplierOrder = () => {
             </div>
 
             {/* Status */}
-            <div className="flex flex-col space-y-2">
-              <label className="text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Status</label>
-              <div className="relative">
-                <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full bg-[#F2F4F6] border-none rounded-lg py-2.5 px-3 pr-10 text-sm outline-none focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 appearance-none cursor-pointer transition-all print:bg-transparent">
-                  <option>Placed</option><option>Confirmed</option><option>In Progress</option><option>Dispatched</option><option>Payment Pending</option><option>Paid</option><option>Cancelled</option>
-                </select>
-                <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#434655] pointer-events-none" />
-              </div>
-            </div>
+            <SelectDropdown
+              label="Status"
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              options={['Placed', 'Confirmed', 'In Progress', 'Dispatched', 'Payment Pending', 'Paid', 'Cancelled']}
+            />
 
             {/* Remark */}
             <div className="flex flex-col space-y-2">
@@ -744,12 +723,12 @@ const AddSupplierOrder = () => {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium text-[#434655]">Type</span>
-                <div className="relative">
-                  <select value={paymentType} onChange={(e) => setPaymentType(e.target.value)} className="w-32 text-center bg-white border border-[#C3C6D7]/20 rounded-lg py-2 px-3 pr-8 text-sm font-medium outline-none focus:ring-2 focus:ring-[#2563EB]/20 appearance-none cursor-pointer">
-                    {PAYMENT_TYPES.map(type => (<option key={type} value={type}>{type}</option>))}
-                  </select>
-                  <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-[#434655] pointer-events-none" />
-                </div>
+                <SelectDropdown
+                  value={paymentType}
+                  onChange={(e) => setPaymentType(e.target.value)}
+                  options={PAYMENT_TYPES}
+                  selectClassName="w-32 text-center"
+                />
               </div>
             </div>
           </div>

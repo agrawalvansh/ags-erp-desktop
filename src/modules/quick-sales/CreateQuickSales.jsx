@@ -5,6 +5,7 @@ import { useParams, useNavigate, useLocation, useBlocker } from 'react-router-do
 import { AlertCircle, Search } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import PageLoader from '../../components/PageLoader';
+import RecordNotFound from '../../components/RecordNotFound';
 import NavigationWarningModal from '../../components/NavigationWarningModal';
 import PrinterSelectionModal from '../../components/PrinterSelectionModal';
 import {
@@ -19,6 +20,7 @@ import {
     sortProducts
 } from '../../utils/productUtils';
 import WeightCalculator from '../../utils/WeightCalculator';
+import SelectDropdown from '../../components/SelectDropdown';
 
 // Add Item Form Component (shared with Invoice)
 const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors, productNameInputRef }) => {
@@ -248,16 +250,13 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
 
                         {/* Unit (20%) */}
                         <div className="col-span-1">
-                            <label className="block text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1 truncate">Unit</label>
-                            <select
-                                value={newItem.packingType}
-                                onChange={(e) => setNewItem({ ...newItem, packingType: e.target.value })}
-                                className="w-full py-2.5 px-1 bg-[#F2F4F6] border-none rounded-lg text-[11px] font-bold appearance-none text-center"
-                            >
-                                {ALLOWED_PACKING_TYPES.map(type => (
-                                    <option key={type} value={type}>{type}</option>
-                                ))}
-                            </select>
+                            <SelectDropdown
+                              label="Unit"
+                              value={newItem.packingType}
+                              onChange={(e) => setNewItem({ ...newItem, packingType: e.target.value })}
+                              options={ALLOWED_PACKING_TYPES}
+                              selectClassName="text-[11px] font-bold text-center"
+                            />
                         </div>
 
                         {/* Rate (40%) */}
@@ -347,6 +346,7 @@ const CreateQuickSale = () => {
     const [formErrors, setFormErrors] = useState({});
     const [isSaved, setIsSaved] = useState(true);
     const [currentQsId, setCurrentQsId] = useState(qsId || '');
+    const [notFound, setNotFound] = useState(false);
     const [editIndex, setEditIndex] = useState(-1);
     const [originalData, setOriginalData] = useState(null);
     const [isNewSale, setIsNewSale] = useState(true);
@@ -482,7 +482,7 @@ const CreateQuickSale = () => {
         const load = async () => {
             try {
                 const qs = await window.api.invoke('quickSales:get', qsId);
-                if (!qs || qs.error) return;
+                if (!qs || qs.error) { setNotFound(true); return; }
 
                 const formatName = (name) => {
                     if (!name) return '';
@@ -863,6 +863,17 @@ const CreateQuickSale = () => {
     };
 
     const { roundOff, grandTotal } = calculateGrandTotal();
+
+    if (notFound) {
+        return (
+            <RecordNotFound
+                recordType="Quick Sale"
+                recordId={qsId}
+                backPath="/quick-sales/list"
+                backLabel="Back to Quick Sales"
+            />
+        );
+    }
 
     return (
         <div className="p-2 sm:p-6 min-h-screen bg-[#F7F9FB] print:bg-white print:p-0 print:text-black">

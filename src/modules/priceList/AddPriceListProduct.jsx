@@ -9,6 +9,7 @@ import {
   ALLOWED_PACKING_TYPES,
   DEFAULT_PACKING_TYPE
 } from '../../utils/productUtils';
+import SelectDropdown from '../../components/SelectDropdown';
 
 
 const AddPriceListProduct = () => {
@@ -279,21 +280,15 @@ const AddPriceListProduct = () => {
               
               {/* Packing Type */}
               <div className="col-span-1">
-                <label className="block text-[10px] font-bold text-[#434655] uppercase tracking-wider mb-1.5 ml-1">
-                  Packing Type
-                </label>
-                <select
+                <SelectDropdown
                   name="packingType"
+                  label="Packing Type"
                   ref={packingTypeRef}
                   tabIndex={3}
                   value={formData.packingType}
                   onChange={handleChange}
-                  className="w-full bg-[#F2F4F6] border-none rounded-lg py-2.5 px-3 focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all text-sm outline-none cursor-pointer"
-                >
-                  {ALLOWED_PACKING_TYPES.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
+                  options={ALLOWED_PACKING_TYPES}
+                />
               </div>
 
               {/* Last Updated — read only, visible only in edit mode */}
