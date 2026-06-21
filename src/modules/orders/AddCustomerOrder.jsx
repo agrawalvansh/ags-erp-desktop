@@ -276,6 +276,7 @@ const AddCustomerOrder = () => {
   }, [orderNo]);
 
   useEffect(() => {
+    setNotFound(false);
     if (orderNo) {
       const fetchorder = async () => {
         try {
@@ -562,7 +563,7 @@ const AddCustomerOrder = () => {
       {/* ─── Top App Bar ─── */}
       <header className="bg-[#F7F9FB] flex justify-between items-center px-8 py-5 print:hidden">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/orders/customers')} className="p-2 hover:bg-[#ECEEF0] rounded-full transition-colors cursor-pointer">
+          <button onClick={() => navigate('/orders/customers', { state: { returnedFromOrder: customorderNo || orderNo } })} className="p-2 hover:bg-[#ECEEF0] rounded-full transition-colors cursor-pointer">
             <ArrowLeft size={20} className="text-[#191C1E]" />
           </button>
           <h2 className="text-xl font-bold text-[#191C1E]">{orderNo ? 'Edit Customer Order' : 'New Customer Order'}</h2>
@@ -625,13 +626,13 @@ const AddCustomerOrder = () => {
             {/* Mobile */}
             <div className="flex flex-col space-y-2">
               <label className="text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Mobile Number</label>
-              <input type="text" value={mobileNo} onChange={(e) => setMobileNo(e.target.value)} className="w-full bg-[#F2F4F6] border-none rounded-lg py-2.5 px-3 text-sm outline-none focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all" placeholder="Mobile number" />
+              <input type="text" value={mobileNo} onChange={(e) => setMobileNo(e.target.value)} className="w-full bg-[#ECEEF0] border-none rounded-lg py-3 px-4 text-sm text-[#434655] font-medium outline-none focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all" placeholder="Mobile number" />
             </div>
 
             {/* Address */}
             <div className="flex flex-col space-y-2">
               <label className="text-[10px] font-bold text-[#434655] uppercase mb-1.5 ml-1">Address</label>
-              <textarea value={address} onChange={(e) => setAddress(e.target.value)} className="w-full bg-[#F2F4F6] border-none rounded-lg py-2.5 px-3 text-sm outline-none focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all resize-none" placeholder="Address" rows="1" />
+              <textarea value={address} onChange={(e) => setAddress(e.target.value)} className="w-full bg-[#ECEEF0] border-none rounded-lg py-3 px-4 text-sm text-[#434655] font-medium outline-none focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all resize-none" placeholder="Address" rows="1" />
             </div>
           </div>
         </section>
@@ -712,11 +713,11 @@ const AddCustomerOrder = () => {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium text-[#434655]">Date</span>
-                <input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} className="w-40 text-right bg-white border border-[#C3C6D7]/20 rounded-lg py-2 px-3 text-sm font-medium outline-none focus:ring-2 focus:ring-[#2563EB]/20" />
+                <input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} className="w-40 text-right bg-[#F2F4F6] border-none rounded-lg py-2.5 px-3 text-sm font-medium outline-none focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all" />
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium text-[#434655]">Amount (₹)</span>
-                <input type="number" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} className="w-32 text-right bg-white border border-[#C3C6D7]/20 rounded-lg py-2 px-3 text-sm font-medium outline-none focus:ring-2 focus:ring-[#2563EB]/20" placeholder="0.00" min="0" />
+                <input type="number" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} className="w-32 text-right bg-[#F2F4F6] border-none rounded-lg py-2.5 px-3 text-sm font-medium outline-none focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all" placeholder="0.00" min="0" />
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium text-[#434655]">Type</span>
@@ -730,21 +731,40 @@ const AddCustomerOrder = () => {
             </div>
           </div>
 
-          <div className="space-y-3">
-            {isDirty ? (
-              <button onClick={handleSave} className="w-full text-white py-4 rounded-xl font-bold text-base flex items-center justify-center gap-3 hover:opacity-95 transition-all active:scale-[0.98] shadow-xl shadow-[#004AC6]/20 cursor-pointer" style={{ background: 'linear-gradient(135deg, #004AC6 0%, #2563EB 100%)' }}>
-                <Save size={20} /><span>Save Order</span>
-              </button>
-            ) : (
-              <button onClick={handlePrint} className="w-full text-white py-4 rounded-xl font-bold text-base flex items-center justify-center gap-3 hover:opacity-95 transition-all active:scale-[0.98] shadow-xl shadow-[#004AC6]/20 cursor-pointer" style={{ background: 'linear-gradient(135deg, #004AC6 0%, #2563EB 100%)' }}>
-                <Printer size={20} /><span>Print Order</span>
-              </button>
-            )}
-            {currentorderId && (
-              <button onClick={() => setShowDeleteModal(true)} className="w-full bg-[#DC2626] hover:bg-red-700 text-white py-4 rounded-xl font-bold text-base flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-lg shadow-[#DC2626]/20 cursor-pointer">
-                <Trash2 size={20} /><span>Delete Order</span>
-              </button>
-            )}
+          {/* Action Buttons — matches Invoice pattern */}
+          <div className="pt-8 border-t border-[#C3C6D7]/10 flex justify-between items-center mt-6">
+            {/* Delete button (left side) — only for existing orders */}
+            <div>
+              {(currentorderId && !isNewOrder) && (
+                <button
+                  onClick={() => setShowDeleteModal(true)}
+                  className="cursor-pointer px-6 py-3 bg-[#DC2626] text-white font-bold text-xs uppercase rounded-xl shadow-lg shadow-[#DC2626]/20 hover:bg-red-700 active:scale-95 transition-all flex items-center gap-2"
+                >
+                  <Trash2 size={18} />
+                  Delete Order
+                </button>
+              )}
+            </div>
+            {/* Save / Print button (right side) */}
+            <div>
+              {isDirty ? (
+                <button
+                  onClick={handleSave}
+                  className="cursor-pointer px-12 py-3 bg-gradient-to-br from-[#004AC6] to-[#2563EB] text-white font-bold text-xs uppercase rounded-xl shadow-lg shadow-[#004AC6]/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
+                >
+                  <Save size={18} />
+                  Save & Confirm
+                </button>
+              ) : (currentorderId || !isNewOrder) && (
+                <button
+                  onClick={handlePrint}
+                  className="cursor-pointer px-8 py-3 bg-[#E6E8EA] text-[#191C1E] font-bold text-xs uppercase rounded-xl hover:bg-[#E0E3E5] transition-all flex items-center gap-2"
+                >
+                  <Printer size={18} />
+                  Print Order
+                </button>
+              )}
+            </div>
           </div>
         </section>
       </main>

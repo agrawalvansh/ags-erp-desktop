@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Search, Edit, Trash2, Filter, Plus, Phone, MapPin, Building, Save, X, ArrowLeft, Bell, Clock, Download, Printer } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import PageLoader from '../../components/PageLoader';
+import AccountNotFound from '../../components/AccountNotFound';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { naturalCompare } from '../../utils/productUtils';
@@ -90,7 +91,7 @@ const SupplierAccountDetail = () => {
       try {
         setIsLoading(true);
         const found = await window.api.invoke('suppliers:get', slug);
-        if (!found) {
+        if (!found || found.error) {
           setError('Supplier not found');
         } else {
           setSupplier(found);
@@ -593,13 +594,12 @@ const SupplierAccountDetail = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#F7F9FB] flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-extrabold text-[#191C1E] mb-2">Error</h2>
-          <p className="text-[#434655]">{error}</p>
-          <button onClick={() => navigate('/accounts/suppliers')} className="mt-4 px-6 py-2 bg-[#004AC6] text-white rounded-xl font-semibold hover:bg-[#003EA8] transition cursor-pointer">Back to Suppliers</button>
-        </div>
-      </div>
+      <AccountNotFound
+        accountType="Supplier"
+        accountId={slug}
+        backPath="/accounts/suppliers"
+        error={error}
+      />
     );
   }
 

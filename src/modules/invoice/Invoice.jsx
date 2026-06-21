@@ -523,6 +523,7 @@ const Invoice = () => {
     // Reset dirty state tracking
     setOriginalInvoiceData(null);
     setIsNewInvoice(true);
+    setNotFound(false);
 
     // Fetch new invoice ID
     try {
@@ -623,6 +624,7 @@ const Invoice = () => {
 
   // Load existing invoice if editing
   useEffect(() => {
+    setNotFound(false);
     if (invoiceNo) {
       const fetchInvoice = async () => {
         try {

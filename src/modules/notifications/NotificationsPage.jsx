@@ -73,10 +73,12 @@ const NotificationsPage = () => {
       await window.api.invoke('notifications:markRead', notif.id);
       broadcastCount();
     }
-    const basePath = notif.type === 'customer'
-      ? '/accounts/customers'
-      : '/accounts/suppliers';
-    navigate(`${basePath}/${notif.account_id}`);
+    if (notif.type === 'supplier') {
+      navigate(`/accounts/suppliers/${notif.account_id}`);
+    } else {
+      // 'customer' and 'invoice_overdue' both belong to a customer account
+      navigate(`/accounts/customers/${notif.account_id}`);
+    }
   };
 
   // Relative time helper
@@ -184,9 +186,15 @@ const NotificationsPage = () => {
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                         notif.type === 'customer'
                           ? 'bg-blue-50 text-blue-600'
-                          : 'bg-emerald-50 text-emerald-600'
+                          : notif.type === 'supplier'
+                          ? 'bg-emerald-50 text-emerald-600'
+                          : 'bg-amber-50 text-amber-600'
                       }`}>
-                        {notif.type === 'customer' ? 'Customer' : 'Supplier'}
+                        {notif.type === 'customer'
+                          ? 'Customer'
+                          : notif.type === 'supplier'
+                          ? 'Supplier'
+                          : 'Overdue Invoice'}
                       </span>
                       {/* Date */}
                       {notif.invoice_date && (

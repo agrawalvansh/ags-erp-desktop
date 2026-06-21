@@ -317,17 +317,23 @@
 | 13.2 | Electron IPC | All DB operations via secure IPC handlers (`window.api.invoke()`) |
 | 13.3 | Preload Security | Context isolation + whitelisted API bridge (no direct Node.js access from renderer) |
 | 13.4 | Legacy Fetch Shim | Redirects old HTTP fetch calls to IPC (backward compat) |
-| 13.5 | Auto Migrations | Schema migrations run safely on startup |
-| 13.6 | Document Sequences | Sequential ID generation with gap recycling for invoices, quick sales, and orders |
-| 13.7 | Soft Delete for Products | Products marked `is_deleted=1`, not hard-deleted (FK protection) |
-| 13.8 | Weekly Cleanup Scheduler | Auto-cleans soft-deleted products (weekly interval) |
-| 13.9 | Admin Cleanup Handler | Manual trigger for soft-delete cleanup |
-| 13.10 | Foreign Key Enforcement | `PRAGMA foreign_keys = ON` on every connection |
-| 13.11 | Transaction Safety | All multi-table operations wrapped in transactions |
-| 13.12 | Window Maximization | App starts maximized |
-| 13.13 | Build System | Vite + Electron Builder (NSIS for Windows, DMG for macOS) |
-| 13.14 | Notification Engine | Backend generates payment reminder notifications based on configured days — runs on app startup and periodically |
-| 13.15 | Overdue Invoice Scanner | On app startup (2s delay), scans all non-paid invoices and flips to `overdue` if past due date. Creates notifications with `reminder_key` pattern. Pushes unread count to renderer. |
+| 13.5 | Versioned Migrations | Sequential migration system tracked by `schema_version` table. Each migration has a version number, description, and idempotent `up()` function. Runs pending migrations in order on startup. See `docs/migrations.md` for the full guide. |
+| 13.6 | Schema Validation | Post-migration `validateSchema()` checks every table and column in the DB against `EXPECTED_SCHEMA` map. If anything is missing, the app shows a native error dialog listing exactly what's wrong and quits. |
+| 13.7 | Pre-Migration Backup | Before running pending migrations, `db.js` copies `erp.db` to `erp.db.backup-{YYYY-MM-DD}`. If backup fails, logs a warning and continues. Keeps only the latest backup per day. |
+| 13.8 | DB Error Guard | `main.cjs` checks `db.dbError` after require. If non-null, shows `dialog.showErrorBox` with app version + error details and quits before any window is created. |
+| 13.9 | `safeAddColumn()` Utility | Module-level function in `db.js` that safely adds a column to a table (tries SELECT, catches, then ALTERs). All migrations use this — never raw ALTER TABLE. |
+| 13.10 | Document Sequences | Sequential ID generation with gap recycling for invoices, quick sales, and orders |
+| 13.11 | Soft Delete for Products | Products marked `is_deleted=1`, not hard-deleted (FK protection) |
+| 13.12 | Weekly Cleanup Scheduler | Auto-cleans soft-deleted products (weekly interval) |
+| 13.13 | Quick Sales Auto-Cleanup | Deletes quick sales older than 30 days on startup (once per day via `app_state` key). Shows a toast in the renderer with the count of deleted records. |
+| 13.14 | Stale Notification Cleanup | On daily scan, deletes `customer:maal`, `supplier:maal`, and `invoice_overdue` notifications where the underlying invoice is fully paid or no longer exists. Also clears `customer:maal` notification immediately when invoice status becomes `paid` via `recalculateInvoiceStatus`. |
+| 13.15 | Admin Cleanup Handler | Manual trigger for soft-delete cleanup |
+| 13.16 | Foreign Key Enforcement | `PRAGMA foreign_keys = ON` on every connection |
+| 13.17 | Transaction Safety | All multi-table operations wrapped in transactions |
+| 13.18 | Window Maximization | App starts maximized |
+| 13.19 | Build System | Vite + Electron Builder (NSIS for Windows) |
+| 13.20 | Notification Engine | Backend generates payment reminder notifications based on configured days — runs on app startup and periodically |
+| 13.21 | Overdue Invoice Scanner | On app startup (2s delay), scans all non-paid invoices and flips to `overdue` if past due date. Creates notifications with `reminder_key` pattern. Pushes unread count to renderer. |
 
 ---
 

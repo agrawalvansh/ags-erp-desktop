@@ -478,6 +478,7 @@ const CreateQuickSale = () => {
 
     // Load existing quick sale for editing
     useEffect(() => {
+        setNotFound(false);
         if (!qsId) return;
         const load = async () => {
             try {

@@ -41,7 +41,7 @@ A lightweight, offline-first ERP application built with **Electron**, **React** 
 ags-erp-desktop/
 ├── main.cjs              # Electron main process — window, IPC, DB init
 ├── preload.js            # Context bridge (exposes window.api)
-├── db.js                 # SQLite schema, migrations, table creation
+├── db.js                 # SQLite schema, versioned migrations, schema validation
 ├── ipcHandlers.js        # All IPC handlers (CRUD for every module)
 ├── erpApi.js             # Shared API helpers
 ├── icons/
@@ -102,7 +102,7 @@ npm install
 npm run dev
 ```
 
-This builds the React UI with Vite, then launches Electron. The SQLite database is created automatically on first run with all tables and migrations.
+This builds the React UI with Vite, then launches Electron. The SQLite database is created automatically on first run with all tables. Versioned migrations run on every startup to keep the schema up to date.
 
 ### Build Installer
 
@@ -122,7 +122,7 @@ The installer will be output to the `release/` directory.
 
 ## 🗄 Database Schema
 
-All tables are auto-created on first boot from `db.js`. No manual migration needed.
+All tables are auto-created on first boot from `db.js`. Versioned migrations and schema validation run on every startup. See `docs/migrations.md` for the migration guide.
 
 ```
 products                 customers                 suppliers
@@ -155,8 +155,8 @@ customer_maal_account    customer_jama_account
 customer_orders / supplier_orders  (+ _order_items)
 quick_sales (+ _items)
 supplier_maal_account / supplier_jama_account
-document_sequences / reusable_invoice_numbers / migration_history
-notifications / app_state
+document_sequences / reusable_invoice_numbers
+notifications / app_state / schema_version / users
 ```
 
 ---

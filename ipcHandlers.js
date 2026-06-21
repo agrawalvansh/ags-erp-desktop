@@ -97,6 +97,17 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
       db.prepare('DELETE FROM notifications WHERE reminder_key = ?').run(reminderKey)
     }
 
+    // Clear the daily-scan notification for this invoice's maal entry when paid
+    if (status === 'paid') {
+      const maalEntry = db.prepare(
+        'SELECT id FROM customer_maal_account WHERE maal_invoice_no = ?'
+      ).get(invoice_id)
+      if (maalEntry) {
+        db.prepare('DELETE FROM notifications WHERE reminder_key = ?')
+          .run(`customer:maal:${maalEntry.id}`)
+      }
+    }
+
     return status
   }
   // ─────────────────────────────────────────────────────────────────────────

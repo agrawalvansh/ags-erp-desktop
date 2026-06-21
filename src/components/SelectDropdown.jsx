@@ -44,7 +44,7 @@ const SelectDropdown = ({
     opts.map((o) =>
       typeof o === 'string' || typeof o === 'number'
         ? { value: String(o), label: String(o) }
-        : { value: String(o.value), label: String(o.label) }
+        : { value: String(o.value ?? o.label ?? ''), label: String(o.label ?? o.value ?? '') }
     );
 
   const normalised = normaliseOptions(options);

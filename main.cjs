@@ -1,36 +1,127 @@
-const { app, BrowserWindow, ipcMain, Notification } = require('electron');
+const { app, BrowserWindow, ipcMain, Notification, dialog } = require('electron');
 const path = require('path');
 
 // ─── Init SQLite (shared) ───────────────────────────────
-const db = require('./db'); // uses better-sqlite3 instance
-// Enforce foreign key constraints on every connection
+const db = require('./db');
 if (db.pragma) db.pragma('foreign_keys = ON');
 
+// ─── DB Error Guard ─────────────────────────────────────
+// If db.js detected a schema mismatch or migration failure,
+// show a native error dialog and quit immediately.
+if (db.dbError) {
+  app.whenReady().then(() => {
+    dialog.showErrorBox(
+      'AGS ERP — Database Error',
+      `App version: ${app.getVersion()}\n\n`
+      + db.dbError
+      + '\n\nPlease contact Vansh Agrawal (+91-7378882317) and share this full message.'
+    );
+    app.quit();
+  });
+  // Return from the module — skip ALL other initialization
+  return;
+}
+
 // ─── Single-Instance Lock ──────────────────────────────
-// Prevent multiple instances from writing to the same SQLite database simultaneously
-// Must be checked before any DB writes or IPC handler registration
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
+  // Show a native dialog so the user knows why the app didn't open
+  dialog.showErrorBox(
+    'AGS ERP — Already Running',
+    'AGS ERP is already open.\n\nYou cannot run two instances at the same time.\nPlease switch to the existing window.'
+  );
   app.quit();
   process.exit(0);
 }
 
-// ─── Startup Cleanup ────────────────────────────────────
-// Auto-cleanup quick sales older than 30 days
-try {
-  const oldSales = db.prepare(
-    `SELECT qs_id FROM quick_sales WHERE date(qs_date) < date('now', '-30 days')`
-  ).all();
-  if (oldSales.length > 0) {
-    const cleanupTxn = db.transaction(() => {
-      for (const row of oldSales) {
-        db.prepare('DELETE FROM quick_sale_items WHERE qs_id = ?').run(row.qs_id);
-        db.prepare('DELETE FROM quick_sales WHERE qs_id = ?').run(row.qs_id);
-      }
-    });
-    cleanupTxn();
+// When a second instance is attempted, focus the existing window
+app.on('second-instance', () => {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
   }
-} catch (e) { console.error('[Scheduler] Quick sales cleanup error:', e.message); }
+});
+
+// ─── Startup Cleanup — Quick Sales older than 30 days ───────────────────
+// Runs once per calendar day; stores count so the renderer can show a toast.
+let qsCleanupCount = 0;
+try {
+  const today = new Date().toISOString().split('T')[0]
+  const lastCleanup = db.prepare(
+    "SELECT value FROM app_state WHERE key = 'last_qs_cleanup'"
+  ).get()
+
+  if (!lastCleanup || lastCleanup.value !== today) {
+    const cleanupTxn = db.transaction(() => {
+      db.prepare(`
+        DELETE FROM quick_sale_items
+        WHERE qs_id IN (
+          SELECT qs_id FROM quick_sales
+          WHERE date(qs_date) < date('now', '-30 days')
+        )
+      `).run()
+
+      const result = db.prepare(`
+        DELETE FROM quick_sales
+        WHERE date(qs_date) < date('now', '-30 days')
+      `).run()
+
+      return result.changes
+    })
+    qsCleanupCount = cleanupTxn()
+
+    if (qsCleanupCount > 0) {
+      console.log(`[Cleanup] Deleted ${qsCleanupCount} quick sale(s) older than 30 days`)
+    }
+
+    db.prepare(
+      "INSERT OR REPLACE INTO app_state (key, value) VALUES ('last_qs_cleanup', ?)"
+    ).run(today)
+  }
+} catch (e) { console.error('[Scheduler] Quick sales cleanup error:', e.message) }
+
+// ─── Fix stale notification account_ids ─────────────────
+try {
+  const fixNotifIds = db.transaction(() => {
+    // Fix supplier notifications
+    const supplierNotifs = db.prepare(
+      `SELECT n.id, n.account_id, n.account_name
+       FROM notifications n
+       LEFT JOIN suppliers s ON s.supplier_id = n.account_id
+       WHERE n.type = 'supplier' AND s.supplier_id IS NULL`
+    ).all();
+    for (const notif of supplierNotifs) {
+      const match = db.prepare(
+        `SELECT supplier_id FROM suppliers WHERE LOWER(name) = LOWER(?) LIMIT 1`
+      ).get(notif.account_name);
+      if (match) {
+        db.prepare(`UPDATE notifications SET account_id = ? WHERE id = ?`)
+          .run(match.supplier_id, notif.id);
+        console.log(`[Migration] Fixed supplier notification #${notif.id}: '${notif.account_id}' → '${match.supplier_id}'`);
+      }
+    }
+
+    // Fix customer notifications
+    const customerNotifs = db.prepare(
+      `SELECT n.id, n.account_id, n.account_name
+       FROM notifications n
+       LEFT JOIN customers c ON c.customer_id = n.account_id
+       WHERE n.type IN ('customer', 'invoice_overdue') AND c.customer_id IS NULL`
+    ).all();
+    for (const notif of customerNotifs) {
+      const match = db.prepare(
+        `SELECT customer_id FROM customers WHERE LOWER(name) = LOWER(?) LIMIT 1`
+      ).get(notif.account_name);
+      if (match) {
+        db.prepare(`UPDATE notifications SET account_id = ? WHERE id = ?`)
+          .run(match.customer_id, notif.id);
+        console.log(`[Migration] Fixed customer notification #${notif.id}: '${notif.account_id}' → '${match.customer_id}'`);
+      }
+    }
+  });
+  fixNotifIds();
+} catch (e) { console.error('[Migration] Notification account_id fix error:', e.message); }
+
 
 // ─── Register IPC handlers ─────────────────────────────
 const registerIpcHandlers = require('./ipcHandlers');
@@ -60,14 +151,12 @@ ipcMain.handle('print:pdf', async (_event, { pdfBase64, printerName, fileName })
     const buffer = Buffer.from(pdfBase64, 'base64');
     await fs.promises.writeFile(tempFile, buffer);
 
-    // Print via node-pdf-printer
     if (printerName) {
       await NodePdfPrinter.printFiles([tempFile], printerName);
     } else {
-      await NodePdfPrinter.printFiles([tempFile]); // default printer
+      await NodePdfPrinter.printFiles([tempFile]);
     }
 
-    // Clean up temp file after a longer delay (printer may still be reading)
     setTimeout(() => {
       fs.unlink(tempFile, (err) => {
         if (err) console.warn(`[print:pdf] Failed to clean up temp file ${tempFile}:`, err.message);
@@ -115,6 +204,34 @@ function createWindow() {
 
 app.whenReady().then(() => {
   createWindow();
+
+  // Notify renderer about QS cleanup (runs after window loads)
+  if (qsCleanupCount > 0) {
+    const sendCleanupMsg = () => {
+      if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+        mainWindow.webContents.send('cleanup:quickSalesDeleted', { count: qsCleanupCount });
+      }
+    };
+    if (mainWindow.webContents.isLoading()) {
+      mainWindow.webContents.once('did-finish-load', sendCleanupMsg);
+    } else {
+      sendCleanupMsg();
+    }
+  }
+
+  // Notify renderer about successful upgrade
+  if (db.migratedFrom !== null && !db.dbError) {
+    const sendUpgradeMsg = () => {
+      if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+        mainWindow.webContents.send('app:upgraded', { version: app.getVersion() });
+      }
+    };
+    if (mainWindow.webContents.isLoading()) {
+      mainWindow.webContents.once('did-finish-load', sendUpgradeMsg);
+    } else {
+      sendUpgradeMsg();
+    }
+  }
 
   // ─── Pending Invoice Reminder Scanner ──────────────────
   // Runs once per calendar day. Uses a single JOIN query per entity type.
@@ -209,12 +326,89 @@ app.whenReady().then(() => {
       });
       insertSupplierBatch(supplierOverdue);
 
-      // Mark today as scanned
+      // ── Delete notifications that are now resolved ──────────────────────────
+      // Runs alongside the daily scan so stale notifications are cleared
+      // at the same time new ones are created.
+
+      // Clean up resolved customer:maal notifications
+      const customerNotifs = db.prepare(`
+        SELECT n.id, n.reminder_key, n.invoice_no,
+               m.maal_amount, m.id AS maal_id
+        FROM notifications n
+        JOIN customer_maal_account m ON n.reminder_key = 'customer:maal:' || m.id
+        WHERE n.type = 'customer'
+      `).all()
+
+      const deleteNotif = db.prepare('DELETE FROM notifications WHERE id = ?')
+
+      const cleanCustomer = db.transaction((rows) => {
+        for (const row of rows) {
+          // Sum all payments linked to this invoice (by linked_invoice_id or remark)
+          const paid = db.prepare(`
+            SELECT COALESCE(SUM(jama_amount), 0) AS total
+            FROM customer_jama_account
+            WHERE linked_invoice_id = ?
+               OR jama_remark = 'Invoice ' || ?
+          `).get(row.invoice_no, row.invoice_no)?.total || 0
+
+          if (paid >= row.maal_amount) {
+            deleteNotif.run(row.id)
+          }
+        }
+      })
+      cleanCustomer(customerNotifs)
+
+      // Clean up resolved supplier:maal notifications
+      const supplierNotifs = db.prepare(`
+        SELECT n.id, n.reminder_key, n.invoice_no,
+               m.maal_amount, m.id AS maal_id
+        FROM notifications n
+        JOIN supplier_maal_account m ON n.reminder_key = 'supplier:maal:' || m.id
+        WHERE n.type = 'supplier'
+      `).all()
+
+      const cleanSupplier = db.transaction((rows) => {
+        for (const row of rows) {
+          const paid = db.prepare(`
+            SELECT COALESCE(SUM(jama_amount), 0) AS total
+            FROM supplier_jama_account
+            WHERE jama_remark = 'Invoice ' || ?
+          `).get(row.invoice_no)?.total || 0
+
+          if (paid >= row.maal_amount) {
+            deleteNotif.run(row.id)
+          }
+        }
+      })
+      cleanSupplier(supplierNotifs)
+
+      // Clean up orphaned invoice_overdue notifications
+      // (invoice may have been deleted or manually paid outside the app)
+      const overdueNotifs = db.prepare(`
+        SELECT n.id, n.invoice_no
+        FROM notifications n
+        WHERE n.type = 'invoice_overdue'
+      `).all()
+
+      const cleanOverdue = db.transaction((rows) => {
+        for (const row of rows) {
+          if (!row.invoice_no) { deleteNotif.run(row.id); continue }
+          const invoice = db.prepare(
+            'SELECT status FROM invoices WHERE invoice_id = ?'
+          ).get(row.invoice_no)
+          // Delete if invoice is paid, doesn't exist, or is no longer overdue
+          if (!invoice || invoice.status === 'paid') {
+            deleteNotif.run(row.id)
+          }
+        }
+      })
+      cleanOverdue(overdueNotifs)
+      // ────────────────────────────────────────────────────────────────────────
+
       db.prepare("INSERT OR REPLACE INTO app_state (key, value) VALUES ('last_notification_scan', ?)").run(today);
 
       if (newCount > 0) {
 
-        // Desktop notification (single summary, not per-invoice)
         if (Notification.isSupported()) {
           new Notification({
             title: 'AGS ERP — Payment Reminders',
@@ -222,7 +416,6 @@ app.whenReady().then(() => {
             silent: false
           }).show();
         }
-        // Push updated unread count to renderer (only when new notifications created)
         const unread = db.prepare('SELECT COUNT(*) AS count FROM notifications WHERE is_read = 0').get();
         if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
           if (mainWindow.webContents.isLoading()) {
@@ -368,16 +561,15 @@ app.whenReady().then(() => {
           const marathiName = transliterated.join(' ');
           db.prepare("UPDATE products SET marathi_name = ?, marathi_status = 'transliterated' WHERE code = ?").run(marathiName, prod.code);
           translated++;
-          await new Promise(r => setTimeout(r, 100)); // rate limit safety
+          await new Promise(r => setTimeout(r, 100));
         } catch (e) { console.error(`[Marathi] Failed for ${prod.code}:`, e.message); }
       }
 
-      // Notify renderer if window is available
       if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
         mainWindow.webContents.send('marathi:batchComplete', { translated, total: missing.length });
       }
     } catch (e) { console.error('[Marathi] Batch transliteration error:', e.message); }
-  }, 3000); // Delay 3s to let the app fully load
+  }, 3000);
 });
 
 app.on('window-all-closed', () => {

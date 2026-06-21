@@ -41,6 +41,18 @@ exposed.onNotificationCountUpdate = (callback) => {
   return () => ipcRenderer.removeListener('notifications:countUpdate', handler);
 };
 
+exposed.onQuickSalesCleanup = (callback) => {
+  const handler = (_event, data) => callback(data);
+  ipcRenderer.on('cleanup:quickSalesDeleted', handler);
+  return () => ipcRenderer.removeListener('cleanup:quickSalesDeleted', handler);
+};
+
+exposed.onAppUpgraded = (callback) => {
+  const handler = (_event, data) => callback(data);
+  ipcRenderer.on('app:upgraded', handler);
+  return () => ipcRenderer.removeListener('app:upgraded', handler);
+};
+
 // Expose to renderer ------------------------------------------------
 if (!('api' in globalThis)) {
   contextBridge.exposeInMainWorld('api', exposed);

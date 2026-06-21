@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Search, ChevronDown, Plus, Edit, Trash2, X } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { naturalCompare } from '../../utils/productUtils';
 
 const CustomerOrder = () => {
@@ -14,6 +14,9 @@ const CustomerOrder = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const deleteModalRef = useRef(null);
   const [statusFilter, setStatusFilter] = useState('All');
+  const [highlightedId, setHighlightedId] = useState(null);
+  const rowRefs = useRef({});
+  const location = useLocation();
 
   // Focus the delete modal when it opens
   useEffect(() => {
@@ -31,6 +34,24 @@ const CustomerOrder = () => {
   };
 
   useEffect(() => { fetchOrders(); }, []);
+
+  // Auto-scroll and highlight when returning from order detail
+  useEffect(() => {
+    if (location.state?.returnedFromOrder && orders.length > 0) {
+      const returnedId = location.state.returnedFromOrder;
+      setHighlightedId(returnedId);
+
+      setTimeout(() => {
+        const rowElement = rowRefs.current[returnedId];
+        if (rowElement) {
+          rowElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        setTimeout(() => setHighlightedId(null), 2000);
+      }, 150);
+
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, orders]);
 
   const [sortConfig, setSortConfig] = useState({ key: 'orderNo', direction: 'desc' });
 
@@ -235,7 +256,8 @@ const CustomerOrder = () => {
                   processedOrders.map((order, index) => (
                     <tr
                       key={order.orderNo || index}
-                      className="hover:bg-[#F2F4F6] transition-colors cursor-pointer"
+                      ref={el => rowRefs.current[order.orderNo] = el}
+                      className={`transition-colors duration-500 cursor-pointer ${highlightedId === order.orderNo ? 'bg-yellow-50' : 'hover:bg-[#F2F4F6]'}`}
                       onClick={() => handleRowClick(order.orderNo)}
                     >
                       <td className="py-5 px-6 text-sm text-[#434655]">{index + 1}</td>
