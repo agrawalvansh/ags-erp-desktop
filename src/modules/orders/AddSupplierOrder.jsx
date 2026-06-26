@@ -110,13 +110,8 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
           onMouseEnter={(idx) => setHighlightedIndex(idx)}
           renderOption={(p) => (
             <>
-              <div>
-                <span className="font-semibold block text-[#191C1E]">{formatName(p.name)}</span>
-                {p.size && <span className="text-xs text-[#434655] mt-0.5">{p.size}</span>}
-              </div>
-              <span className="text-xs font-semibold text-[#434655]">
-                ₹{(() => { const v = parseFloat(p.selling_price ?? p.sellingPrice ?? 0); return Number.isInteger(v) ? v.toString() : v.toFixed(2); })()}
-              </span>
+              <span className="font-semibold text-[#191C1E]">{formatName(p.name)}</span>
+              {p.size && <span className="text-xs font-semibold text-[#434655] ml-auto shrink-0">{p.size}</span>}
             </>
           )}
           emptyContent="No products found"
