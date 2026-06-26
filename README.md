@@ -126,17 +126,17 @@ All tables are auto-created on first boot from `db.js`. Versioned migrations and
 
 ```
 products                 customers                 suppliers
-┌─ code (PK) ──────┐    ┌─ customer_id (PK) ──┐    ┌─ supplier_id (PK) ──┐
-│  name             │    │  name               │    │  name               │
-│  size             │    │  address             │    │  address             │
-│  cost_price       │    │  mobile              │    │  mobile              │
-│  selling_price    │    └─────────────────────┘    └──────────────────────┘
+┌─ code (PK)  ──────┐   ┌─ customer_id (PK) ──┐    ┌─ supplier_id (PK)  ──┐
+│  name             │   │  name               │    │  name                │
+│  size             │   │  address            │    │  address             │
+│  cost_price       │   │  mobile             │    │  mobile              │
+│  selling_price    │   └─────────────────────┘    └──────────────────────┘
 │  packing_type     │
 │  is_deleted       │
 └───────────────────┘
 
 invoices                 invoice_items
-┌─ invoice_id (PK) ┐    ┌─ id (PK) ────────────┐
+┌─ invoice_id (PK)  ┐    ┌─ id (PK) ────────────┐
 │  customer_id (FK) │◄───│  invoice_id (FK)     │
 │  invoice_date     │    │  product_code (FK)   │
 │  grand_total      │    │  quantity            │
@@ -144,7 +144,7 @@ invoices                 invoice_items
 └───────────────────┘    └──────────────────────┘
 
 customer_maal_account    customer_jama_account
-┌─ id (PK) ────────┐    ┌─ id (PK) ────────────┐
+┌─ id (PK)  ────────┐    ┌─ id (PK) ────────────┐
 │  customer_id (FK) │    │  customer_id (FK)    │
 │  maal_date        │    │  jama_date           │
 │  maal_invoice_no  │    │  jama_txn_type       │

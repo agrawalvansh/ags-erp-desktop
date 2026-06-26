@@ -274,7 +274,7 @@ const AddSupplierOrder = () => {
     getNextId();
     const fetchInitialData = async () => {
       try {
-        const [suppliersData, productsData] = await Promise.all([window.api.getSuppliers(), window.api.getProducts()]);
+        const [suppliersData, productsData] = await Promise.all([window.api.invoke('suppliers:getAll'), window.api.getProducts()]);
         setsuppliers(suppliersData || []); setProducts(productsData || []);
       } catch (err) { console.error('Error fetching initial data:', err); }
     };
