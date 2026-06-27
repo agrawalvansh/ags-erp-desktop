@@ -85,7 +85,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
   return (
     <section className="bg-white p-6 rounded-xl border border-[#2563EB]/20 shadow-[0_8px_30px_rgb(37,99,235,0.04)] print:hidden">
       <h3 className="text-xs font-bold text-[#434655] uppercase tracking-wider mb-6">Quick Add Item</h3>
-      <div className="grid grid-cols-1 lg:grid-cols-[3fr_1.5fr_1.5fr_1fr_3fr_2fr] gap-4 items-end">
+      <div className="grid grid-cols-1 lg:grid-cols-[3fr_1.5fr_1.5fr_1fr_3fr_2fr] gap-4 items-start">
         {/* Product Name */}
         <SearchableDropdown
           inputRef={productNameInputRef}
@@ -119,13 +119,14 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
         />
 
         {/* Size */}
-        <div className="space-y-1.5">
+        <div>
           <label className="block text-[10px] font-bold text-[#434655] uppercase tracking-wider mb-1.5 ml-1">Size</label>
           <input ref={sizeInputRef} type="text" value={newItem.size || ''} onChange={(e) => setNewItem({ ...newItem, size: e.target.value })} className="w-full bg-[#F2F4F6] border-none rounded-lg py-2.5 px-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none" placeholder="e.g. 1Kg" />
+          <div className="h-5"></div>
         </div>
 
         {/* Qty */}
-        <div className="space-y-1.5">
+        <div>
           <label className="block text-[10px] font-bold text-[#434655] uppercase tracking-wider mb-1.5 ml-1">Qty</label>
           <input
             ref={quantityInputRef} type="number" min="0.001" step="0.001" value={newItem.quantity}
@@ -134,29 +135,37 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
             className={`w-full bg-[#F2F4F6] border-none rounded-lg py-2.5 px-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none ${formErrors.quantity ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
             placeholder="0"
           />
-          {formErrors.quantity && <p className="text-xs text-[#BA1A1A] flex items-center gap-1 mt-0.5"><AlertCircle size={12} />{formErrors.quantity}</p>}
+          <div className="h-5">
+            {formErrors.quantity && <p className="text-xs text-[#BA1A1A] flex items-center gap-1 mt-0.5"><AlertCircle size={12} />{formErrors.quantity}</p>}
+          </div>
         </div>
 
         {/* Unit */}
-        <SelectDropdown
-          label="Unit"
-          value={newItem.packingType}
-          onChange={(e) => setNewItem({ ...newItem, packingType: e.target.value })}
-          options={ALLOWED_PACKING_TYPES}
-        />
+        <div>
+          <SelectDropdown
+            label="Unit"
+            value={newItem.packingType}
+            onChange={(e) => setNewItem({ ...newItem, packingType: e.target.value })}
+            options={ALLOWED_PACKING_TYPES}
+          />
+          <div className="h-5"></div>
+        </div>
 
         {/* Item Remark */}
-        <div className="space-y-1.5">
+        <div>
           <label className="block text-[10px] font-bold text-[#434655] uppercase tracking-wider mb-1.5 ml-1">Item Remark</label>
           <input type="text" value={newItem.itemRemark || ''} onChange={(e) => setNewItem({ ...newItem, itemRemark: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddItem(); } }} className="w-full bg-[#F2F4F6] border-none rounded-lg py-2.5 px-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none" placeholder="Optional note..." />
+          <div className="h-5"></div>
         </div>
 
         {/* Add Button */}
         <div>
+          <label className="block text-[10px] font-bold text-[#434655] uppercase tracking-wider mb-1.5 ml-1 invisible">Add</label>
           <button onClick={handleAddItem} className="w-full text-white py-[11px] rounded-lg font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-all active:scale-95 shadow-md shadow-[#2563EB]/20 cursor-pointer" style={{ background: 'linear-gradient(135deg, #004AC6 0%, #2563EB 100%)' }}>
             <Plus size={16} />
             <span>Add Item</span>
           </button>
+          <div className="h-5"></div>
         </div>
       </div>
     </section>

@@ -105,11 +105,11 @@ const AddSupplierAccountEntry = () => {
 
   const validate = () => {
     const e = {};
-    if (!formData.date) e.date = 'Date required';
-    if (!formData.amount) e.amount = 'Amount required';
-    if (Number(formData.amount) <= 0) e.amount = 'Amount must be > 0';
-    if (type === 'maal' && !formData.invoiceNumber) e.invoiceNumber = 'Invoice number required';
-    if (type === 'jama' && !formData.txnType) e.txnType = 'Txn type required';
+    if (!formData.date) e.date = 'Date is required';
+    if (!formData.amount) e.amount = 'Amount is required';
+    else if (Number(formData.amount) <= 0) e.amount = 'Amount must be greater than 0';
+    if (type === 'maal' && !formData.invoiceNumber) e.invoiceNumber = 'Invoice number is required';
+    if (type === 'jama' && !formData.txnType) e.txnType = 'Transaction type is required';
     setErrors(e);
     return !Object.keys(e).length;
   };
@@ -233,7 +233,7 @@ const AddSupplierAccountEntry = () => {
                   onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                   className={`w-full bg-[#F2F4F6] border-none rounded-lg px-3 py-2.5 text-sm font-medium focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none ${errors.date ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
                 />
-                {errors.date && <p className="text-xs text-[#BA1A1A] ml-1">{errors.date}</p>}
+                {errors.date && <p className="text-xs text-[#BA1A1A] mt-1.5 ml-1">{errors.date}</p>}
               </div>
 
               {/* Transaction Type (Jama) or Invoice Number (Maal) */}
@@ -251,7 +251,7 @@ const AddSupplierAccountEntry = () => {
                     placeholder="Enter invoice number"
                     autoComplete="off"
                   />
-                  {errors.invoiceNumber && <p className="text-xs text-[#BA1A1A] ml-1">{errors.invoiceNumber}</p>}
+                  {errors.invoiceNumber && <p className="text-xs text-[#BA1A1A] mt-1.5 ml-1">{errors.invoiceNumber}</p>}
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -285,7 +285,7 @@ const AddSupplierAccountEntry = () => {
                     placeholder="0.00"
                   />
                 </div>
-                {errors.amount && <p className="text-xs text-[#BA1A1A] ml-1">{errors.amount}</p>}
+                {errors.amount && <p className="text-xs text-[#BA1A1A] mt-1.5 ml-1">{errors.amount}</p>}
               </div>
 
               {/* Remark */}

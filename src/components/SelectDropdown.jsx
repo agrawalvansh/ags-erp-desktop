@@ -212,7 +212,7 @@ const SelectDropdown = ({
       </div>
 
       {error && (
-        <p className="text-xs text-[#BA1A1A] ml-1">{error}</p>
+        <p className="text-xs text-[#BA1A1A] mt-1.5 ml-1">{error}</p>
       )}
     </div>
   );

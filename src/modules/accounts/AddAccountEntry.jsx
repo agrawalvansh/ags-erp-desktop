@@ -256,7 +256,7 @@ const AddAccountEntry = () => {
                   onChange={handleChange}
                   className={`w-full bg-[#F2F4F6] border-none rounded-lg px-3 py-2.5 text-sm font-medium focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none ${errors.date ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
                 />
-                {errors.date && <p className="text-xs text-[#BA1A1A] ml-1">{errors.date}</p>}
+                {errors.date && <p className="text-xs text-[#BA1A1A] mt-1.5 ml-1">{errors.date}</p>}
               </div>
 
               {/* Transaction Type (Jama) or Invoice Number (Maal) */}
@@ -274,7 +274,7 @@ const AddAccountEntry = () => {
                     placeholder="Enter invoice number"
                     autoComplete="off"
                   />
-                  {errors.invoiceNumber && <p className="text-xs text-[#BA1A1A] ml-1">{errors.invoiceNumber}</p>}
+                  {errors.invoiceNumber && <p className="text-xs text-[#BA1A1A] mt-1.5 ml-1">{errors.invoiceNumber}</p>}
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -347,7 +347,7 @@ const AddAccountEntry = () => {
                     placeholder="0.00"
                   />
                 </div>
-                {errors.amount && <p className="text-xs text-[#BA1A1A] ml-1">{errors.amount}</p>}
+                {errors.amount && <p className="text-xs text-[#BA1A1A] mt-1.5 ml-1">{errors.amount}</p>}
               </div>
 
               {/* Remark */}

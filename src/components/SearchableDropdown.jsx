@@ -158,9 +158,11 @@ const SearchableDropdown = ({
         )}
       </div>
 
-      {error && (
-        <p className="text-xs text-[#BA1A1A] flex items-center mt-0.5 ml-1">{error}</p>
-      )}
+      <div className="h-5">
+        {error && (
+          <p className="text-xs text-[#BA1A1A] flex items-center mt-1.5 ml-1">{error}</p>
+        )}
+      </div>
     </div>
   );
 };

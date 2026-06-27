@@ -175,7 +175,7 @@ const AddBuyerAccount = () => {
                   placeholder="Enter customer name"
                   autoComplete="off"
                 />
-                {errors.name && <p className="text-xs text-[#BA1A1A] ml-1 mt-1">{errors.name}</p>}
+                {errors.name && <p className="text-xs text-[#BA1A1A] mt-1.5 ml-1">{errors.name}</p>}
               </div>
 
               {/* Address (Textarea) */}

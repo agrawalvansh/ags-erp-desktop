@@ -237,7 +237,7 @@ const AddPriceListProduct = () => {
                   className={`w-full bg-[#F2F4F6] border-none rounded-lg py-2.5 px-3 focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all text-sm placeholder:text-slate-400 outline-none ${errors.productName ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
                 />
                 {errors.productName && (
-                  <p className="mt-1.5 text-xs text-[#BA1A1A] font-medium">{errors.productName}</p>
+                  <p className="text-xs text-[#BA1A1A] mt-1.5 ml-1">{errors.productName}</p>
                 )}
               </div>
 
@@ -257,7 +257,7 @@ const AddPriceListProduct = () => {
                   <RefreshCw size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 </div>
                 {errors.code && (
-                  <p className="mt-1.5 text-xs text-[#BA1A1A] font-medium">{errors.code}</p>
+                  <p className="text-xs text-[#BA1A1A] mt-1.5 ml-1">{errors.code}</p>
                 )}
               </div>
 
@@ -328,7 +328,7 @@ const AddPriceListProduct = () => {
                   </div>
                   <div className="h-5">
                     {errors.costPrice && (
-                      <p className="mt-0.5 text-xs text-[#BA1A1A] font-medium">{errors.costPrice}</p>
+                      <p className="text-xs text-[#BA1A1A] mt-1.5 ml-1">{errors.costPrice}</p>
                     )}
                   </div>
                 </div>
@@ -353,7 +353,7 @@ const AddPriceListProduct = () => {
                   </div>
                   <div className="h-5">
                     {errors.sellingPrice && (
-                      <p className="mt-0.5 text-xs text-[#BA1A1A] font-medium">{errors.sellingPrice}</p>
+                      <p className="text-xs text-[#BA1A1A] mt-1.5 ml-1">{errors.sellingPrice}</p>
                     )}
                   </div>
                 </div>
