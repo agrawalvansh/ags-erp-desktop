@@ -7,6 +7,7 @@ import { toast } from 'react-hot-toast';
 import PageLoader from '../../components/PageLoader';
 import RecordNotFound from '../../components/RecordNotFound';
 import NavigationWarningModal from '../../components/NavigationWarningModal';
+import { getLocalDateString } from '../../utils/dateUtils';
 import PrinterSelectionModal from '../../components/PrinterSelectionModal';
 import {
     generateProductCode,
@@ -341,7 +342,7 @@ const CreateQuickSale = () => {
     });
     const [total, setTotal] = useState(0);
     const [products, setProducts] = useState([]);
-    const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]);
+    const [saleDate, setSaleDate] = useState(getLocalDateString());
     const [customQsId, setCustomQsId] = useState('');
     const [formErrors, setFormErrors] = useState({});
     const [isSaved, setIsSaved] = useState(true);
@@ -398,7 +399,7 @@ const CreateQuickSale = () => {
         setInvoiceItems([]);
         setNewItem({ code: '', productName: '', size: '', quantity: '', packingType: DEFAULT_PACKING_TYPE, sellingPrice: '', originalProduct: null });
         setTotal(0);
-        setSaleDate(new Date().toISOString().split('T')[0]);
+        setSaleDate(getLocalDateString());
         setRemark('');
         setSaleTime(new Date().toTimeString().slice(0, 5));
         setIsPrivateNote(false);

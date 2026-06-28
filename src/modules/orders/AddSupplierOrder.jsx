@@ -10,6 +10,7 @@ import PrinterSelectionModal from '../../components/PrinterSelectionModal';
 import RecordNotFound from '../../components/RecordNotFound';
 import SearchableDropdown from '../../components/SearchableDropdown';
 import SelectDropdown from '../../components/SelectDropdown';
+import { getLocalDateString } from '../../utils/dateUtils';
 
 // ─── Stitch-styled Add Item Form ───
 const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors, productNameInputRef }) => {
@@ -208,7 +209,7 @@ const AddSupplierOrder = () => {
   const [address, setAddress] = useState('');
   const [remark, setRemark] = useState('');
   const [status, setStatus] = useState('Placed');
-  const [orderDate, setorderDate] = useState(new Date().toISOString().split('T')[0]);
+  const [orderDate, setorderDate] = useState(getLocalDateString());
   const [customorderNo, setCustomorderNo] = useState('');
   const [formErrors, setFormErrors] = useState({});
   const [isEditing, setIsEditing] = useState(false);
@@ -220,7 +221,7 @@ const AddSupplierOrder = () => {
   // Payment/Advance state
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentType, setPaymentType] = useState('Cash');
-  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+  const [paymentDate, setPaymentDate] = useState(getLocalDateString());
   const PAYMENT_TYPES = ['Cash', 'UPI', 'Bank', 'Cheque'];
 
   // Unsaved changes tracking

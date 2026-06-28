@@ -7,6 +7,7 @@ import { toast } from 'react-hot-toast';
 import PageLoader from '../../components/PageLoader';
 import RecordNotFound from '../../components/RecordNotFound';
 import NavigationWarningModal from '../../components/NavigationWarningModal';
+import { getLocalDateString } from '../../utils/dateUtils';
 import PrinterSelectionModal from '../../components/PrinterSelectionModal';
 import { generateInvoicePDF } from './generateInvoicePDF';
 import WeightCalculator from '../../utils/WeightCalculator';
@@ -382,7 +383,7 @@ const Invoice = () => {
   const [mobileNo, setMobileNo] = useState('');
   const [address, setAddress] = useState('');
   const [remark, setRemark] = useState('');
-  const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [invoiceDate, setInvoiceDate] = useState(getLocalDateString());
   const [customInvoiceNo, setCustomInvoiceNo] = useState('');
   const [formErrors, setFormErrors] = useState({});
   const [isEditing, setIsEditing] = useState(false);
@@ -400,7 +401,7 @@ const Invoice = () => {
   // Payment/Advance state (create flow — single optional payment)
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentType, setPaymentType] = useState('Cash');
-  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+  const [paymentDate, setPaymentDate] = useState(getLocalDateString());
   const PAYMENT_TYPES = ['Cash', 'UPI', 'Transfer', 'RTGS'];
 
   // Multi-payment state (edit flow)
@@ -413,7 +414,7 @@ const Invoice = () => {
   const [payForm, setPayForm] = useState({
     payment_amount: '',
     payment_type: 'Cash',
-    payment_date: new Date().toISOString().split('T')[0],
+    payment_date: getLocalDateString(),
     remark: ''
   });
   const [paymentDueDays, setPaymentDueDays] = useState(0);
@@ -506,7 +507,7 @@ const Invoice = () => {
     setMobileNo('');
     setAddress('');
     setRemark('');
-    setInvoiceDate(new Date().toISOString().split('T')[0]);
+    setInvoiceDate(getLocalDateString());
     setFormErrors({});
     setIsEditing(false);
     setIsSaved(true);
@@ -516,7 +517,7 @@ const Invoice = () => {
     // Reset payment fields
     setPaymentAmount('');
     setPaymentType('Cash');
-    setPaymentDate(new Date().toISOString().split('T')[0]);
+    setPaymentDate(getLocalDateString());
     // Reset time and private note
     setInvoiceTime(new Date().toTimeString().slice(0, 5));
     setIsPrivateNote(false);
@@ -1953,7 +1954,7 @@ const Invoice = () => {
                           setPayForm({
                             payment_amount: balanceDue > 0 ? balanceDue.toFixed(2) : '',
                             payment_type: 'Cash',
-                            payment_date: new Date().toISOString().split('T')[0],
+                            payment_date: getLocalDateString(),
                             remark: ''
                           });
                           setShowPaymentForm(true);

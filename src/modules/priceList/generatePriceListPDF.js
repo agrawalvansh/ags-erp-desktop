@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { getLocalDateString } from '../../utils/dateUtils';
 
 /**
  * Format a number with Indian comma notation: 12,34,567.00
@@ -200,7 +201,7 @@ export function generatePriceListPDF(data) {
 
   // ─── Return PDF data ───
   const pdfBase64 = doc.output('datauristring').split(',')[1];
-  const fileName = `Price_List_${new Date().toISOString().split('T')[0]}`;
+  const fileName = `Price_List_${getLocalDateString()}`;
 
   return { pdfBase64, fileName };
 }

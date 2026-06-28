@@ -7,6 +7,7 @@ import AccountNotFound from '../../components/AccountNotFound';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { naturalCompare } from '../../utils/productUtils';
+import { getLocalDateString } from '../../utils/dateUtils';
 
 // Utility to parse various date formats to a Date object
 export const parseDate = (dateStr) => {
@@ -479,7 +480,7 @@ const SupplierAccountDetail = () => {
 
     const pdfBase64 = doc.output('datauristring').split(',')[1];
     const safeName = (supplier.name || slug || '').replace(/[^a-zA-Z0-9 ]/g, '').trim();
-    const fileName = `Ledger_${safeName}_${new Date().toISOString().split('T')[0]}`;
+    const fileName = `Ledger_${safeName}_${getLocalDateString()}`;
     return { pdfBase64, fileName };
   };
 

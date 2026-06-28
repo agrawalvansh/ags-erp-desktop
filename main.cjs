@@ -46,7 +46,7 @@ app.on('second-instance', () => {
 // Runs once per calendar day; stores count so the renderer can show a toast.
 let qsCleanupCount = 0;
 try {
-  const today = new Date().toISOString().split('T')[0]
+  const today = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })();
   const lastCleanup = db.prepare(
     "SELECT value FROM app_state WHERE key = 'last_qs_cleanup'"
   ).get()
@@ -237,7 +237,7 @@ app.whenReady().then(() => {
   // Runs once per calendar day. Uses a single JOIN query per entity type.
   // Skips entirely if already scanned today (1 tiny SELECT on app_state).
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })();;
     const lastScan = db.prepare("SELECT value FROM app_state WHERE key = 'last_notification_scan'").get();
 
     if (!lastScan || lastScan.value !== today) {

@@ -441,7 +441,7 @@ try {
         try { fs.unlinkSync(path.join(userDataPath, old)); } catch { /* ignore */ }
       }
 
-      const today = new Date().toISOString().split('T')[0];
+      const today = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })();
       backupPath = path.join(userDataPath, `erp.db.backup-${today}`);
       fs.copyFileSync(dbPath, backupPath);
       console.log(`[Migration] Backup created: ${backupPath}`);
