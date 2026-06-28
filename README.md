@@ -606,7 +606,9 @@ flowchart TD
 
 ## 📝 License
 
-Released under the **MIT License**. See [`LICENSE`](LICENSE) for details.
+Copyright © 2025–2026 **Vansh Agrawal**. All rights reserved.
+
+Released under the **MIT License** — see [`LICENSE`](LICENSE) for full terms.
 
 ---
 
