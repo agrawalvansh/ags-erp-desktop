@@ -74,6 +74,8 @@
   "scripts": {
     "dev": "vite build && electron .",
     "build": "npm run build-react && electron-builder",
+    "build:win": "npm run build-react && electron-builder --win",
+    "build:mac": "npm run build-react && electron-builder --mac",
     "build-react": "vite build",
     "lint": "eslint .",
     "start": "electron .",

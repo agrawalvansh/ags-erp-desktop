@@ -9,7 +9,7 @@
 [![SQLite](https://img.shields.io/badge/SQLite-3-003B57?logo=sqlite&logoColor=white)](https://www.sqlite.org/)
 [![Vite](https://img.shields.io/badge/Vite-6-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-2ea44f.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/Version-2.5.2-blue.svg)](package.json)
 
 A production-grade, cross-platform desktop ERP application built for a real-world retail business. Manages **products, GST-ready invoices, customer/supplier accounts, purchase & sales orders, and double-entry ledgers** — all running 100% offline with zero recurring costs.
@@ -346,9 +346,9 @@ flowchart LR
     JAMA -. "🔒 Delete blocked<br/>→ Error toast" .-> USER
     JAMA2 -. "🔒 Delete blocked<br/>→ Error toast" .-> USER
 
-    style MAAL fill:#FEF3C7,stroke:#D97706
-    style JAMA fill:#FEF3C7,stroke:#D97706
-    style JAMA2 fill:#FEF3C7,stroke:#D97706
+    style MAAL fill:#DBEAFE,stroke:#2563EB,color:#1E3A5F
+    style JAMA fill:#DBEAFE,stroke:#2563EB,color:#1E3A5F
+    style JAMA2 fill:#DBEAFE,stroke:#2563EB,color:#1E3A5F
 ```
 
 ### Complete Feature Count: **200+**
@@ -562,9 +562,9 @@ flowchart TD
     H -->|Fail ❌| J["Show error dialog<br/>listing missing tables/columns"]
     J --> K["app.quit()"]
 
-    style F fill:#FEF3C7,stroke:#D97706
-    style H fill:#ECFDF5,stroke:#059669
-    style J fill:#FEF2F2,stroke:#DC2626
+    style F fill:#DBEAFE,stroke:#2563EB,color:#1E3A5F
+    style H fill:#D1FAE5,stroke:#059669,color:#064E3B
+    style J fill:#FEE2E2,stroke:#DC2626,color:#7F1D1D
 ```
 
 ### Integrity Features
