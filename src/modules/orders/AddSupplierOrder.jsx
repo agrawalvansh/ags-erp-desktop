@@ -91,7 +91,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
   return (
     <section className="bg-white p-6 rounded-xl border border-[#2563EB]/20 shadow-[0_8px_30px_rgb(37,99,235,0.04)] print:hidden">
       <h3 className="text-xs font-bold text-[#434655] uppercase tracking-wider mb-6">Quick Add Item</h3>
-      <div className="grid grid-cols-1 lg:grid-cols-[3fr_1.5fr_1.5fr_1fr_3fr_2fr] gap-4 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[3fr_1.5fr_1fr_1.2fr_1fr_2.5fr_2fr] gap-4 items-start">
         {/* Product Name */}
         <SearchableDropdown
           inputRef={productNameInputRef}
@@ -141,6 +141,19 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
           </div>
         </div>
 
+        {/* Price */}
+        <div>
+          <label className="block text-[10px] font-bold text-[#434655] uppercase tracking-wider mb-1.5 ml-1">Price</label>
+          <input
+            type="number" min="0" step="0.01" value={newItem.costPrice || ''}
+            onChange={(e) => setNewItem({ ...newItem, costPrice: e.target.value })}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddItem(); } }}
+            className="w-full bg-[#F2F4F6] border-none rounded-lg py-2.5 px-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all outline-none"
+            placeholder="₹ 0.00"
+          />
+          <div className="h-5"></div>
+        </div>
+
         {/* Unit */}
         <div>
           <SelectDropdown
@@ -182,7 +195,7 @@ const AddSupplierOrder = () => {
 
   // State declarations
   const [orderItems, setorderItems] = useState([]);
-  const [newItem, setNewItem] = useState({ code: '', productName: '', size: '', quantity: '', packingType: DEFAULT_PACKING_TYPE, itemRemark: '' });
+  const [newItem, setNewItem] = useState({ code: '', productName: '', size: '', quantity: '', costPrice: '', packingType: DEFAULT_PACKING_TYPE, itemRemark: '' });
   const [products, setProducts] = useState([]);
   const [buyer, setBuyer] = useState('');
   const [supplierId, setsupplierId] = useState('');
@@ -299,7 +312,7 @@ const AddSupplierOrder = () => {
               const baseName = item.product_name || item.resolved_name || prod.name || item.product_code;
               const nameWithSpaces = formatName(baseName);
               const quantity = parseFloat(item.quantity).toFixed(2);
-              return { ...item, productName: nameWithSpaces, size: item.product_size || item.resolved_size || prod.size || '', code: item.product_code, quantity, packingType: item.packing_type || item.resolved_packing_type || prod.packing_type || DEFAULT_PACKING_TYPE, itemRemark: item.item_remark || '', isTemporary: item.is_temporary === 1 };
+              return { ...item, productName: nameWithSpaces, size: item.product_size || item.resolved_size || prod.size || '', code: item.product_code, quantity, costPrice: item.cost_price != null ? item.cost_price.toString() : '', packingType: item.packing_type || item.resolved_packing_type || prod.packing_type || DEFAULT_PACKING_TYPE, itemRemark: item.item_remark || '', isTemporary: item.is_temporary === 1 };
             });
             setorderItems(processedItems);
             setCurrentorderId(orderData.order_id || orderNo);
@@ -359,9 +372,9 @@ const AddSupplierOrder = () => {
     if (isNaN(quantity) || quantity <= 0) { toast.error('Please enter valid Quantity'); return; }
     const isAdHoc = !newItem.code;
     const productCode = isAdHoc ? generateProductCode(newItem.productName, newItem.size) : newItem.code;
-    const neworderItem = { code: productCode || null, product_code: productCode || null, productName: newItem.productName, size: newItem.size || '', quantity: quantity.toFixed(2), packingType: newItem.packingType, itemRemark: newItem.itemRemark || '', isTemporary: isAdHoc };
+    const neworderItem = { code: productCode || null, product_code: productCode || null, productName: newItem.productName, size: newItem.size || '', quantity: quantity.toFixed(2), costPrice: newItem.costPrice || '', packingType: newItem.packingType, itemRemark: newItem.itemRemark || '', isTemporary: isAdHoc };
     if (editIndex > -1) { const updated = [...orderItems]; updated[editIndex] = neworderItem; setorderItems(updated); setEditIndex(-1); toast.success('Item updated successfully'); } else { setorderItems([...orderItems, neworderItem]); toast.success('Item added successfully'); }
-    setNewItem({ code: '', productName: '', size: '', quantity: '', packingType: DEFAULT_PACKING_TYPE, itemRemark: '' });
+    setNewItem({ code: '', productName: '', size: '', quantity: '', costPrice: '', packingType: DEFAULT_PACKING_TYPE, itemRemark: '' });
     setFormErrors({});
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setTimeout(() => { productNameInputRef.current?.focus(); }, 100);
@@ -369,7 +382,7 @@ const AddSupplierOrder = () => {
 
   const handleEditItem = (index) => {
     const item = orderItems[index];
-    setNewItem({ code: item.code, productName: item.productName, size: item.size || '', quantity: item.quantity, packingType: item.packingType, itemRemark: item.itemRemark || '' });
+    setNewItem({ code: item.code, productName: item.productName, size: item.size || '', quantity: item.quantity, costPrice: item.costPrice || '', packingType: item.packingType, itemRemark: item.itemRemark || '' });
     setEditIndex(index);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -391,7 +404,7 @@ const AddSupplierOrder = () => {
     if (payAmt < 0) { toast.error('Payment amount must be positive'); return; }
     const payload = {
       supplier_id: supplierId, order_date: orderDate, remark, status,
-      items: orderItems.map(i => ({ product_code: i.code || i.product_code || null, product_name: i.productName || '', product_size: i.size || '', packing_type: i.packingType || '', quantity: parseFloat(i.quantity), item_remark: i.itemRemark || '', is_temporary: i.isTemporary ? 1 : 0 })),
+      items: orderItems.map(i => ({ product_code: i.code || i.product_code || null, product_name: i.productName || '', product_size: i.size || '', packing_type: i.packingType || '', quantity: parseFloat(i.quantity), cost_price: i.costPrice || null, item_remark: i.itemRemark || '', is_temporary: i.isTemporary ? 1 : 0 })),
       payment_amount: parseFloat(paymentAmount || 0), payment_type: paymentType, payment_date: paymentDate || orderDate
     };
     try {
@@ -684,6 +697,7 @@ const AddSupplierOrder = () => {
                   <th className="px-8 py-5 print:px-2 print:py-1 print:text-[10px]">Item Name</th>
                   <th className="px-8 py-5 print:px-2 print:py-1 print:text-[10px]">Size</th>
                   <th className="px-8 py-5 text-right print:px-2 print:py-1 print:text-[10px]">Qty</th>
+                  <th className="px-8 py-5 print:px-2 print:py-1 print:text-[10px]">Price</th>
                   <th className="px-8 py-5 print:px-2 print:py-1 print:text-[10px]">Unit</th>
                   <th className="px-8 py-5 print:px-2 print:py-1 print:text-[10px]">Remark</th>
                   <th className="px-8 py-5 text-center print:hidden">Actions</th>
@@ -696,6 +710,7 @@ const AddSupplierOrder = () => {
                     <td className="px-8 py-5 text-sm font-bold text-[#191C1E] print:px-2 print:py-1 print:text-[10px]" style={{ maxWidth: '200px', wordWrap: 'break-word', whiteSpace: 'normal' }}>{item.productName}</td>
                     <td className="px-8 py-5 text-sm text-[#434655] print:px-2 print:py-1 print:text-[10px]">{item.size || '-'}</td>
                     <td className="px-8 py-5 text-sm font-medium text-[#191C1E] text-right print:px-2 print:py-1 print:text-[10px]">{(() => { const n = parseFloat(item.quantity) || 0; if (Number.isInteger(n)) return n.toString(); return n.toFixed(3); })()}</td>
+                    <td className="px-8 py-5 text-sm font-medium text-[#191C1E] print:px-2 print:py-1 print:text-[10px]">{item.costPrice ? (Number.isInteger(parseFloat(item.costPrice)) ? parseFloat(item.costPrice).toString() : parseFloat(item.costPrice).toFixed(2)) : '-'}</td>
                     <td className="px-8 py-5 text-sm text-[#434655] print:px-2 print:py-1 print:text-[10px]">{item.packingType}</td>
                     <td className="px-8 py-5 text-sm text-[#434655] print:px-2 print:py-1 print:text-[10px]" style={{ maxWidth: '150px', wordWrap: 'break-word', whiteSpace: 'normal' }}>{item.itemRemark || '-'}</td>
                     <td className="px-8 py-5 text-center print:hidden">
@@ -707,7 +722,7 @@ const AddSupplierOrder = () => {
                   </tr>
                 ))}
                 {orderItems.length === 0 && (
-                  <tr><td colSpan="7" className="px-8 py-12 text-center text-[#434655] text-sm">No items added yet.</td></tr>
+                  <tr><td colSpan="8" className="px-8 py-12 text-center text-[#434655] text-sm">No items added yet.</td></tr>
                 )}
               </tbody>
             </table>

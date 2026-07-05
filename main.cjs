@@ -41,44 +41,281 @@ app.on('second-instance', () => {
     mainWindow.focus();
   }
 });
+// ═══════════════════════════════════════════════════════════════════════════
+// DAILY JOBS — Extracted as module-level functions so they can be called
+// from both startup AND the midnight rollover interval.
+// ═══════════════════════════════════════════════════════════════════════════
 
-// ─── Startup Cleanup — Quick Sales older than 30 days ───────────────────
-// Runs once per calendar day; stores count so the renderer can show a toast.
-let qsCleanupCount = 0;
-try {
-  const today = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })();
-  const lastCleanup = db.prepare(
-    "SELECT value FROM app_state WHERE key = 'last_qs_cleanup'"
-  ).get()
+/** Helper: get local YYYY-MM-DD date string */
+function getToday() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
 
-  if (!lastCleanup || lastCleanup.value !== today) {
-    const cleanupTxn = db.transaction(() => {
-      db.prepare(`
-        DELETE FROM quick_sale_items
-        WHERE qs_id IN (
-          SELECT qs_id FROM quick_sales
-          WHERE date(qs_date) < date('now', '-30 days')
-        )
-      `).run()
+/**
+ * Job 1: Quick Sales Cleanup — deletes QS older than 30 days.
+ * Returns the number of deleted records.
+ */
+function runQsCleanup() {
+  const today = getToday();
+  const lastCleanup = db.prepare("SELECT value FROM app_state WHERE key = 'last_qs_cleanup'").get();
+  if (lastCleanup && lastCleanup.value === today) return 0; // Already done today
 
-      const result = db.prepare(`
-        DELETE FROM quick_sales
+  const cleanupTxn = db.transaction(() => {
+    db.prepare(`
+      DELETE FROM quick_sale_items
+      WHERE qs_id IN (
+        SELECT qs_id FROM quick_sales
         WHERE date(qs_date) < date('now', '-30 days')
-      `).run()
+      )
+    `).run();
 
-      return result.changes
-    })
-    qsCleanupCount = cleanupTxn()
+    const result = db.prepare(`
+      DELETE FROM quick_sales
+      WHERE date(qs_date) < date('now', '-30 days')
+    `).run();
 
-    if (qsCleanupCount > 0) {
-      console.log(`[Cleanup] Deleted ${qsCleanupCount} quick sale(s) older than 30 days`)
-    }
+    return result.changes;
+  });
+  const count = cleanupTxn();
 
-    db.prepare(
-      "INSERT OR REPLACE INTO app_state (key, value) VALUES ('last_qs_cleanup', ?)"
-    ).run(today)
+  if (count > 0) {
+    console.log(`[Cleanup] Deleted ${count} quick sale(s) older than 30 days`);
   }
-} catch (e) { console.error('[Scheduler] Quick sales cleanup error:', e.message) }
+
+  db.prepare("INSERT OR REPLACE INTO app_state (key, value) VALUES ('last_qs_cleanup', ?)").run(today);
+  return count;
+}
+
+/**
+ * Job 2: Notification Scanner — creates reminders for overdue customer/supplier invoices.
+ * Also cleans up resolved/orphaned notifications.
+ * Returns { newCount, mainWindow } for caller to optionally push UI updates.
+ */
+function runNotificationScanner() {
+  const today = getToday();
+  const lastScan = db.prepare("SELECT value FROM app_state WHERE key = 'last_notification_scan'").get();
+  if (lastScan && lastScan.value === today) return { newCount: 0 }; // Already done today
+
+  const nowISO = new Date().toISOString();
+  let newCount = 0;
+
+  // ── Customer overdue invoices (single query) ──
+  const customerOverdue = db.prepare(`
+    SELECT
+      c.customer_id   AS account_id,
+      c.name          AS account_name,
+      c.reminder_days,
+      m.id            AS maal_id,
+      m.maal_invoice_no AS invoice_no,
+      m.maal_date     AS invoice_date,
+      m.maal_amount,
+      COALESCE(j.paid, 0) AS paid_amount
+    FROM customers c
+    JOIN customer_maal_account m ON m.customer_id = c.customer_id
+    LEFT JOIN (
+      SELECT jama_remark, SUM(jama_amount) AS paid
+      FROM customer_jama_account
+      GROUP BY jama_remark
+    ) j ON j.jama_remark = 'Invoice ' || m.maal_invoice_no
+    LEFT JOIN notifications n ON n.reminder_key = 'customer:maal:' || m.id
+    WHERE c.reminder_enabled = 1
+      AND c.reminder_days > 0
+      AND date(m.maal_date, '+' || c.reminder_days || ' days') <= date('now')
+      AND n.id IS NULL
+      AND (m.maal_amount - COALESCE(j.paid, 0)) > 0
+  `).all();
+
+  const insertNotif = db.prepare(`
+    INSERT OR IGNORE INTO notifications
+      (type, account_id, account_name, invoice_no, invoice_date, pending_amount, message, is_read, created_at, reminder_key)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+  `);
+
+  const insertCustomerBatch = db.transaction((rows) => {
+    for (const r of rows) {
+      const pending = r.maal_amount - r.paid_amount;
+      const invoiceLabel = r.invoice_no || `Entry #${r.maal_id}`;
+      const msg = `${invoiceLabel} for ${r.account_name}: ₹${Math.round(pending).toLocaleString('en-IN')} still pending`;
+      const key = `customer:maal:${r.maal_id}`;
+      const res = insertNotif.run('customer', r.account_id, r.account_name, r.invoice_no, r.invoice_date, pending, msg, nowISO, key);
+      if (res.changes > 0) newCount++;
+    }
+  });
+  insertCustomerBatch(customerOverdue);
+
+  // ── Supplier overdue invoices (single query) ──
+  const supplierOverdue = db.prepare(`
+    SELECT
+      s.supplier_id   AS account_id,
+      s.name          AS account_name,
+      s.reminder_days,
+      m.id            AS maal_id,
+      m.maal_invoice_no AS invoice_no,
+      m.maal_date     AS invoice_date,
+      m.maal_amount,
+      COALESCE(j.paid, 0) AS paid_amount
+    FROM suppliers s
+    JOIN supplier_maal_account m ON m.supplier_id = s.supplier_id
+    LEFT JOIN (
+      SELECT jama_remark, SUM(jama_amount) AS paid
+      FROM supplier_jama_account
+      GROUP BY jama_remark
+    ) j ON j.jama_remark = 'Invoice ' || m.maal_invoice_no
+    LEFT JOIN notifications n ON n.reminder_key = 'supplier:maal:' || m.id
+    WHERE s.reminder_enabled = 1
+      AND s.reminder_days > 0
+      AND date(m.maal_date, '+' || s.reminder_days || ' days') <= date('now')
+      AND n.id IS NULL
+      AND (m.maal_amount - COALESCE(j.paid, 0)) > 0
+  `).all();
+
+  const insertSupplierBatch = db.transaction((rows) => {
+    for (const r of rows) {
+      const pending = r.maal_amount - r.paid_amount;
+      const invoiceLabel = r.invoice_no || `Entry #${r.maal_id}`;
+      const msg = `${invoiceLabel} for ${r.account_name}: ₹${Math.round(pending).toLocaleString('en-IN')} still pending`;
+      const key = `supplier:maal:${r.maal_id}`;
+      const res = insertNotif.run('supplier', r.account_id, r.account_name, r.invoice_no, r.invoice_date, pending, msg, nowISO, key);
+      if (res.changes > 0) newCount++;
+    }
+  });
+  insertSupplierBatch(supplierOverdue);
+
+  // ── Clean up resolved notifications ──
+  const deleteNotif = db.prepare('DELETE FROM notifications WHERE id = ?');
+
+  const customerNotifs = db.prepare(`
+    SELECT n.id, n.reminder_key, n.invoice_no, m.maal_amount, m.id AS maal_id
+    FROM notifications n
+    JOIN customer_maal_account m ON n.reminder_key = 'customer:maal:' || m.id
+    WHERE n.type = 'customer'
+  `).all();
+
+  const cleanCustomer = db.transaction((rows) => {
+    for (const row of rows) {
+      const paid = db.prepare(`
+        SELECT COALESCE(SUM(jama_amount), 0) AS total
+        FROM customer_jama_account
+        WHERE linked_invoice_id = ? OR jama_remark = 'Invoice ' || ?
+      `).get(row.invoice_no, row.invoice_no)?.total || 0;
+      if (paid >= row.maal_amount) deleteNotif.run(row.id);
+    }
+  });
+  cleanCustomer(customerNotifs);
+
+  const supplierNotifs = db.prepare(`
+    SELECT n.id, n.reminder_key, n.invoice_no, m.maal_amount, m.id AS maal_id
+    FROM notifications n
+    JOIN supplier_maal_account m ON n.reminder_key = 'supplier:maal:' || m.id
+    WHERE n.type = 'supplier'
+  `).all();
+
+  const cleanSupplier = db.transaction((rows) => {
+    for (const row of rows) {
+      const paid = db.prepare(`
+        SELECT COALESCE(SUM(jama_amount), 0) AS total
+        FROM supplier_jama_account
+        WHERE jama_remark = 'Invoice ' || ?
+      `).get(row.invoice_no)?.total || 0;
+      if (paid >= row.maal_amount) deleteNotif.run(row.id);
+    }
+  });
+  cleanSupplier(supplierNotifs);
+
+  // Clean up orphaned invoice_overdue notifications
+  const overdueNotifs = db.prepare(`
+    SELECT n.id, n.invoice_no FROM notifications n WHERE n.type = 'invoice_overdue'
+  `).all();
+
+  const cleanOverdue = db.transaction((rows) => {
+    for (const row of rows) {
+      if (!row.invoice_no) { deleteNotif.run(row.id); continue; }
+      const invoice = db.prepare('SELECT status FROM invoices WHERE invoice_id = ?').get(row.invoice_no);
+      if (!invoice || invoice.status === 'paid') deleteNotif.run(row.id);
+    }
+  });
+  cleanOverdue(overdueNotifs);
+
+  db.prepare("INSERT OR REPLACE INTO app_state (key, value) VALUES ('last_notification_scan', ?)").run(today);
+  return { newCount };
+}
+
+/**
+ * Job 3: Overdue Invoice Refresh — marks invoices as 'overdue' if past due date.
+ * Returns the number of newly overdue invoices.
+ */
+function runOverdueRefresh() {
+  const today = getToday();
+  const lastOverdueScan = db.prepare("SELECT value FROM app_state WHERE key = 'last_overdue_scan'").get();
+  if (lastOverdueScan && lastOverdueScan.value === today) return 0; // Already done today
+
+  const nonPaid = db.prepare(`
+    SELECT i.invoice_id, i.invoice_date, i.payment_due_days, i.status,
+           i.grand_total, i.customer_id, c.reminder_enabled, c.name AS customer_name
+    FROM invoices i
+    JOIN customers c ON c.customer_id = i.customer_id
+    WHERE i.status IN ('awaiting_payment', 'partially_paid', 'overdue')
+  `).all();
+
+  let overdueCount = 0;
+  const insertNotif = db.prepare(`
+    INSERT OR IGNORE INTO notifications
+      (type, account_id, account_name, invoice_no, invoice_date,
+       pending_amount, message, is_read, created_at, reminder_key)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+  `);
+
+  for (const inv of nonPaid) {
+    if (inv.reminder_enabled !== 1 || inv.payment_due_days <= 0) continue;
+    const totalPaid = db.prepare(`
+      SELECT COALESCE(SUM(jama_amount), 0) AS total_paid
+      FROM customer_jama_account WHERE linked_invoice_id = ?
+    `).get(inv.invoice_id)?.total_paid || 0;
+    if (totalPaid >= inv.grand_total) continue;
+
+    const dueDate = new Date(inv.invoice_date);
+    dueDate.setDate(dueDate.getDate() + inv.payment_due_days);
+    const now = new Date(); now.setHours(0,0,0,0); dueDate.setHours(0,0,0,0);
+
+    if (now > dueDate && inv.status !== 'overdue') {
+      db.prepare(`UPDATE invoices SET status = 'overdue' WHERE invoice_id = ?`).run(inv.invoice_id);
+      const pendingAmount = inv.grand_total - totalPaid;
+      insertNotif.run('invoice_overdue', inv.customer_id, inv.customer_name, inv.invoice_id,
+        inv.invoice_date, pendingAmount,
+        `Invoice ${inv.invoice_id} for ${inv.customer_name}: ₹${Math.round(pendingAmount).toLocaleString('en-IN')} overdue`,
+        new Date().toISOString(), `overdue_invoice_${inv.invoice_id}`);
+      overdueCount++;
+    }
+  }
+
+  db.prepare("INSERT OR REPLACE INTO app_state (key, value) VALUES ('last_overdue_scan', ?)").run(today);
+  if (overdueCount > 0) console.log(`[Overdue] Marked ${overdueCount} invoice(s) as overdue`);
+  return overdueCount;
+}
+
+/**
+ * Sends updated unread notification count to the renderer window.
+ */
+function pushUnreadCount(win) {
+  if (!win || win.isDestroyed() || !win.webContents || win.webContents.isDestroyed()) return;
+  const unread = db.prepare('SELECT COUNT(*) AS count FROM notifications WHERE is_read = 0').get();
+  if (win.webContents.isLoading()) {
+    win.webContents.once('did-finish-load', () => {
+      if (!win.isDestroyed() && win.webContents && !win.webContents.isDestroyed()) {
+        win.webContents.send('notifications:countUpdate', unread.count);
+      }
+    });
+  } else {
+    win.webContents.send('notifications:countUpdate', unread.count);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RUN DAILY JOBS ON STARTUP
+// ═══════════════════════════════════════════════════════════════════════════
+let qsCleanupCount = 0;
+try { qsCleanupCount = runQsCleanup(); } catch (e) { console.error('[Scheduler] Quick sales cleanup error:', e.message); }
 
 // ─── Fix stale notification account_ids ─────────────────
 try {
@@ -219,11 +456,15 @@ app.whenReady().then(() => {
     }
   }
 
-  // Notify renderer about successful upgrade
-  if (db.migratedFrom !== null && !db.dbError) {
+  // Notify renderer about successful upgrade (version-based detection)
+  const currentVersion = app.getVersion();
+  const lastVersion = db.prepare("SELECT value FROM app_state WHERE key = 'last_app_version'").get();
+  const isUpgraded = lastVersion && lastVersion.value !== currentVersion;
+
+  if (isUpgraded && !db.dbError) {
     const sendUpgradeMsg = () => {
       if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
-        mainWindow.webContents.send('app:upgraded', { version: app.getVersion() });
+        mainWindow.webContents.send('app:upgraded', { from: lastVersion.value, to: currentVersion });
       }
     };
     if (mainWindow.webContents.isLoading()) {
@@ -233,286 +474,33 @@ app.whenReady().then(() => {
     }
   }
 
-  // ─── Pending Invoice Reminder Scanner ──────────────────
-  // Runs once per calendar day. Uses a single JOIN query per entity type.
-  // Skips entirely if already scanned today (1 tiny SELECT on app_state).
+  // Always persist the current version (first run or upgrade)
+  db.prepare("INSERT OR REPLACE INTO app_state (key, value) VALUES ('last_app_version', ?)").run(currentVersion);
+
+  // ─── Run daily notification scanner + overdue refresh ──────────────────
   try {
-    const today = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })();;
-    const lastScan = db.prepare("SELECT value FROM app_state WHERE key = 'last_notification_scan'").get();
-
-    if (!lastScan || lastScan.value !== today) {
-      const nowISO = new Date().toISOString();
-      let newCount = 0;
-
-      // ── Customer overdue invoices (single query) ──
-      const customerOverdue = db.prepare(`
-        SELECT
-          c.customer_id   AS account_id,
-          c.name          AS account_name,
-          c.reminder_days,
-          m.id            AS maal_id,
-          m.maal_invoice_no AS invoice_no,
-          m.maal_date     AS invoice_date,
-          m.maal_amount,
-          COALESCE(j.paid, 0) AS paid_amount
-        FROM customers c
-        JOIN customer_maal_account m ON m.customer_id = c.customer_id
-        LEFT JOIN (
-          SELECT jama_remark, SUM(jama_amount) AS paid
-          FROM customer_jama_account
-          GROUP BY jama_remark
-        ) j ON j.jama_remark = 'Invoice ' || m.maal_invoice_no
-        LEFT JOIN notifications n ON n.reminder_key = 'customer:maal:' || m.id
-        WHERE c.reminder_enabled = 1
-          AND c.reminder_days > 0
-          AND date(m.maal_date, '+' || c.reminder_days || ' days') <= date('now')
-          AND n.id IS NULL
-          AND (m.maal_amount - COALESCE(j.paid, 0)) > 0
-      `).all();
-
-      const insertNotif = db.prepare(`
-        INSERT OR IGNORE INTO notifications
-          (type, account_id, account_name, invoice_no, invoice_date, pending_amount, message, is_read, created_at, reminder_key)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
-      `);
-
-      const insertCustomerBatch = db.transaction((rows) => {
-        for (const r of rows) {
-          const pending = r.maal_amount - r.paid_amount;
-          const invoiceLabel = r.invoice_no || `Entry #${r.maal_id}`;
-          const msg = `${invoiceLabel} for ${r.account_name}: ₹${Math.round(pending).toLocaleString('en-IN')} still pending`;
-          const key = `customer:maal:${r.maal_id}`;
-          const res = insertNotif.run('customer', r.account_id, r.account_name, r.invoice_no, r.invoice_date, pending, msg, nowISO, key);
-          if (res.changes > 0) newCount++;
-        }
-      });
-      insertCustomerBatch(customerOverdue);
-
-      // ── Supplier overdue invoices (single query) ──
-      const supplierOverdue = db.prepare(`
-        SELECT
-          s.supplier_id   AS account_id,
-          s.name          AS account_name,
-          s.reminder_days,
-          m.id            AS maal_id,
-          m.maal_invoice_no AS invoice_no,
-          m.maal_date     AS invoice_date,
-          m.maal_amount,
-          COALESCE(j.paid, 0) AS paid_amount
-        FROM suppliers s
-        JOIN supplier_maal_account m ON m.supplier_id = s.supplier_id
-        LEFT JOIN (
-          SELECT jama_remark, SUM(jama_amount) AS paid
-          FROM supplier_jama_account
-          GROUP BY jama_remark
-        ) j ON j.jama_remark = 'Invoice ' || m.maal_invoice_no
-        LEFT JOIN notifications n ON n.reminder_key = 'supplier:maal:' || m.id
-        WHERE s.reminder_enabled = 1
-          AND s.reminder_days > 0
-          AND date(m.maal_date, '+' || s.reminder_days || ' days') <= date('now')
-          AND n.id IS NULL
-          AND (m.maal_amount - COALESCE(j.paid, 0)) > 0
-      `).all();
-
-      const insertSupplierBatch = db.transaction((rows) => {
-        for (const r of rows) {
-          const pending = r.maal_amount - r.paid_amount;
-          const invoiceLabel = r.invoice_no || `Entry #${r.maal_id}`;
-          const msg = `${invoiceLabel} for ${r.account_name}: ₹${Math.round(pending).toLocaleString('en-IN')} still pending`;
-          const key = `supplier:maal:${r.maal_id}`;
-          const res = insertNotif.run('supplier', r.account_id, r.account_name, r.invoice_no, r.invoice_date, pending, msg, nowISO, key);
-          if (res.changes > 0) newCount++;
-        }
-      });
-      insertSupplierBatch(supplierOverdue);
-
-      // ── Delete notifications that are now resolved ──────────────────────────
-      // Runs alongside the daily scan so stale notifications are cleared
-      // at the same time new ones are created.
-
-      // Clean up resolved customer:maal notifications
-      const customerNotifs = db.prepare(`
-        SELECT n.id, n.reminder_key, n.invoice_no,
-               m.maal_amount, m.id AS maal_id
-        FROM notifications n
-        JOIN customer_maal_account m ON n.reminder_key = 'customer:maal:' || m.id
-        WHERE n.type = 'customer'
-      `).all()
-
-      const deleteNotif = db.prepare('DELETE FROM notifications WHERE id = ?')
-
-      const cleanCustomer = db.transaction((rows) => {
-        for (const row of rows) {
-          // Sum all payments linked to this invoice (by linked_invoice_id or remark)
-          const paid = db.prepare(`
-            SELECT COALESCE(SUM(jama_amount), 0) AS total
-            FROM customer_jama_account
-            WHERE linked_invoice_id = ?
-               OR jama_remark = 'Invoice ' || ?
-          `).get(row.invoice_no, row.invoice_no)?.total || 0
-
-          if (paid >= row.maal_amount) {
-            deleteNotif.run(row.id)
-          }
-        }
-      })
-      cleanCustomer(customerNotifs)
-
-      // Clean up resolved supplier:maal notifications
-      const supplierNotifs = db.prepare(`
-        SELECT n.id, n.reminder_key, n.invoice_no,
-               m.maal_amount, m.id AS maal_id
-        FROM notifications n
-        JOIN supplier_maal_account m ON n.reminder_key = 'supplier:maal:' || m.id
-        WHERE n.type = 'supplier'
-      `).all()
-
-      const cleanSupplier = db.transaction((rows) => {
-        for (const row of rows) {
-          const paid = db.prepare(`
-            SELECT COALESCE(SUM(jama_amount), 0) AS total
-            FROM supplier_jama_account
-            WHERE jama_remark = 'Invoice ' || ?
-          `).get(row.invoice_no)?.total || 0
-
-          if (paid >= row.maal_amount) {
-            deleteNotif.run(row.id)
-          }
-        }
-      })
-      cleanSupplier(supplierNotifs)
-
-      // Clean up orphaned invoice_overdue notifications
-      // (invoice may have been deleted or manually paid outside the app)
-      const overdueNotifs = db.prepare(`
-        SELECT n.id, n.invoice_no
-        FROM notifications n
-        WHERE n.type = 'invoice_overdue'
-      `).all()
-
-      const cleanOverdue = db.transaction((rows) => {
-        for (const row of rows) {
-          if (!row.invoice_no) { deleteNotif.run(row.id); continue }
-          const invoice = db.prepare(
-            'SELECT status FROM invoices WHERE invoice_id = ?'
-          ).get(row.invoice_no)
-          // Delete if invoice is paid, doesn't exist, or is no longer overdue
-          if (!invoice || invoice.status === 'paid') {
-            deleteNotif.run(row.id)
-          }
-        }
-      })
-      cleanOverdue(overdueNotifs)
-      // ────────────────────────────────────────────────────────────────────────
-
-      db.prepare("INSERT OR REPLACE INTO app_state (key, value) VALUES ('last_notification_scan', ?)").run(today);
-
-      if (newCount > 0) {
-
-        if (Notification.isSupported()) {
-          new Notification({
-            title: 'AGS ERP — Payment Reminders',
-            body: `${newCount} invoice${newCount > 1 ? 's' : ''} with pending payments need attention.`,
-            silent: false
-          }).show();
-        }
-        const unread = db.prepare('SELECT COUNT(*) AS count FROM notifications WHERE is_read = 0').get();
-        if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
-          if (mainWindow.webContents.isLoading()) {
-            mainWindow.webContents.once('did-finish-load', () => {
-              if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
-                mainWindow.webContents.send('notifications:countUpdate', unread.count);
-              }
-            });
-          } else {
-            mainWindow.webContents.send('notifications:countUpdate', unread.count);
-          }
-        }
-      } else {
-
+    const { newCount } = runNotificationScanner();
+    if (newCount > 0) {
+      if (Notification.isSupported()) {
+        new Notification({
+          title: 'AGS ERP — Payment Reminders',
+          body: `${newCount} invoice${newCount > 1 ? 's' : ''} with pending payments need attention.`,
+          silent: false
+        }).show();
       }
-    } else {
-
+      pushUnreadCount(mainWindow);
     }
   } catch (e) { console.error('[Notifications] Scanner error:', e.message); }
 
-  // ─── Per-Invoice Overdue Status Refresh ────────────────────
-  // Non-blocking — runs on every startup to catch invoices that became overdue overnight
+  // Overdue refresh (non-blocking, runs after 2s)
   setTimeout(() => {
     try {
-      const nonPaid = db.prepare(`
-        SELECT i.invoice_id, i.invoice_date, i.payment_due_days, i.status,
-               i.grand_total, i.customer_id, c.reminder_enabled, c.name AS customer_name
-        FROM invoices i
-        JOIN customers c ON c.customer_id = i.customer_id
-        WHERE i.status IN ('awaiting_payment', 'partially_paid', 'overdue')
-      `).all()
-
-      let overdueCount = 0
-      const insertNotif = db.prepare(`
-        INSERT OR IGNORE INTO notifications
-          (type, account_id, account_name, invoice_no, invoice_date,
-           pending_amount, message, is_read, created_at, reminder_key)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
-      `)
-
-      for (const inv of nonPaid) {
-        if (inv.reminder_enabled !== 1 || inv.payment_due_days <= 0) continue
-
-        const totalPaid = db.prepare(`
-          SELECT COALESCE(SUM(jama_amount), 0) AS total_paid
-          FROM customer_jama_account WHERE linked_invoice_id = ?
-        `).get(inv.invoice_id)?.total_paid || 0
-
-        if (totalPaid >= inv.grand_total) continue // already paid
-
-        const dueDate = new Date(inv.invoice_date)
-        dueDate.setDate(dueDate.getDate() + inv.payment_due_days)
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-        dueDate.setHours(0, 0, 0, 0)
-
-        if (today > dueDate && inv.status !== 'overdue') {
-          db.prepare(`UPDATE invoices SET status = 'overdue' WHERE invoice_id = ?`)
-            .run(inv.invoice_id)
-
-          const pendingAmount = inv.grand_total - totalPaid
-          const reminderKey = `overdue_invoice_${inv.invoice_id}`
-          insertNotif.run(
-            'invoice_overdue',
-            inv.customer_id,
-            inv.customer_name,
-            inv.invoice_id,
-            inv.invoice_date,
-            pendingAmount,
-            `Invoice ${inv.invoice_id} for ${inv.customer_name}: ₹${Math.round(pendingAmount).toLocaleString('en-IN')} overdue`,
-            new Date().toISOString(),
-            reminderKey
-          )
-          overdueCount++
-        }
-      }
-
-      if (overdueCount > 0) {
-        console.log(`[Overdue] Marked ${overdueCount} invoice(s) as overdue`)
-        // Push updated unread count to renderer
-        const unread = db.prepare('SELECT COUNT(*) AS count FROM notifications WHERE is_read = 0').get()
-        if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
-          if (mainWindow.webContents.isLoading()) {
-            mainWindow.webContents.once('did-finish-load', () => {
-              if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
-                mainWindow.webContents.send('notifications:countUpdate', unread.count)
-              }
-            })
-          } else {
-            mainWindow.webContents.send('notifications:countUpdate', unread.count)
-          }
-        }
-      }
+      const overdueCount = runOverdueRefresh();
+      if (overdueCount > 0) pushUnreadCount(mainWindow);
     } catch (err) {
-      console.error('[Overdue] Invoice overdue refresh error:', err.message)
+      console.error('[Overdue] Invoice overdue refresh error:', err.message);
     }
-  }, 2000)
+  }, 2000);
 
   // Batch transliterate any products missing Marathi names (non-blocking)
   setTimeout(async () => {
@@ -581,3 +569,44 @@ app.on('window-all-closed', () => {
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
+
+// ─── Midnight Rollover Check ────────────────────────────────────
+// Checks every hour if the day has changed. If so, clears daily markers
+// and re-runs ALL 3 daily jobs (QS cleanup, notification scanner, overdue
+// refresh) without requiring app restart. Handles apps left open indefinitely.
+let lastKnownDay = getToday();
+
+setInterval(() => {
+  const currentDay = getToday();
+  if (currentDay === lastKnownDay) return;
+
+  lastKnownDay = currentDay;
+  console.log(`[Midnight] Day changed to ${currentDay} — re-running daily scans`);
+
+  // Clear markers so the functions know to re-run
+  try {
+    db.prepare("DELETE FROM app_state WHERE key IN ('last_qs_cleanup', 'last_notification_scan', 'last_overdue_scan')").run();
+  } catch (e) { console.error('[Midnight] Failed to clear markers:', e.message); }
+
+  // Job 1: QS Cleanup
+  try { runQsCleanup(); } catch (e) { console.error('[Midnight] QS cleanup error:', e.message); }
+
+  // Job 2: Notification Scanner
+  try {
+    const { newCount } = runNotificationScanner();
+    if (newCount > 0 && Notification.isSupported()) {
+      new Notification({
+        title: 'AGS ERP — Payment Reminders',
+        body: `${newCount} invoice${newCount > 1 ? 's' : ''} with pending payments need attention.`,
+        silent: false
+      }).show();
+    }
+  } catch (e) { console.error('[Midnight] Notification scan error:', e.message); }
+
+  // Job 3: Overdue Invoice Refresh
+  try { runOverdueRefresh(); } catch (e) { console.error('[Midnight] Overdue scan error:', e.message); }
+
+  // Push updated unread count to renderer
+  const win = BrowserWindow.getAllWindows()[0];
+  pushUnreadCount(win);
+}, 60 * 60 * 1000); // Check every 1 hour

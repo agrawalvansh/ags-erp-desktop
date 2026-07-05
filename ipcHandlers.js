@@ -519,7 +519,7 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
       db.prepare('INSERT INTO customer_orders (order_id, customer_id, order_date, remark, status) VALUES (?, ?, ?, ?, ?)')
         .run(newOrderId, customer_id, order_date, remark, status);
 
-      const insertItem = db.prepare('INSERT INTO customer_order_items (order_id, product_code, product_name, product_size, packing_type, quantity, item_remark, is_temporary) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+      const insertItem = db.prepare('INSERT INTO customer_order_items (order_id, product_code, product_name, product_size, packing_type, quantity, selling_price, item_remark, is_temporary) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
       for (const it of items) {
         // Only ensureProduct for non-temporary (DB) products
         if (it.product_code && !it.is_temporary) {
@@ -532,6 +532,7 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
           it.product_size || '',
           it.packing_type || '',
           it.quantity,
+          it.selling_price != null && it.selling_price !== '' ? parseFloat(it.selling_price) : null,
           it.item_remark || '',
           it.is_temporary ? 1 : 0
         );
@@ -592,7 +593,7 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
       db.prepare('UPDATE customer_orders SET customer_id = ?, order_date = ?, remark = ?, status = ? WHERE order_id = ?')
         .run(customer_id, order_date, remark, status, orderId);
       db.prepare('DELETE FROM customer_order_items WHERE order_id = ?').run(orderId);
-      const insertItem = db.prepare('INSERT INTO customer_order_items (order_id, product_code, product_name, product_size, packing_type, quantity, item_remark, is_temporary) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+      const insertItem = db.prepare('INSERT INTO customer_order_items (order_id, product_code, product_name, product_size, packing_type, quantity, selling_price, item_remark, is_temporary) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
       const ensureProduct = db.prepare('INSERT OR IGNORE INTO products (code, name) VALUES (?, ?)');
       for (const it of items) {
         if (it.product_code && !it.is_temporary) {
@@ -605,6 +606,7 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
           it.product_size || '',
           it.packing_type || '',
           it.quantity,
+          it.selling_price != null && it.selling_price !== '' ? parseFloat(it.selling_price) : null,
           it.item_remark || '',
           it.is_temporary ? 1 : 0
         );
@@ -1202,7 +1204,7 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
       db.prepare('INSERT INTO supplier_orders (order_id, supplier_id, order_date, remark, status) VALUES (?, ?, ?, ?, ?)')
         .run(newOrderId, supplier_id, order_date, remark, status);
 
-      const insertItem = db.prepare('INSERT INTO supplier_order_items (order_id, product_code, product_name, product_size, packing_type, quantity, item_remark, is_temporary) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+      const insertItem = db.prepare('INSERT INTO supplier_order_items (order_id, product_code, product_name, product_size, packing_type, quantity, cost_price, item_remark, is_temporary) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
       for (const it of items) {
         if (it.product_code && !it.is_temporary) {
           ensureProduct.run(it.product_code, it.product_code);
@@ -1214,6 +1216,7 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
           it.product_size || '',
           it.packing_type || '',
           it.quantity,
+          it.cost_price != null && it.cost_price !== '' ? parseFloat(it.cost_price) : null,
           it.item_remark || '',
           it.is_temporary ? 1 : 0
         );
@@ -1272,7 +1275,7 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
       db.prepare('UPDATE supplier_orders SET supplier_id = ?, order_date = ?, remark = ?, status = ? WHERE order_id = ?')
         .run(supplier_id, order_date, remark, status, orderId);
       db.prepare('DELETE FROM supplier_order_items WHERE order_id = ?').run(orderId);
-      const insertItem = db.prepare('INSERT INTO supplier_order_items (order_id, product_code, product_name, product_size, packing_type, quantity, item_remark, is_temporary) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+      const insertItem = db.prepare('INSERT INTO supplier_order_items (order_id, product_code, product_name, product_size, packing_type, quantity, cost_price, item_remark, is_temporary) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
       const ensureProduct = db.prepare('INSERT OR IGNORE INTO products (code, name) VALUES (?, ?)');
       for (const it of items) {
         if (it.product_code && !it.is_temporary) {
@@ -1285,6 +1288,7 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
           it.product_size || '',
           it.packing_type || '',
           it.quantity,
+          it.cost_price != null && it.cost_price !== '' ? parseFloat(it.cost_price) : null,
           it.item_remark || '',
           it.is_temporary ? 1 : 0
         );

@@ -50,7 +50,7 @@ function registerDevanagariFont(doc) {
  * @param {string} data.address
  * @param {string} data.status
  * @param {string} data.remark
- * @param {Array}  data.orderItems - [{productName, size, quantity, packingType, itemRemark}]
+ * @param {Array}  data.orderItems - [{productName, size, quantity, packingType, costPrice, itemRemark}]
  * @param {boolean} data.printMarathi
  * @param {Object}  data.marathiNames - {code: marathiName}
  */
@@ -149,14 +149,25 @@ export function generateOrderPDF(data) {
   y = Math.max(leftY, rightY) + 4;
 
   // ─── ITEMS TABLE ───
+  const isCustomerOrder = orderType === 'Customer Order';
+  const priceHeader = isCustomerOrder ? 'Rate' : 'Price';
+  const priceKey = isCustomerOrder ? 'sellingPrice' : 'costPrice';
+
   const tableColumns = [
     { header: '#', dataKey: 'sno' },
     { header: 'Product', dataKey: 'product' },
     { header: 'Size', dataKey: 'size' },
     { header: 'Qty', dataKey: 'qty' },
+    { header: priceHeader, dataKey: priceKey },
     { header: 'Unit', dataKey: 'unit' },
     { header: 'Remark', dataKey: 'remark' },
   ];
+
+  const fmtPrice = (val) => {
+    const n = parseFloat(val);
+    if (!n && n !== 0) return '-';
+    return Number.isInteger(n) ? n.toString() : n.toFixed(2);
+  };
 
   const tableRows = orderItems.map((item, index) => {
     let productName = item.productName || '';
@@ -171,12 +182,25 @@ export function generateOrderPDF(data) {
       product: productName,
       size: item.size || '-',
       qty: fmtQty(item.quantity),
+      sellingPrice: item.sellingPrice ? fmtPrice(item.sellingPrice) : '-',
+      costPrice: item.costPrice ? fmtPrice(item.costPrice) : '-',
       unit: item.packingType || '',
       remark: item.itemRemark || '',
     };
   });
 
   const hasMarathiRows = printMarathi && hasDevanagari;
+
+  // Column styles — 7 columns with price column
+  const colStyles = {
+    0: { halign: 'center', cellWidth: 8, font: 'helvetica' },
+    1: { halign: 'left', cellWidth: 'auto' },
+    2: { halign: 'center', cellWidth: 18, font: 'helvetica' },
+    3: { halign: 'center', cellWidth: 14, font: 'helvetica' },
+    4: { halign: 'center', cellWidth: 22, font: 'helvetica' },
+    5: { halign: 'center', cellWidth: 14, font: 'helvetica' },
+    6: { halign: 'left', cellWidth: 36, font: 'helvetica' },
+  };
 
   autoTable(doc, {
     startY: y,
@@ -207,14 +231,7 @@ export function generateOrderPDF(data) {
       font: hasMarathiRows ? 'NotoSansDevanagari' : 'helvetica',
     },
     alternateRowStyles: { fillColor: white },
-    columnStyles: {
-      0: { halign: 'center', cellWidth: 8, font: 'helvetica' },
-      1: { halign: 'left', cellWidth: 'auto' },
-      2: { halign: 'center', cellWidth: 20, font: 'helvetica' },
-      3: { halign: 'center', cellWidth: 16, font: 'helvetica' },
-      4: { halign: 'center', cellWidth: 14, font: 'helvetica' },
-      5: { halign: 'left', cellWidth: 40, font: 'helvetica' },
-    },
+    columnStyles: colStyles,
     margin: { left: margin, right: margin },
     tableWidth: contentWidth,
     didParseCell: (hookData) => {
