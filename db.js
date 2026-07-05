@@ -12,6 +12,30 @@ const dbPath = path.join(userDataPath, 'erp.db');
 const db = new Database(dbPath, { verbose: console.log });
 db.pragma('foreign_keys = ON');
 
+// ─── Safe Column Addition Helper ────────────────────────────────────────────
+// Idempotent: tries SELECT first, only ALTER TABLEs if column doesn't exist.
+function safeAddColumn(db, table, column, definition) {
+  try {
+    db.prepare(`SELECT ${column} FROM ${table} LIMIT 1`).get();
+  } catch {
+    db.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`).run();
+  }
+}
+
+// ─── Migrations ─────────────────────────────────────────────────────────────
+// Each entry: { version, description, up(db) }
+// Rules: sequential versions starting at 1, idempotent, never edit old ones.
+const MIGRATIONS = [
+  {
+    version: 1,
+    description: 'Add selling_price to customer_order_items, cost_price to supplier_order_items',
+    up: (db) => {
+      safeAddColumn(db, 'customer_order_items', 'selling_price', 'REAL DEFAULT NULL');
+      safeAddColumn(db, 'supplier_order_items', 'cost_price', 'REAL DEFAULT NULL');
+    }
+  },
+];
+
 // ─── Expected Schema ────────────────────────────────────────────────────────
 // Source of truth for post-creation validation.
 // Every table and column in the app must be listed here.
@@ -37,6 +61,7 @@ const EXPECTED_SCHEMA = {
   app_state: ['key', 'value'],
   document_sequences: ['doc_type', 'last_number'],
   users: ['id', 'username', 'password_hash'],
+  schema_version: ['id', 'version'],
 };
 
 // ─── Schema Validator ───────────────────────────────────────────────────────
@@ -171,13 +196,6 @@ try {
     )
   `).run();
 
-  // Safe migration: add selling_price to existing customer_order_items tables
-  try {
-    db.prepare('SELECT selling_price FROM customer_order_items LIMIT 1').get();
-  } catch {
-    db.prepare('ALTER TABLE customer_order_items ADD COLUMN selling_price REAL DEFAULT NULL').run();
-  }
-
   // ─── 4. Supplier Orders ──────────────────────────────────
 
   db.prepare(`
@@ -206,13 +224,6 @@ try {
       FOREIGN KEY(order_id) REFERENCES supplier_orders(order_id)
     )
   `).run();
-
-  // Safe migration: add cost_price to existing supplier_order_items tables
-  try {
-    db.prepare('SELECT cost_price FROM supplier_order_items LIMIT 1').get();
-  } catch {
-    db.prepare('ALTER TABLE supplier_order_items ADD COLUMN cost_price REAL DEFAULT NULL').run();
-  }
 
   // ─── 5. Customer Accounts ────────────────────────────────
 
@@ -364,12 +375,51 @@ try {
   db.prepare('CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(is_read)').run();
 
   // ═════════════════════════════════════════════════════════════════════════
-  // SCHEMA VALIDATION (runs every startup)
+  // SCHEMA VERSION + MIGRATION RUNNER
   // ═════════════════════════════════════════════════════════════════════════
 
-  const schemaErrors = validateSchema(db, EXPECTED_SCHEMA);
-  if (schemaErrors.length > 0) {
-    dbError = `Database schema validation failed:\n\n` + schemaErrors.join('\n');
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS schema_version (
+      id      INTEGER PRIMARY KEY CHECK (id = 1),
+      version INTEGER NOT NULL DEFAULT 0
+    )
+  `).run();
+  db.prepare('INSERT OR IGNORE INTO schema_version (id, version) VALUES (1, 0)').run();
+
+  const currentDbVersion = db.prepare('SELECT version FROM schema_version WHERE id = 1').get().version;
+  const pendingMigrations = MIGRATIONS.filter(m => m.version > currentDbVersion);
+
+  if (pendingMigrations.length > 0) {
+    console.log(`[DB] Running ${pendingMigrations.length} pending migration(s) from v${currentDbVersion}...`);
+    for (const migration of pendingMigrations) {
+      try {
+        const runMigration = db.transaction(() => {
+          migration.up(db);
+          db.prepare('UPDATE schema_version SET version = ? WHERE id = 1').run(migration.version);
+        });
+        runMigration();
+        console.log(`[DB] ✓ Migration v${migration.version}: ${migration.description}`);
+      } catch (err) {
+        dbError = `Migration v${migration.version} failed: ${err.message}\n\nDescription: ${migration.description}`;
+        break;
+      }
+    }
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // SCHEMA VALIDATION (runs every startup, after migrations)
+  // ═════════════════════════════════════════════════════════════════════════
+
+  if (!dbError) {
+    const schemaErrors = validateSchema(db, EXPECTED_SCHEMA);
+    if (schemaErrors.length > 0) {
+      const finalVersion = db.prepare('SELECT version FROM schema_version WHERE id = 1').get().version;
+      const expectedVersion = MIGRATIONS.length > 0 ? MIGRATIONS[MIGRATIONS.length - 1].version : 0;
+      dbError = `Database schema validation failed:\n\n`
+        + schemaErrors.join('\n')
+        + `\n\nCurrent DB version: ${finalVersion}`
+        + `\nExpected DB version: ${expectedVersion}`;
+    }
   }
 
   // ═════════════════════════════════════════════════════════════════════════

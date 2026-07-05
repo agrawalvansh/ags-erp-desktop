@@ -103,7 +103,7 @@ export function generatePriceListPDF(data) {
     rightY += 4.5;
   };
 
-  drawDetailRow('Date:', fmtDate(new Date().toISOString()));
+  drawDetailRow('Date:', fmtDate(getLocalDateString()));
   drawDetailRow('Total Products:', String(products.length));
 
   y = rightY + 4;

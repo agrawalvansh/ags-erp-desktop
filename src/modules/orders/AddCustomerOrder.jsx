@@ -51,7 +51,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
   };
 
   const clearProductSearch = () => {
-    setNewItem({ ...newItem, productName: '', code: '', size: '' });
+    setNewItem({ ...newItem, productName: '', code: '', size: '', sellingPrice: '' });
     setShowProdDropdown(false);
     setHighlightedIndex(-1);
   };

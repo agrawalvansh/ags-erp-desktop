@@ -48,7 +48,6 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
       code: product.code,
       productName: formatName(product.name),
       size: product.size || '',
-      sellingPrice: (product.selling_price ?? product.sellingPrice ?? 0).toString(),
       packingType: product.packing_type || product.packingType || DEFAULT_PACKING_TYPE,
     });
     setShowProdDropdown(false);
@@ -56,7 +55,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
   };
 
   const clearProductSearch = () => {
-    setNewItem({ ...newItem, productName: '', code: '', size: '' });
+    setNewItem({ ...newItem, productName: '', code: '', size: '', costPrice: '' });
     setShowProdDropdown(false);
     setHighlightedIndex(-1);
   };

@@ -41,12 +41,22 @@ function Layout() {
                 }
             });
         }
-        // App upgrade success notification
         if (window.api?.onAppUpgraded) {
             window.api.onAppUpgraded((data) => {
-                toast.success(
-                    `🎉 Successfully upgraded to v${data.version}!\nThank you for using AGS ERP.`,
-                    { duration: 6000 }
+                toast(
+                    `Successfully upgraded to v${data.to}!\nThank you for using AGS ERP.`,
+                    {
+                        duration: 6000,
+                        icon: '🎉',
+                        style: {
+                            background: '#004AC6',
+                            color: '#FFFFFF',
+                            borderRadius: '12px',
+                            fontWeight: '600',
+                            padding: '14px 20px',
+                            boxShadow: '0 8px 30px rgba(0, 74, 198, 0.3)',
+                        },
+                    }
                 );
             });
         }

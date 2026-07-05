@@ -90,7 +90,7 @@ function runQsCleanup() {
 /**
  * Job 2: Notification Scanner — creates reminders for overdue customer/supplier invoices.
  * Also cleans up resolved/orphaned notifications.
- * Returns { newCount, mainWindow } for caller to optionally push UI updates.
+ * Returns { newCount } indicating how many new notifications were created.
  */
 function runNotificationScanner() {
   const today = getToday();
@@ -121,7 +121,7 @@ function runNotificationScanner() {
     LEFT JOIN notifications n ON n.reminder_key = 'customer:maal:' || m.id
     WHERE c.reminder_enabled = 1
       AND c.reminder_days > 0
-      AND date(m.maal_date, '+' || c.reminder_days || ' days') <= date('now')
+      AND date(m.maal_date, '+' || c.reminder_days || ' days') <= date('now','localtime')
       AND n.id IS NULL
       AND (m.maal_amount - COALESCE(j.paid, 0)) > 0
   `).all();
@@ -165,7 +165,7 @@ function runNotificationScanner() {
     LEFT JOIN notifications n ON n.reminder_key = 'supplier:maal:' || m.id
     WHERE s.reminder_enabled = 1
       AND s.reminder_days > 0
-      AND date(m.maal_date, '+' || s.reminder_days || ' days') <= date('now')
+      AND date(m.maal_date, '+' || s.reminder_days || ' days') <= date('now','localtime')
       AND n.id IS NULL
       AND (m.maal_amount - COALESCE(j.paid, 0)) > 0
   `).all();
@@ -459,7 +459,7 @@ app.whenReady().then(() => {
   // Notify renderer about successful upgrade (version-based detection)
   const currentVersion = app.getVersion();
   const lastVersion = db.prepare("SELECT value FROM app_state WHERE key = 'last_app_version'").get();
-  const isUpgraded = lastVersion && lastVersion.value !== currentVersion;
+  const isUpgraded = currentVersion && lastVersion && lastVersion.value && lastVersion.value !== currentVersion;
 
   if (isUpgraded && !db.dbError) {
     const sendUpgradeMsg = () => {
@@ -607,6 +607,8 @@ setInterval(() => {
   try { runOverdueRefresh(); } catch (e) { console.error('[Midnight] Overdue scan error:', e.message); }
 
   // Push updated unread count to renderer
-  const win = BrowserWindow.getAllWindows()[0];
-  pushUnreadCount(win);
+  try {
+    const win = BrowserWindow.getAllWindows()[0];
+    pushUnreadCount(win);
+  } catch (e) { console.error('[Midnight] Unread count push error:', e.message); }
 }, 60 * 60 * 1000); // Check every 1 hour
