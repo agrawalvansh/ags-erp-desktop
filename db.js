@@ -4,6 +4,7 @@
 // -------------------------------------------------------------------
 const Database = require('better-sqlite3');
 const path = require('path');
+const fs = require('fs');
 const { app } = require('electron');
 
 const userDataPath = app.getPath('userData');
@@ -189,7 +190,6 @@ try {
       product_size   TEXT    DEFAULT '',
       packing_type   TEXT    DEFAULT '',
       quantity       INTEGER NOT NULL,
-      selling_price  REAL    DEFAULT NULL,
       item_remark    TEXT    DEFAULT '',
       is_temporary   INTEGER DEFAULT 0,
       FOREIGN KEY(order_id) REFERENCES customer_orders(order_id)
@@ -218,7 +218,6 @@ try {
       product_size   TEXT    DEFAULT '',
       packing_type   TEXT    DEFAULT '',
       quantity       INTEGER NOT NULL,
-      cost_price     REAL    DEFAULT NULL,
       item_remark    TEXT    DEFAULT '',
       is_temporary   INTEGER DEFAULT 0,
       FOREIGN KEY(order_id) REFERENCES supplier_orders(order_id)
@@ -386,11 +385,33 @@ try {
   `).run();
   db.prepare('INSERT OR IGNORE INTO schema_version (id, version) VALUES (1, 0)').run();
 
-  const currentDbVersion = db.prepare('SELECT version FROM schema_version WHERE id = 1').get().version;
+  let currentDbVersion = db.prepare('SELECT version FROM schema_version WHERE id = 1').get().version;
+
+  // Safety: if schema says migrations ran but columns are actually missing, reset version
+  // so migrations re-run. Handles edge cases like DB copy/sync with stale schema_version.
+  if (currentDbVersion > 0) {
+    const preErrors = validateSchema(db, EXPECTED_SCHEMA);
+    if (preErrors.length > 0) {
+      console.log(`[DB] Schema version is ${currentDbVersion} but ${preErrors.length} column(s) missing — resetting to 0`);
+      db.prepare('UPDATE schema_version SET version = 0 WHERE id = 1').run();
+      currentDbVersion = 0;
+    }
+  }
+
   const pendingMigrations = MIGRATIONS.filter(m => m.version > currentDbVersion);
 
   if (pendingMigrations.length > 0) {
+    // Create backup before running migrations
+    const backupPath = dbPath + '.pre-migration';
+    try {
+      fs.copyFileSync(dbPath, backupPath);
+      console.log(`[DB] Backup created at ${backupPath}`);
+    } catch (backupErr) {
+      console.warn('[DB] Could not create backup:', backupErr.message);
+    }
+
     console.log(`[DB] Running ${pendingMigrations.length} pending migration(s) from v${currentDbVersion}...`);
+    let migrationFailed = false;
     for (const migration of pendingMigrations) {
       try {
         const runMigration = db.transaction(() => {
@@ -400,9 +421,18 @@ try {
         runMigration();
         console.log(`[DB] ✓ Migration v${migration.version}: ${migration.description}`);
       } catch (err) {
-        dbError = `Migration v${migration.version} failed: ${err.message}\n\nDescription: ${migration.description}`;
+        dbError = `Migration v${migration.version} failed: ${err.message}\n\nDescription: ${migration.description}\n\nA backup of your database was saved at:\n${backupPath}`;
+        migrationFailed = true;
         break;
       }
+    }
+
+    // Delete backup after successful migration
+    if (!migrationFailed) {
+      try {
+        fs.unlinkSync(backupPath);
+        console.log('[DB] Migration successful — backup removed');
+      } catch { /* backup may not exist if copyFileSync failed */ }
     }
   }
 
