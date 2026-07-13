@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Search, ChevronDown, Plus, Edit, Trash2, X } from 'lucide-react';
+import { Search, ChevronDown, Plus, Edit, Trash2, X, CalendarDays, SlidersHorizontal } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { naturalCompare } from '../../utils/productUtils';
@@ -17,6 +17,13 @@ const SupplierOrder = () => {
   const [highlightedId, setHighlightedId] = useState(null);
   const rowRefs = useRef({});
   const location = useLocation();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
+  const ROWS_OPTIONS = [25, 50, 100, 'All'];
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const hasActiveFilters = statusFilter !== 'All' || fromDate || toDate;
 
   // Focus the delete modal when it opens
   useEffect(() => {
@@ -34,6 +41,21 @@ const SupplierOrder = () => {
   };
 
   useEffect(() => { fetchOrders(); }, []);
+
+  // Global shortcut listeners (Ctrl+N, Ctrl+F, F5)
+  useEffect(() => {
+    const onNew = () => navigate('/orders/suppliers/add');
+    const onSearch = () => searchInputRef.current?.focus();
+    const onRefresh = () => fetchOrders();
+    window.addEventListener('shortcut:new', onNew);
+    window.addEventListener('shortcut:search', onSearch);
+    window.addEventListener('shortcut:refresh', onRefresh);
+    return () => {
+      window.removeEventListener('shortcut:new', onNew);
+      window.removeEventListener('shortcut:search', onSearch);
+      window.removeEventListener('shortcut:refresh', onRefresh);
+    };
+  }, []);
 
   // Auto-scroll and highlight when returning from order detail
   useEffect(() => {
@@ -78,6 +100,23 @@ const SupplierOrder = () => {
         (o.name || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    // Date range filter
+    if (fromDate) {
+      const from = new Date(fromDate);
+      filtered = filtered.filter(o => {
+        const d = new Date(o.date);
+        return !isNaN(d.getTime()) && d >= from;
+      });
+    }
+    if (toDate) {
+      const to = new Date(toDate);
+      to.setHours(23, 59, 59);
+      filtered = filtered.filter(o => {
+        const d = new Date(o.date);
+        return !isNaN(d.getTime()) && d <= to;
+      });
+    }
+
     if (sortConfig.key) {
       filtered.sort((a, b) => {
         const dir = sortConfig.direction === 'asc' ? 1 : -1;
@@ -89,7 +128,22 @@ const SupplierOrder = () => {
     }
 
     return filtered;
-  }, [searchTerm, sortConfig, orders, statusFilter]);
+  }, [searchTerm, sortConfig, orders, statusFilter, fromDate, toDate]);
+
+  const filteredCount = processedOrders.length;
+  const effectivePerPage = itemsPerPage === 'All' ? filteredCount || 1 : itemsPerPage;
+  const totalPages = Math.ceil(filteredCount / effectivePerPage);
+
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, statusFilter, fromDate, toDate]);
+  useEffect(() => {
+    if (totalPages > 0 && currentPage > totalPages) setCurrentPage(totalPages);
+  }, [totalPages, currentPage]);
+
+  const paginatedOrders = useMemo(() => {
+    if (itemsPerPage === 'All') return processedOrders;
+    const start = (currentPage - 1) * itemsPerPage;
+    return processedOrders.slice(start, start + itemsPerPage);
+  }, [processedOrders, currentPage, itemsPerPage]);
 
   const handleSort = (key) => {
     let direction = 'asc';
@@ -157,67 +211,108 @@ const SupplierOrder = () => {
   }, [orders]);
 
   return (
-    <div className="min-h-screen bg-[#F7F9FB]">
-      {/* ─── Page Content ─── */}
-      <section className="p-8 max-w-7xl mx-auto">
-        {/* ─── Header ─── */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
-          <div>
-            <h2 className="text-3xl font-extrabold tracking-tight text-[#191C1E] mb-1">Supplier Orders</h2>
-            <p className="text-[#434655] text-sm font-medium">Orders sent to suppliers</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#434655]" />
-              <input
-                ref={searchInputRef}
-                type="text"
-                placeholder="Search orders..."
-                className="w-72 bg-white border border-[#C3C6D7]/20 rounded-lg py-2.5 pl-10 pr-10 text-sm focus:border-[#004AC6] focus:ring-4 focus:ring-[#004AC6]/5 transition-all outline-none"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              {searchTerm && (
-                <button
-                  onClick={() => { setSearchTerm(''); searchInputRef.current?.focus(); }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#434655] hover:text-[#191C1E] cursor-pointer"
-                >
-                  <X size={16} />
-                </button>
-              )}
+    <div className="flex flex-col h-screen bg-[#F7F9FB] overflow-hidden">
+      {/* ─── Page Header ─── */}
+      <div className="flex-shrink-0 px-4 md:px-8 pt-6 pb-2">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-6">
+            <div>
+              <h2 className="text-3xl font-extrabold tracking-tight text-[#191C1E] mb-1">Supplier Orders</h2>
+              <p className="text-[#434655] text-sm font-medium">Orders sent to suppliers</p>
             </div>
-            <button
-              onClick={() => navigate('/orders/suppliers/add')}
-              className="flex items-center gap-2 text-white px-5 py-2.5 rounded-lg font-semibold shadow-lg shadow-[#004AC6]/20 active:scale-95 transition-transform cursor-pointer"
-              style={{ background: 'linear-gradient(135deg, #004AC6 0%, #2563EB 100%)' }}
-            >
-              <Plus size={18} />
-              <span>New Order</span>
-            </button>
-          </div>
-        </div>
-
-        {/* ─── Filter Tabs ─── */}
-        <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-1">
-          {statusTabs.map(tab => (
-            <button
-              key={tab}
-              onClick={() => setStatusFilter(tab)}
-              className={`px-5 py-2 rounded-full text-xs font-bold transition-colors cursor-pointer ${statusFilter === tab
-                ? 'bg-[#004AC6] text-white shadow-sm'
-                : 'bg-white text-[#434655] hover:bg-[#F2F4F6] border border-[#C3C6D7]/10'
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#434655]" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder="Search orders..."
+                  className="w-72 bg-white border border-[#C3C6D7]/20 rounded-lg py-2.5 pl-10 pr-10 text-sm focus:border-[#004AC6] focus:ring-4 focus:ring-[#004AC6]/5 transition-all outline-none"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                {searchTerm && (
+                  <button
+                    onClick={() => { setSearchTerm(''); searchInputRef.current?.focus(); }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#434655] hover:text-[#191C1E] cursor-pointer"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={() => setShowFilters(f => !f)}
+                className={`relative p-2.5 rounded-lg transition-all cursor-pointer border ${
+                  showFilters
+                    ? 'bg-[#004AC6] text-white border-[#004AC6] shadow-sm'
+                    : 'bg-white text-[#434655] border-[#C3C6D7]/20 hover:bg-[#F2F4F6]'
                 }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
+                title="Toggle filters"
+              >
+                <SlidersHorizontal size={18} />
+                {hasActiveFilters && !showFilters && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#004AC6] rounded-full border-2 border-white" />
+                )}
+              </button>
+              <button
+                onClick={() => navigate('/orders/suppliers/add')}
+                className="flex items-center gap-2 text-white px-5 py-2.5 rounded-lg font-semibold shadow-lg shadow-[#004AC6]/20 active:scale-95 transition-transform cursor-pointer"
+                style={{ background: 'linear-gradient(135deg, #004AC6 0%, #2563EB 100%)' }}
+              >
+                <Plus size={18} />
+                <span>New Order</span>
+              </button>
+            </div>
+          </div>
 
-        {/* ─── Data Table ─── */}
-        <div className="bg-white rounded-xl overflow-hidden shadow-sm border border-[#C3C6D7]/5">
-          <div className="overflow-x-auto">
+          {/* ─── Collapsible Filter Bar ─── */}
+          {showFilters && (
+            <div className="mb-4 bg-white rounded-xl border border-[#C3C6D7]/10 px-5 py-3 flex flex-wrap items-center gap-4">
+              {/* Status Tabs */}
+              <div className="flex items-center gap-1.5">
+                {statusTabs.map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => setStatusFilter(tab)}
+                    className={`px-4 py-1.5 rounded-full text-xs font-bold transition-colors cursor-pointer ${statusFilter === tab
+                      ? 'bg-[#004AC6] text-white shadow-sm'
+                      : 'text-[#434655] hover:bg-[#F2F4F6]'
+                      }`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+
+              {/* Divider */}
+              <div className="w-px h-6 bg-[#E2E8F0]" />
+
+              {/* Date Range */}
+              <div className="flex items-center gap-3">
+                <CalendarDays size={14} className="text-[#434655]" />
+                <div className="flex items-center gap-1.5">
+                  <label className="text-[10px] font-bold text-[#434655] uppercase">From</label>
+                  <input type="date" className="px-2.5 py-1 bg-[#F2F4F6] border-none rounded-lg text-xs focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 outline-none transition-all" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <label className="text-[10px] font-bold text-[#434655] uppercase">To</label>
+                  <input type="date" className="px-2.5 py-1 bg-[#F2F4F6] border-none rounded-lg text-xs focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 outline-none transition-all" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+                </div>
+                {(fromDate || toDate) && (
+                  <button onClick={() => { setFromDate(''); setToDate(''); }} className="px-2.5 py-1 text-[10px] font-bold text-[#DC2626] bg-red-50 rounded-lg hover:bg-red-100 transition cursor-pointer uppercase tracking-wider">Clear</button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ─── Data Table ─── */}
+      <div className="flex-1 flex flex-col min-h-0 px-4 md:px-8 pb-4">
+        <div className="flex-1 max-w-7xl mx-auto w-full bg-white rounded-xl overflow-auto shadow-sm border border-[#C3C6D7]/5">
+
             <table className="w-full text-left border-collapse">
-              <thead className="bg-[#F2F4F6]/50">
+              <thead className="bg-[#F2F4F6] sticky top-0 z-10">
                 <tr>
                   <th className="py-4 px-6 text-[11px] font-bold text-[#434655] uppercase tracking-wider">No.</th>
                   <th
@@ -256,15 +351,15 @@ const SupplierOrder = () => {
                 </tr>
               </thead>
               <tbody>
-                {processedOrders.length > 0 ? (
-                  processedOrders.map((order, index) => (
+                {paginatedOrders.length > 0 ? (
+                  paginatedOrders.map((order, index) => (
                     <tr
                       key={order.orderNo || index}
                       ref={el => rowRefs.current[order.orderNo] = el}
                       className={`transition-colors duration-500 cursor-pointer ${highlightedId === order.orderNo ? 'bg-yellow-50' : 'hover:bg-[#F2F4F6]'}`}
                       onClick={() => handleRowClick(order.orderNo)}
                     >
-                      <td className="py-5 px-6 text-sm text-[#434655]">{index + 1}</td>
+                      <td className="py-5 px-6 text-sm text-[#434655]">{(itemsPerPage === 'All' ? index : (currentPage - 1) * itemsPerPage + index) + 1}</td>
                       <td className="py-5 px-6">
                         <span className="bg-[#E6E8EA] px-2 py-1 rounded text-[10px] font-bold text-[#004AC6]">{order.orderNo}</span>
                       </td>
@@ -302,9 +397,75 @@ const SupplierOrder = () => {
                 )}
               </tbody>
             </table>
+
+          {/* Pagination Footer */}
+          <div className="px-8 py-5 flex items-center justify-between bg-[#F2F4F6]/30 border-t border-[#C3C6D7]/10">
+            <div className="flex items-center gap-4">
+              <p className="text-sm text-[#434655]">
+                Showing <span className="font-bold text-[#191C1E]">{itemsPerPage === 'All' ? 1 : (currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+                <span className="font-bold text-[#191C1E]">
+                  {itemsPerPage === 'All' ? filteredCount : Math.min(currentPage * itemsPerPage, filteredCount)}
+                </span>{' '}
+                of <span className="font-bold text-[#191C1E]">{filteredCount}</span> orders
+              </p>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-[#434655] uppercase">Rows</span>
+                <div className="flex items-center bg-white rounded-lg border border-[#C3C6D7]/20 overflow-hidden">
+                  {ROWS_OPTIONS.map(opt => (
+                    <button
+                      key={opt}
+                      onClick={() => { setItemsPerPage(opt); setCurrentPage(1); }}
+                      className={`px-3 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
+                        itemsPerPage === opt
+                          ? 'bg-[#004AC6] text-white'
+                          : 'text-[#434655] hover:bg-[#F2F4F6]'
+                      }`}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            {totalPages > 1 && itemsPerPage !== 'All' && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className={`flex items-center gap-1 px-4 py-2 text-sm font-bold rounded-lg transition-all border border-transparent ${currentPage === 1 ? 'text-[#C3C6D7] cursor-not-allowed opacity-50' : 'text-[#434655] hover:text-[#004AC6] hover:bg-white hover:border-[#C3C6D7]/20 cursor-pointer'}`}
+                >
+                  ← Previous
+                </button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) pageNum = i + 1;
+                    else if (currentPage <= 3) pageNum = i + 1;
+                    else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
+                    else pageNum = currentPage - 2 + i;
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={`w-9 h-9 flex items-center justify-center rounded-lg font-bold text-sm transition-colors cursor-pointer ${currentPage === pageNum ? 'bg-[#004AC6] text-white' : 'hover:bg-white text-[#434655]'}`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className={`flex items-center gap-1 px-4 py-2 text-sm font-bold rounded-lg transition-all border border-transparent ${currentPage === totalPages ? 'text-[#C3C6D7] cursor-not-allowed opacity-50' : 'text-[#191C1E] hover:text-[#004AC6] hover:bg-white hover:border-[#C3C6D7]/20 cursor-pointer'}`}
+                >
+                  Next →
+                </button>
+              </div>
+            )}
           </div>
         </div>
-      </section>
+      </div>
 
       {/* ─── Delete Confirmation Modal — Stitch Glass Overlay ─── */}
       {deleteTarget !== null && (

@@ -453,6 +453,23 @@ const AddSupplierOrder = () => {
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [showDeleteModal]);
 
+  // Global shortcut listeners (Ctrl+N → new, Ctrl+P → print)
+  const handlePrintRef2 = useRef(null);
+  useEffect(() => {
+    const onNew = () => navigate('/orders/suppliers/add');
+    const onPrint = () => {
+      if (!isDirty && (currentorderId || !isNewOrder)) {
+        handlePrintRef2.current();
+      }
+    };
+    window.addEventListener('shortcut:new', onNew);
+    window.addEventListener('shortcut:print', onPrint);
+    return () => {
+      window.removeEventListener('shortcut:new', onNew);
+      window.removeEventListener('shortcut:print', onPrint);
+    };
+  }, [isDirty, currentorderId, isNewOrder]);
+
   // ─── Printer state ───
   const [showPrinterModal, setShowPrinterModal] = useState(false);
   const [printerList, setPrinterList] = useState([]);
@@ -494,6 +511,7 @@ const AddSupplierOrder = () => {
       toast.error('Failed to generate PDF: ' + (err.message || 'Unknown error'));
     }
   };
+  handlePrintRef2.current = handlePrint;
 
   const handleConfirmPrint = async () => {
     if (!pendingPDFData) return;

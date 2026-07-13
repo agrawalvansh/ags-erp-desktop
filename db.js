@@ -10,7 +10,8 @@ const { app } = require('electron');
 const userDataPath = app.getPath('userData');
 const dbPath = path.join(userDataPath, 'erp.db');
 // `verbose: console.log` logs all SQL statements for debugging.
-const db = new Database(dbPath, { verbose: console.log });
+const isDev = !app.isPackaged;
+const db = new Database(dbPath, isDev ? { verbose: console.log } : {});
 db.pragma('foreign_keys = ON');
 
 // ─── Safe Column Addition Helper ────────────────────────────────────────────

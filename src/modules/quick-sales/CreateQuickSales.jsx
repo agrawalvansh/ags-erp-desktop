@@ -692,6 +692,29 @@ const CreateQuickSale = () => {
         return () => document.removeEventListener('keydown', onKeyDown);
     }, [showForceNewModal, showDeleteModal]);
 
+    // Global shortcut listeners (Ctrl+N → new, Ctrl+P → print)
+    const handlePrintRef2 = useRef(null);
+    useEffect(() => {
+        const onNew = () => {
+            if (isDirty) {
+                setShowForceNewModal(true);
+            } else {
+                navigate('/quick-sales/create', { state: { forceNew: true, _ts: Date.now() } });
+            }
+        };
+        const onPrint = () => {
+            if (!isDirty && (currentQsId || !isNewSale)) {
+                handlePrintRef2.current();
+            }
+        };
+        window.addEventListener('shortcut:new', onNew);
+        window.addEventListener('shortcut:print', onPrint);
+        return () => {
+            window.removeEventListener('shortcut:new', onNew);
+            window.removeEventListener('shortcut:print', onPrint);
+        };
+    }, [isDirty, currentQsId, isNewSale]);
+
     // Focus the delete modal when it opens
     useEffect(() => {
         if (showDeleteModal) deleteModalRef.current?.focus();
@@ -820,6 +843,7 @@ const CreateQuickSale = () => {
             showPrinterSelection(result);
         }
     };
+    handlePrintRef2.current = handlePrint;
 
     const handleConfirmPrint = async () => {
         if (!pendingPDFData) return;

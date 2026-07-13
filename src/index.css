@@ -66,6 +66,15 @@ body {
   @apply bg-gray-400;
 }
 
+/* Utility: completely hide scrollbar but keep scroll functionality */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
 /* Print specific styles */
 @media print {
   @page {

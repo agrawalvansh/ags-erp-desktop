@@ -9,7 +9,8 @@ const BuyerAccount = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: 'id', direction: 'asc' });
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(25);
+  const ROWS_OPTIONS = [25, 50, 100, 'All'];
   const deleteModalRef = useRef(null);
 
   const navigate = useNavigate();
@@ -54,6 +55,18 @@ const BuyerAccount = () => {
     fetchBuyers();
   }, []);
 
+  // Global shortcut listeners (Ctrl+F, Ctrl+N)
+  useEffect(() => {
+    const onSearch = () => searchInputRef.current?.focus();
+    const onNew = () => navigate('/accounts/buyers/add');
+    window.addEventListener('shortcut:search', onSearch);
+    window.addEventListener('shortcut:new', onNew);
+    return () => {
+      window.removeEventListener('shortcut:search', onSearch);
+      window.removeEventListener('shortcut:new', onNew);
+    };
+  }, []);
+
   const filteredBuyers = useMemo(() => {
     const term = searchTerm.toLowerCase();
     return buyers.filter((u) =>
@@ -96,7 +109,8 @@ const BuyerAccount = () => {
   }, [location.state, buyers, filteredBuyers]);
 
   const filteredCount = filteredBuyers.length;
-  const totalPages = Math.ceil(filteredCount / itemsPerPage);
+  const effectivePerPage = itemsPerPage === 'All' ? filteredCount || 1 : itemsPerPage;
+  const totalPages = Math.ceil(filteredCount / effectivePerPage);
 
   useEffect(() => {
     if (totalPages > 0 && currentPage > totalPages) {
@@ -115,9 +129,10 @@ const BuyerAccount = () => {
         return 0;
       });
     }
+    if (itemsPerPage === 'All') return sorted;
     const start = (currentPage - 1) * itemsPerPage;
     return sorted.slice(start, start + itemsPerPage);
-  }, [filteredBuyers, sortConfig, currentPage]);
+  }, [filteredBuyers, sortConfig, currentPage, itemsPerPage]);
 
   const handleSort = (key) => {
     let direction = 'asc';
@@ -184,11 +199,11 @@ const BuyerAccount = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#F7F9FB]">
+    <div className="flex flex-col h-screen bg-[#F7F9FB] overflow-hidden">
       {/* Page Header */}
-      <div className="px-4 md:px-8 pt-8 pb-2">
+      <div className="flex-shrink-0 px-4 md:px-8 pt-6 pb-2">
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-4">
             <div>
               <h1 className="text-3xl font-extrabold tracking-tight text-[#191C1E] mb-1">Customer's Accounts</h1>
               <p className="text-[#434655] text-sm font-medium">Showing {filteredCount} customers</p>
@@ -234,11 +249,11 @@ const BuyerAccount = () => {
       </div>
 
       {/* Data Table */}
-      <main className="flex-1 px-4 md:px-8 pb-12">
-        <div className="max-w-7xl mx-auto bg-white rounded-xl overflow-hidden shadow-sm border border-[#C3C6D7]/5">
-          <div className="overflow-x-auto">
+      <div className="flex-1 flex flex-col min-h-0 px-4 md:px-8 pb-4">
+        <div className="flex-1 max-w-7xl mx-auto w-full bg-white rounded-xl overflow-auto shadow-sm border border-[#C3C6D7]/5">
+
             <table className="w-full text-left border-collapse">
-              <thead className="bg-[#F2F4F6]/50">
+              <thead className="bg-[#F2F4F6] sticky top-0 z-10">
                 <tr>
                   <th className="py-4 px-6 text-[11px] font-bold text-[#434655] uppercase tracking-wider">No.</th>
                   <th
@@ -333,18 +348,37 @@ const BuyerAccount = () => {
                 )}
               </tbody>
             </table>
-          </div>
 
           {/* Pagination Footer */}
-          {totalPages > 1 && (
-            <div className="px-8 py-6 flex items-center justify-between bg-[#F2F4F6]/30 border-t border-[#C3C6D7]/10">
+          <div className="px-8 py-5 flex items-center justify-between bg-[#F2F4F6]/30 border-t border-[#C3C6D7]/10">
+            <div className="flex items-center gap-4">
               <p className="text-sm text-[#434655]">
-                Showing <span className="font-bold text-[#191C1E]">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+                Showing <span className="font-bold text-[#191C1E]">{itemsPerPage === 'All' ? 1 : (currentPage - 1) * itemsPerPage + 1}</span> to{' '}
                 <span className="font-bold text-[#191C1E]">
-                  {Math.min(currentPage * itemsPerPage, filteredCount)}
+                  {itemsPerPage === 'All' ? filteredCount : Math.min(currentPage * itemsPerPage, filteredCount)}
                 </span>{' '}
                 of <span className="font-bold text-[#191C1E]">{filteredCount}</span> customers
               </p>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-[#434655] uppercase">Rows</span>
+                <div className="flex items-center bg-white rounded-lg border border-[#C3C6D7]/20 overflow-hidden">
+                  {ROWS_OPTIONS.map(opt => (
+                    <button
+                      key={opt}
+                      onClick={() => { setItemsPerPage(opt); setCurrentPage(1); }}
+                      className={`px-3 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
+                        itemsPerPage === opt
+                          ? 'bg-[#004AC6] text-white'
+                          : 'text-[#434655] hover:bg-[#F2F4F6]'
+                      }`}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            {totalPages > 1 && itemsPerPage !== 'All' && (
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
@@ -387,10 +421,10 @@ const BuyerAccount = () => {
                   Next →
                 </button>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </main>
+      </div>
 
       {/* Delete Confirmation Modal */}
       <DeleteConfirmModal

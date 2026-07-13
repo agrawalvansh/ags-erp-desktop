@@ -3,6 +3,8 @@ import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import NavBar from './pages/NavBar';
 import { Toaster, toast } from 'react-hot-toast';
+import { useGlobalShortcuts } from './hooks/useGlobalShortcuts';
+import ShortcutsModal from './components/ShortcutsModal';
 
 function ScrollToTop() {
     const location = useLocation();
@@ -17,6 +19,7 @@ function ScrollToTop() {
 
 function Layout() {
     const { isAuthenticated } = useAuth();
+    const { showShortcutsModal, setShowShortcutsModal } = useGlobalShortcuts();
 
     // Global listener for Marathi batch transliteration events
     useEffect(() => {
@@ -85,8 +88,12 @@ function Layout() {
                 />
             </div>
             <Outlet />
+            <ShortcutsModal
+                isOpen={showShortcutsModal}
+                onClose={() => setShowShortcutsModal(false)}
+            />
         </>
     );
 }
 
-export default Layout;
+export default Layout;

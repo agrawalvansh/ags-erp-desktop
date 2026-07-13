@@ -1212,6 +1212,29 @@ const Invoice = () => {
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [showForceNewModal, showNavigationWarning, showNewCustModal, showCustUpdateModal, showDeleteModal]);
 
+  // Global shortcut listeners (Ctrl+N → new, Ctrl+P → print)
+  const handlePrintRef = useRef(null);
+  useEffect(() => {
+    const onNew = () => {
+      if (isDirty) {
+        setShowForceNewModal(true);
+      } else {
+        navigate('/invoice', { state: { forceNew: true, _ts: Date.now() } });
+      }
+    };
+    const onPrint = () => {
+      if (!isDirty && (currentInvoiceId || !isNewInvoice)) {
+        handlePrintRef.current();
+      }
+    };
+    window.addEventListener('shortcut:new', onNew);
+    window.addEventListener('shortcut:print', onPrint);
+    return () => {
+      window.removeEventListener('shortcut:new', onNew);
+      window.removeEventListener('shortcut:print', onPrint);
+    };
+  }, [isDirty, currentInvoiceId, isNewInvoice]);
+
   // Focus the delete modal when it opens
   useEffect(() => {
     if (showDeleteModal) deleteModalRef.current?.focus();
@@ -1411,7 +1434,7 @@ const Invoice = () => {
       showPrinterSelection(result);
     }
   };
-
+  handlePrintRef.current = handlePrint;
   const handleConfirmPrint = async () => {
     if (!pendingPDFData) return;
     setIsPrinting(true);

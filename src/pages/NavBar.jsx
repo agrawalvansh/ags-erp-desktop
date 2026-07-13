@@ -154,12 +154,12 @@ const NavBar = () => {
         </div>
       </div>
 
-      {/* Navigation Items - Scrollable */}
-      <div className="py-3 flex-1 overflow-y-auto scrollbar-thin">
+      {/* Navigation Items - Scrollable (hidden scrollbar) */}
+      <div className="py-3 flex-1 overflow-y-auto scrollbar-hide">
         {navSections.map((section, sIdx) => (
           <div key={sIdx} className="mb-1">
             {/* Section Label */}
-            <p className="px-5 pt-4 pb-2 text-[10px] font-semibold tracking-wider text-[#94A3B8] uppercase select-none">
+            <p className="px-5 pt-4 pb-2 text-[10px] font-bold tracking-wider text-[#94A3B8] uppercase select-none">
               {section.label}
             </p>
 
@@ -173,12 +173,12 @@ const NavBar = () => {
                         onClick={() => toggleDropdown(item.title)}
                         className={`cursor-pointer w-full flex items-center px-3 py-2.5 rounded-lg transition-all duration-150 group ${
                           isParentActive(item.dropdown)
-                            ? 'bg-[#EFF6FF] text-[#2563EB]'
-                            : 'text-[#334155] hover:bg-[#F1F5F9]'
+                            ? 'bg-[#2563EB] text-white shadow-sm'
+                            : 'text-[#434655] hover:bg-[#F2F4F6]'
                         }`}
                       >
                         <span className={`w-5 h-5 mr-3 flex items-center justify-center ${
-                          isParentActive(item.dropdown) ? 'text-[#2563EB]' : 'text-[#94A3B8] group-hover:text-[#64748B]'
+                          isParentActive(item.dropdown) ? 'text-white' : 'text-[#94A3B8] group-hover:text-[#434655]'
                         }`}>
                           {item.icon}
                         </span>
@@ -187,24 +187,24 @@ const NavBar = () => {
                         </span>
                         <ChevronDown 
                           size={14} 
-                          className={`text-[#94A3B8] transition-transform duration-200 ${
+                          className={`transition-transform duration-200 ${
                             expandedDropdowns[item.title] ? 'rotate-180' : ''
-                          }`}
+                          } ${isParentActive(item.dropdown) ? 'text-white/70' : 'text-[#94A3B8]'}`}
                         />
                       </button>
 
                       {/* Dropdown Items — CSS grid animation (no framer-motion) */}
                       <div className={`nav-dropdown ${expandedDropdowns[item.title] ? 'nav-dropdown-open' : ''}`}>
                         <div className="min-h-0">
-                          <div className="ml-5 mt-0.5 space-y-0.5 border-l-2 border-[#E2E8F0] pl-3">
+                          <div className="ml-8 mt-1 space-y-1">
                             {item.dropdown.map((dropItem, dIdx) => (
                               <button
                                 key={dIdx}
                                 onClick={() => handleNavClick(dropItem.path)}
-                                className={`cursor-pointer block w-full text-left px-3 py-2 rounded-md text-[13px] transition-all duration-150 ${
+                                className={`cursor-pointer block w-full text-left px-4 py-2 rounded-lg text-[13px] transition-all duration-150 ${
                                   isActive(dropItem.path)
-                                    ? 'bg-[#2563EB] text-white font-medium shadow-sm'
-                                    : 'text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#0F172A]'
+                                    ? 'bg-[#1E40AF]/12 text-[#1E40AF] font-semibold'
+                                    : 'text-[#434655] hover:bg-[#F2F4F6] hover:text-[#191C1E] font-medium'
                                 }`}
                               >
                                 {dropItem.title}
@@ -221,11 +221,11 @@ const NavBar = () => {
                       className={`cursor-pointer w-full flex items-center px-3 py-2.5 rounded-lg transition-all duration-150 group ${
                         isActive(item.path)
                           ? 'bg-[#2563EB] text-white shadow-sm'
-                          : 'text-[#334155] hover:bg-[#F1F5F9]'
+                          : 'text-[#434655] hover:bg-[#F2F4F6]'
                       }`}
                     >
                       <span className={`w-5 h-5 mr-3 flex items-center justify-center ${
-                        isActive(item.path) ? 'text-white' : 'text-[#94A3B8] group-hover:text-[#64748B]'
+                        isActive(item.path) ? 'text-white' : 'text-[#94A3B8] group-hover:text-[#434655]'
                       }`}>
                         {item.icon}
                       </span>
@@ -247,12 +247,12 @@ const NavBar = () => {
           onClick={() => handleNavClick('/notifications')}
           className={`cursor-pointer w-full flex items-center px-3 py-2.5 rounded-lg transition-all duration-150 group ${
             isActive('/notifications')
-              ? 'bg-[#EFF6FF] text-[#2563EB]'
-              : 'text-[#334155] hover:bg-[#F1F5F9]'
+              ? 'bg-[#2563EB] text-white shadow-sm'
+              : 'text-[#434655] hover:bg-[#F2F4F6]'
           }`}
         >
           <span className={`w-5 h-5 mr-3 flex items-center justify-center ${
-            isActive('/notifications') ? 'text-[#2563EB]' : 'text-[#94A3B8] group-hover:text-[#64748B]'
+            isActive('/notifications') ? 'text-white' : 'text-[#94A3B8] group-hover:text-[#434655]'
           }`}>
             <Bell size={20} />
           </span>

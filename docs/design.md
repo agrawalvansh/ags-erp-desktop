@@ -2,7 +2,7 @@
 
 > **Who is this for?** Any developer (or AI assistant) maintaining or extending this app.  
 > All UI must follow these exact tokens. When in doubt, open `Invoice.jsx` — it is the canonical reference page.  
-> **Last Updated:** June 2026
+> **Last Updated:** July 2026
 
 ---
 
@@ -160,11 +160,19 @@ hover:bg-white transition-colors
 
 ### List pages (BuyerAccount, PriceList, CustomerOrder, etc.)
 
-```
-Page background:  bg-[#F7F9FB]
+**Viewport-locked layout** — prevents double scrollbars. Only the table area scrolls.
 
-Header block:
-  flex items-end justify-between gap-6 mb-10
+```
+Root:         flex flex-col h-screen bg-[#F7F9FB] overflow-hidden
+
+Header:       flex-shrink-0 px-4 md:px-8 pt-6 pb-2
+              ↳ flex items-end justify-between gap-6 mb-4
+
+Table area:   flex-1 flex flex-col min-h-0 px-4 md:px-8 pb-4
+  Card:       flex-1 max-w-7xl mx-auto w-full bg-white rounded-xl
+              overflow-auto shadow-sm border border-[#C3C6D7]/5
+    <table>   ↳ <thead> uses  sticky top-0 z-10  to stay pinned
+    Pagination footer: inside the scroll container (visible at bottom)
 
   Title:        text-3xl font-extrabold tracking-tight text-[#191C1E]
   Subtitle:     text-sm font-medium text-[#434655]
@@ -175,6 +183,10 @@ Header block:
                 text-white font-semibold px-5 py-2.5 rounded-lg
                 shadow-lg shadow-[#004AC6]/20 active:scale-95
 ```
+
+> **Important:** Do NOT use `min-h-screen` on list pages — it causes double
+> scrollbars in the Electron viewport. Always use `h-screen overflow-hidden`
+> at the root, with `flex-1 overflow-auto` for the scrollable table container.
 
 ### Simple create / edit form pages (AddBuyerAccount, AddPriceListProduct, etc.)
 
@@ -260,10 +272,16 @@ shadow-[0_8px_30px_rgb(37,99,235,0.04)]
 
 ## 8 — Pagination Footer
 
+The pagination footer is **inside** the scrollable table container — it is NOT sticky.
+Users see it only when they scroll to the last row.
+
 ```
-Container:     px-8 py-6 bg-[#F2F4F6]/30 border-t border-[#C3C6D7]/10
+Container:     px-8 py-5 bg-[#F2F4F6]/30 border-t border-[#C3C6D7]/10
 Text:          text-sm text-[#434655]
 Count numbers: font-bold text-[#191C1E]
+Rows selector: 25 / 50 / 100 / All — buttons in a rounded group
+               Active: bg-[#004AC6] text-white
+               Inactive: text-[#434655] hover:bg-[#F2F4F6]
 Prev / Next:   px-4 py-2 text-sm font-bold text-[#434655]
                hover:text-[#004AC6] hover:bg-white rounded-lg
                border border-transparent hover:border-[#C3C6D7]/20
@@ -445,6 +463,7 @@ hover:       hover:bg-[#F2F4F6]
 
 | Layer | Value | Used for |
 |---|---|---|
+| Table header (sticky) | `z-10` | `<thead>` rows inside scrollable table containers |
 | Dropdowns | `z-50` | Autocomplete lists, absolute-positioned menus |
 | NavBar | `z-40` | Side navigation panel |
 | Modals | `z-[100]` | All glass overlay modals |
@@ -668,6 +687,92 @@ Displays `99+` when count exceeds 99. Only shown when `unreadCount > 0`.
 
 ---
 
+## 24 — NavBar Styling
+
+```
+Root:         fixed top-0 left-0 h-screen w-[240px] bg-white
+              border-r border-[#E2E8F0] flex flex-col z-40 print:hidden
+
+Logo section: px-5 py-5 border-b border-[#E2E8F0] flex-shrink-0
+              Logo icon: w-10 h-10 rounded-xl bg-[#2563EB]
+              App name:  text-sm font-bold text-[#0F172A]
+              Subtitle:  text-xs text-[#64748B]
+
+Nav scroll:   py-3 flex-1 overflow-y-auto scrollbar-hide
+              (scrollbar hidden — uses .scrollbar-hide CSS utility)
+
+Section label: px-5 pt-4 pb-2 text-[10px] font-bold tracking-wider
+               text-[#94A3B8] uppercase select-none
+```
+
+### Active states
+
+**All master items** (regular nav + dropdown parents + notifications) use the same style:
+
+```
+Active:      bg-[#2563EB] text-white shadow-sm
+             Icon: text-white
+Inactive:    text-[#434655] hover:bg-[#F2F4F6]
+             Icon: text-[#94A3B8] → group-hover:text-[#434655]
+```
+
+**Dropdown child items:**
+
+```
+Active:      bg-[#1E40AF]/12 text-[#1E40AF] font-semibold
+Inactive:    text-[#434655] hover:bg-[#F2F4F6] hover:text-[#191C1E] font-medium
+Container:   ml-8 mt-1 space-y-1
+Item:        px-4 py-2 rounded-lg text-[13px]
+```
+
+> Dropdown parents show `ChevronDown` that rotates 180° when open.
+> Active parent: chevron is `text-white/70`. Inactive: `text-[#94A3B8]`.
+
+---
+
+## 25 — Date-Range Filters
+
+Used on: CustomerOrder, SupplierOrder list pages. Account ledger pages already have date filters.
+
+```
+Container:   flex items-center gap-3 mb-4
+Icon:        CalendarDays (lucide-react) size=16 text-[#434655]
+Label:       text-[11px] font-bold text-[#434655] uppercase tracking-wider
+Input:       type="date" px-3 py-1.5 bg-white
+             border border-[#C3C6D7]/20 rounded-lg text-xs
+             focus:ring-2 focus:ring-[#004AC6]/20 outline-none
+Clear btn:   px-3 py-1.5 text-xs font-semibold text-[#434655]
+             bg-[#F2F4F6] rounded-lg hover:bg-[#E6E8EA]
+             (only visible when a date is set)
+```
+
+---
+
+## 26 — CSS Utilities (index.css)
+
+### `.scrollbar-hide`
+
+Completely hides scrollbar while keeping scroll functionality:
+
+```css
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { scrollbar-width: none; -ms-overflow-style: none; }
+```
+
+Used in: NavBar navigation items container.
+
+### `.scrollbar-thin`
+
+Thin 6px scrollbar with light theme styling:
+
+```css
+.scrollbar-thin::-webkit-scrollbar { width: 6px; }
+.scrollbar-thin::-webkit-scrollbar-track { bg-gray-100; }
+.scrollbar-thin::-webkit-scrollbar-thumb { bg-gray-300 rounded-full; }
+```
+
+---
+
 ## 23 — Print Layout
 
 ### CSS print rules (index.css)
@@ -692,3 +797,63 @@ Invoice, CreateQuickSales, AddCustomerOrder, AddSupplierOrder — these render
 print-optimized content by hiding interactive elements with `print:hidden`.
 BuyerAccountDetail, SupplierAccountDetail, and PriceList generate PDFs via
 `jsPDF` (no browser print).
+
+---
+
+## 24 — Keyboard Shortcuts
+
+### Architecture
+
+Global shortcuts are handled via a centralized `useGlobalShortcuts` hook
+(`src/hooks/useGlobalShortcuts.js`) mounted in `Layout.jsx`. The hook:
+
+1. **Handles navigation shortcuts directly** (Alt+1/2/3 → page navigation)
+2. **Dispatches `CustomEvent`s** for page-specific actions (`shortcut:search`,
+   `shortcut:new`, `shortcut:print`, `shortcut:refresh`)
+3. Individual pages listen for these events and execute context-appropriate logic
+
+### Default Electron menu
+
+The default Electron menu is **removed** via `Menu.setApplicationMenu(null)` in
+`main.cjs` to prevent Chromium's built-in handlers from intercepting app
+shortcuts (e.g. Ctrl+F triggering find-in-page instead of focusing search).
+
+### Shortcut Table
+
+| Shortcut | Action | Scope |
+|---|---|---|
+| `Ctrl+S` | Save current form | Form pages (handled per-page, not via global hook) |
+| `Ctrl+N` | New record (context-sensitive) | All pages — creates new for the current module |
+| `Ctrl+P` | Print / PDF preview | Form pages with print capability |
+| `Ctrl+F` | Focus search bar | List pages with search input |
+| `Escape` | Close modal / Cancel | Everywhere |
+| `Alt+1` | Navigate to Estimate | Global |
+| `Alt+2` | Navigate to Quick Sales | Global |
+| `Alt+3` | Navigate to Price List | Global |
+| `F5` | Refresh data | List pages |
+| `Ctrl+/` | Toggle shortcuts cheat sheet modal | Global |
+
+### Shortcuts Cheat Sheet Modal
+
+`Ctrl+/` opens a `ShortcutsModal` component (`src/components/ShortcutsModal.jsx`)
+that displays the available shortcuts grouped by category. Uses the same glass
+overlay pattern as all other modals.
+
+### Adding Shortcuts to a New Page
+
+```jsx
+// In your new page component:
+useEffect(() => {
+  const onSearch = () => searchInputRef.current?.focus();
+  const onNew = () => navigate('/your-module/add');
+  const onRefresh = () => fetchData();
+  window.addEventListener('shortcut:search', onSearch);
+  window.addEventListener('shortcut:new', onNew);
+  window.addEventListener('shortcut:refresh', onRefresh);
+  return () => {
+    window.removeEventListener('shortcut:search', onSearch);
+    window.removeEventListener('shortcut:new', onNew);
+    window.removeEventListener('shortcut:refresh', onRefresh);
+  };
+}, []);
+```

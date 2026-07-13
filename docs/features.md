@@ -1,9 +1,9 @@
 # AGS ERP Desktop — Complete Feature List
 
-> **Version:** 2.4.0  
+> **Version:** 2.6.2  
 > **Platform:** Electron
 > **Database:** SQLite (better-sqlite3)  
-> **Last Updated:** June 2026
+> **Last Updated:** July 2026
 
 ---
 
@@ -28,16 +28,21 @@
 | 2.1 | Sidebar Navigation | Fixed left sidebar (240px) with section grouping |
 | 2.2 | Navigation Sections | SALES, CATALOG, ACCOUNTS, ORDERS |
 | 2.3 | Dropdown Menus | Expandable/collapsible sub-menus for Quick Sales, Accounts, Orders with CSS-based animation (grid-template-rows and opacity transitions, 0.2s easeInOut) |
-| 2.4 | Active Route Highlighting | Current route highlighted with blue badge (`bg-[#2563EB] text-white`). Active dropdown parents get `bg-[#EFF6FF] text-[#2563EB]`. |
+| 2.4 | Active Route Highlighting | Current route highlighted with blue badge (`bg-[#2563EB] text-white shadow-sm`). All master items (regular nav, dropdown parents, notifications) use the same unified solid blue style. |
 | 2.5 | Auto-Expand Dropdowns | Dropdown auto-expands when active route is inside it |
 | 2.6 | Fixed Sidebar Layout | Fixed 240px left sidebar visible at all screen sizes |
 | 2.7 | Print-Hidden Nav | Sidebar hidden during print (`print:hidden`) |
+| 2.8 | Hidden NavBar Scrollbar | Nav items scroll area uses `scrollbar-hide` CSS utility — no visible scrollbar |
 | 2.9 | Toast Notifications | Global toast system via `react-hot-toast` — dark background (`#0F172A`), positioned top-center, styled success (green) and error (red) icons |
 | 2.10 | Notification Badge | NavBar shows unread notification count badge (`bg-[#DC2626]`), displays `99+` when exceeding 99. Links to `/notifications` |
 | 2.11 | 404 Not Found Page | Fallback page for unmatched routes with "Go Back" button |
 | 2.12 | Record Not Found Guard | All detail pages (Invoice, Quick Sale, Customer/Supplier Order, Account Detail) show a `RecordNotFound` component — with page-specific context message — when the requested ID does not exist in the database, instead of crashing or showing an empty form |
 | 2.13 | Error Boundary | Global `ErrorBoundary` wrapping all routes — catches React render errors and shows recovery UI with "Reload Application" button |
 | 2.14 | Route-Level Code Splitting | All module pages are lazy-loaded via `React.lazy()` with a `PageLoader` fallback — reduces initial bundle size |
+| 2.15 | Dropdown Child Styling | Active sub-items use `bg-[#1E40AF]/12 text-[#1E40AF]` — complementary darker shade that goes with the parent blue |
+| 2.16 | Keyboard Shortcuts | Global shortcut system via `useGlobalShortcuts` hook — Ctrl+S (save), Ctrl+N (new), Ctrl+P (print), Ctrl+F (search), Alt+1/2/3 (navigate), Ctrl+/ (cheat sheet), F5 (refresh), Escape (close modal) |
+| 2.17 | Shortcuts Cheat Sheet | Ctrl+/ opens `ShortcutsModal` with grouped shortcut reference — keyboard key styling, glass overlay |
+| 2.18 | No Default Electron Menu | Default Chromium menu removed via `Menu.setApplicationMenu(null)` to prevent built-in handlers intercepting app shortcuts |
 
 ---
 
@@ -98,7 +103,7 @@
 
 | # | Feature | Description |
 |---|---------|-------------|
-| 4.1 | List All Products | Full scrollable table of all active products showing Name, Size, Code, Selling Price, and Date/Time (no pagination — all rows visible) |
+| 4.1 | List All Products | Viewport-locked scrollable table with sticky column headers, pagination at bottom of scroll area. Configurable rows per page (25/50/100/All). |
 | 4.2 | Search Products | Real-time search by name or code with clear button |
 | 4.3 | Sort Products | Click column headers to sort asc/desc with chevron indicator |
 | 4.4 | Smart Name+Size Sort | Products sorted by name alphabetically then by numeric size value |
@@ -137,7 +142,7 @@
 | 5.12 | Force New Modal | When clicking "New" with unsaved changes, modal prompts: "Keep Editing" or "Discard & New" |
 | 5.13 | Print Quick Sale | Print-optimized output with Marathi toggle and printer selection |
 | 5.14 | PDF Download | Download quick sale as PDF |
-| 5.15 | List Quick Sales | Paginated list (`/quick-sales/list`) with search, sort, and per-row delete |
+| 5.15 | List Quick Sales | Viewport-locked list (`/quick-sales/list`) with sticky headers, search, sort (default: desc by ID), configurable rows per page (25/50/100/All), and per-row delete |
 | 5.16 | Delete from List | Delete individual QS from the list view with glass overlay confirmation modal |
 | 5.17 | Unsaved Changes Detection | `isDirty` tracking + `useBlocker` + `NavigationWarningModal` |
 | 5.18 | Load by URL | Navigate to `/quick-sales/{qsId}` to load a specific quick sale |
@@ -148,7 +153,7 @@
 
 | # | Feature | Description |
 |---|---------|-------------|
-| 6.1 | List All Customers | Searchable table with outstanding balance column |
+| 6.1 | List All Customers | Searchable table with outstanding balance column. Default sort: name A–Z. Viewport-locked layout with sticky headers and configurable rows per page (25/50/100/All). |
 | 6.2 | Add Customer | Name (required), address, mobile — via dedicated form page |
 | 6.3 | Auto-Generate Customer ID | Format: `AGS-C-{N}` |
 | 6.4 | Edit Customer | Modify name, address, mobile via same form page |
@@ -184,7 +189,7 @@
 
 | # | Feature | Description |
 |---|---------|-------------|
-| 7.1 | List All Suppliers | Searchable table with outstanding balance column |
+| 7.1 | List All Suppliers | Searchable table with outstanding balance column. Default sort: name A–Z. Same viewport-locked layout as customers. |
 | 7.2 | Add Supplier | Name (required), address, mobile — via dedicated form page |
 | 7.3 | Auto-Generate Supplier ID | Format: `AGS-S-{N}` |
 | 7.4 | Edit Supplier | Modify name, address, mobile |
@@ -209,9 +214,10 @@
 
 | # | Feature | Description |
 |---|---------|-------------|
-| 8.1 | List All Customer Orders | Searchable table with status badges |
+| 8.1 | List All Customer Orders | Viewport-locked searchable table with sticky headers, status badges, configurable rows per page |
 | 8.2 | Status Filter | Filter by All / Received / In Progress / Completed |
 | 8.3 | Status Badges | Colour-coded pills: emerald (completed/delivered), amber (pending/received), rose (cancelled), grey (fallback) |
+| 8.4 | Date-Range Filter | From/To date pickers with CalendarDays icon. Filters orders by `order_date`. Clear button to reset. |
 | 8.4 | Create Customer Order | Customer selection, date, items, remark, status — via dedicated form page |
 | 8.5 | Product Search in Order | Same searchable product dropdown with keyboard navigation |
 | 8.6 | Ad-hoc/Temporary Items | Add items not in product DB (`is_temporary` flag) |
@@ -236,9 +242,10 @@
 
 | # | Feature | Description |
 |---|---------|-------------|
-| 9.1 | List All Supplier Orders | Searchable table with status badges |
+| 9.1 | List All Supplier Orders | Viewport-locked searchable table with sticky headers, status badges, configurable rows per page |
 | 9.2 | Status Filter | Filter by All / Placed / In Progress / Completed |
 | 9.3 | Status Badges | Same colour-coded pills as customer orders (amber uses "placed" instead of "received") |
+| 9.4 | Date-Range Filter | From/To date pickers with CalendarDays icon. Filters orders by `order_date`. Clear button to reset. |
 | 9.4 | Create Supplier Order | Supplier selection, date, items, remark, status — via dedicated form page |
 | 9.5 | Product Search in Order | Same searchable product dropdown |
 | 9.6 | Ad-hoc/Temporary Items | Items not in product DB |
@@ -356,10 +363,14 @@
 | 14.13 | Error Boundary | Global `ErrorBoundary` catches render errors and shows recovery UI |
 | 14.14 | Print Stylesheets | `print:hidden` classes + `@media print` CSS rules to hide all UI controls |
 | 14.15 | Fixed Sidebar Layout | Fixed 240px sidebar always visible; main content adjusts with left margin |
-| 14.16 | Consistent Design System | Documented in `docs/design.md` — colour palette, typography, buttons, forms, tables, modals, status badges, toasts, loading states, print layout |
+| 14.16 | Consistent Design System | Documented in `docs/design.md` — colour palette, typography, buttons, forms, tables, modals, status badges, toasts, loading states, print layout, NavBar styling |
 | 14.17 | Weight Calculator Popup | Positioned popup (`z-50`) below Qty input for entering multiple weights — used in Invoice and Quick Sales for Kg products |
 | 14.18 | Active Press Feedback | All buttons use `active:scale-95` for tactile press feedback |
 | 14.19 | CSS Animations | NavBar dropdown expand using grid-template-rows and opacity transitions |
+| 14.20 | Viewport-Locked List Layout | All 6 list pages use `h-screen overflow-hidden` root → single scrollbar for data only. Page header and table column headers are pinned. Prevents double browser scrollbars. |
+| 14.21 | Sticky Table Headers | Table `<thead>` uses `sticky top-0 z-10` to stay visible while scrolling through table rows |
+| 14.22 | Non-Sticky Pagination | Pagination footer is inside the scroll container — only visible when user scrolls to the last row |
+| 14.23 | Scrollbar-Hide Utility | `.scrollbar-hide` CSS class hides scrollbar while keeping scroll functionality. Used in NavBar. |
 
 ---
 

@@ -20,6 +20,9 @@ const PriceList = () => {
   const [highlightedCode, setHighlightedCode] = useState(null);
   const rowRefs = useRef({});
   const deleteModalRef = useRef(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
+  const ROWS_OPTIONS = [25, 50, 100, 'All'];
 
   // Print / Download state
   const [showPrinterModal, setShowPrinterModal] = useState(false);
@@ -49,6 +52,21 @@ const PriceList = () => {
       }
     };
     fetchProducts();
+  }, []);
+
+  // Global shortcut listeners (Ctrl+F, Ctrl+N, F5)
+  useEffect(() => {
+    const onSearch = () => searchInputRef.current?.focus();
+    const onNew = () => navigate('/price-list/add');
+    const onRefresh = () => window.location.reload();
+    window.addEventListener('shortcut:search', onSearch);
+    window.addEventListener('shortcut:new', onNew);
+    window.addEventListener('shortcut:refresh', onRefresh);
+    return () => {
+      window.removeEventListener('shortcut:search', onSearch);
+      window.removeEventListener('shortcut:new', onNew);
+      window.removeEventListener('shortcut:refresh', onRefresh);
+    };
   }, []);
 
   // Get filtered and sorted products (no pagination)
@@ -86,6 +104,22 @@ const PriceList = () => {
 
     return filtered;
   }, [products, searchTerm, sortConfig]);
+
+  const filteredCount = filteredProducts.length;
+  const effectivePerPage = itemsPerPage === 'All' ? filteredCount || 1 : itemsPerPage;
+  const totalPages = Math.ceil(filteredCount / effectivePerPage);
+
+  // Reset page on search change
+  useEffect(() => { setCurrentPage(1); }, [searchTerm]);
+  useEffect(() => {
+    if (totalPages > 0 && currentPage > totalPages) setCurrentPage(totalPages);
+  }, [totalPages, currentPage]);
+
+  const paginatedProducts = useMemo(() => {
+    if (itemsPerPage === 'All') return filteredProducts;
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredProducts.slice(start, start + itemsPerPage);
+  }, [filteredProducts, currentPage, itemsPerPage]);
 
   // Auto-scroll to edited product (or next row if focusNext) when returning from edit page
   useEffect(() => {
@@ -254,11 +288,11 @@ const PriceList = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#F7F9FB]">
+    <div className="flex flex-col h-screen bg-[#F7F9FB] overflow-hidden">
       {/* Page Header */}
-      <div className="sticky top-0 z-10 bg-[#F7F9FB] px-4 md:px-8 pt-8 pb-2">
+      <div className="flex-shrink-0 px-4 md:px-8 pt-6 pb-2">
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-4">
             <div>
               <h1 className="text-3xl font-extrabold tracking-tight text-[#191C1E] mb-1">Price List</h1>
             </div>
@@ -318,11 +352,11 @@ const PriceList = () => {
       </div>
 
       {/* Data Table */}
-      <main className="flex-1 px-4 md:px-8 pb-12">
-        <div className="max-w-7xl mx-auto bg-white rounded-xl overflow-hidden shadow-sm border border-[#C3C6D7]/5">
-          <div className="overflow-x-auto">
+      <div className="flex-1 flex flex-col min-h-0 px-4 md:px-8 pb-4">
+        <div className="flex-1 max-w-7xl mx-auto w-full bg-white rounded-xl overflow-auto shadow-sm border border-[#C3C6D7]/5">
+
             <table className="w-full text-left border-collapse">
-              <thead className="bg-[#F2F4F6]">
+              <thead className="bg-[#F2F4F6] sticky top-0 z-10">
                 <tr className="text-[11px] font-bold text-[#434655] uppercase tracking-wider">
                   <th className="py-5 px-6 w-16">No.</th>
                   <th
@@ -381,8 +415,8 @@ const PriceList = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#C3C6D7]/5">
-                {filteredProducts.length > 0 ? (
-                  filteredProducts.map((item, index) => (
+                {paginatedProducts.length > 0 ? (
+                  paginatedProducts.map((item, index) => (
                     <tr
                       key={item.id}
                       ref={el => rowRefs.current[item.code] = el}
@@ -393,7 +427,7 @@ const PriceList = () => {
                       onClick={() => navigate(`/price-list/edit/${item.code}`)}
                       title={(() => { const ts = item.updatedAt ? formatTimestamp(item.updatedAt) : null; return ts ? `Last updated: ${ts}` : ''; })()}
                     >
-                      <td className="py-5 px-6 text-sm font-medium text-[#434655]">{index + 1}</td>
+                      <td className="py-5 px-6 text-sm font-medium text-[#434655]">{(itemsPerPage === 'All' ? index : (currentPage - 1) * itemsPerPage + index) + 1}</td>
                       <td className="py-5 px-6">
                         <span className="text-sm font-bold text-[#191C1E]">{item.productName}</span>
                       </td>
@@ -439,9 +473,75 @@ const PriceList = () => {
                 )}
               </tbody>
             </table>
+
+          {/* Pagination Footer */}
+          <div className="px-8 py-5 flex items-center justify-between bg-[#F2F4F6]/30 border-t border-[#C3C6D7]/10">
+            <div className="flex items-center gap-4">
+              <p className="text-sm text-[#434655]">
+                Showing <span className="font-bold text-[#191C1E]">{itemsPerPage === 'All' ? 1 : (currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+                <span className="font-bold text-[#191C1E]">
+                  {itemsPerPage === 'All' ? filteredCount : Math.min(currentPage * itemsPerPage, filteredCount)}
+                </span>{' '}
+                of <span className="font-bold text-[#191C1E]">{filteredCount}</span> products
+              </p>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-[#434655] uppercase">Rows</span>
+                <div className="flex items-center bg-white rounded-lg border border-[#C3C6D7]/20 overflow-hidden">
+                  {ROWS_OPTIONS.map(opt => (
+                    <button
+                      key={opt}
+                      onClick={() => { setItemsPerPage(opt); setCurrentPage(1); }}
+                      className={`px-3 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
+                        itemsPerPage === opt
+                          ? 'bg-[#004AC6] text-white'
+                          : 'text-[#434655] hover:bg-[#F2F4F6]'
+                      }`}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            {totalPages > 1 && itemsPerPage !== 'All' && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className={`flex items-center gap-1 px-4 py-2 text-sm font-bold rounded-lg transition-all border border-transparent ${currentPage === 1 ? 'text-[#C3C6D7] cursor-not-allowed opacity-50' : 'text-[#434655] hover:text-[#004AC6] hover:bg-white hover:border-[#C3C6D7]/20 cursor-pointer'}`}
+                >
+                  ← Previous
+                </button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) pageNum = i + 1;
+                    else if (currentPage <= 3) pageNum = i + 1;
+                    else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
+                    else pageNum = currentPage - 2 + i;
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={`w-9 h-9 flex items-center justify-center rounded-lg font-bold text-sm transition-colors cursor-pointer ${currentPage === pageNum ? 'bg-[#004AC6] text-white' : 'hover:bg-white text-[#434655]'}`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className={`flex items-center gap-1 px-4 py-2 text-sm font-bold rounded-lg transition-all border border-transparent ${currentPage === totalPages ? 'text-[#C3C6D7] cursor-not-allowed opacity-50' : 'text-[#191C1E] hover:text-[#004AC6] hover:bg-white hover:border-[#C3C6D7]/20 cursor-pointer'}`}
+                >
+                  Next →
+                </button>
+              </div>
+            )}
           </div>
         </div>
-      </main>
+      </div>
 
       {/* Delete Confirmation Modal — Stitch Glass Overlay */}
       {deleteTarget !== null && (

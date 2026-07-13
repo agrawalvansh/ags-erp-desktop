@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Notification, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, Notification, dialog, Menu } = require('electron');
 const path = require('path');
 
 // ─── Init SQLite (shared) ───────────────────────────────
@@ -311,6 +311,92 @@ function pushUnreadCount(win) {
   }
 }
 
+/**
+ * Job 4: Batch Transliteration — transliterates products missing Marathi names.
+ * Retries automatically on the hourly interval if products are still missing.
+ * Returns the number of newly transliterated products.
+ */
+async function runBatchTransliteration(win) {
+  try {
+    // One-time migration: clear old Google Translate data (status='translated')
+    // New transliterations will use status='transliterated' to avoid re-reset
+    const needsReset = db.prepare(
+      "SELECT COUNT(*) as cnt FROM products WHERE marathi_status = 'translated' AND marathi_name IS NOT NULL"
+    ).get();
+    if (needsReset && needsReset.cnt > 0) {
+      db.prepare("UPDATE products SET marathi_name = NULL, marathi_status = 'missing' WHERE marathi_status = 'translated'").run();
+    }
+
+    const missing = db.prepare(
+      "SELECT code, name FROM products WHERE (marathi_name IS NULL OR marathi_name = '') AND (is_deleted = 0 OR is_deleted IS NULL)"
+    ).all();
+    if (missing.length === 0) return 0;
+
+    // Notify renderer that batch transliteration is starting
+    if (win && !win.isDestroyed() && win.webContents && !win.webContents.isDestroyed()) {
+      win.webContents.send('marathi:batchStart', { total: missing.length });
+    }
+
+    // Word-by-word transliteration using Google Input Tools
+    async function transliterateWord(word) {
+      if (/^[^a-zA-Z]+$/.test(word)) return word; // keep numbers/special chars
+      const url = `https://inputtools.google.com/request?text=${encodeURIComponent(word)}&itc=mr-t-i0-und&num=1`;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      try {
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeout);
+        if (!res.ok) return word;
+        const data = await res.json();
+        if (data[0] === 'SUCCESS' && data[1] && data[1][0] && data[1][0][1] && data[1][0][1][0]) {
+          return data[1][0][1][0];
+        }
+        return word;
+      } catch {
+        clearTimeout(timeout);
+        throw new Error('Network unreachable');
+      }
+    }
+
+    let translated = 0;
+    let networkFailed = false;
+    for (const prod of missing) {
+      try {
+        const words = prod.name.split(/\s+/);
+        const transliterated = [];
+        for (const w of words) {
+          transliterated.push(await transliterateWord(w));
+        }
+        const marathiName = transliterated.join(' ');
+        db.prepare("UPDATE products SET marathi_name = ?, marathi_status = 'transliterated' WHERE code = ?").run(marathiName, prod.code);
+        translated++;
+        await new Promise(r => setTimeout(r, 100));
+      } catch (e) {
+        // If network fails, stop the batch early — will retry on next interval
+        if (e.message === 'Network unreachable') {
+          console.warn(`[Marathi] Network unreachable — stopping batch. ${translated}/${missing.length} done, will retry later.`);
+          networkFailed = true;
+          break;
+        }
+        console.error(`[Marathi] Failed for ${prod.code}:`, e.message);
+      }
+    }
+
+    if (win && !win.isDestroyed() && win.webContents && !win.webContents.isDestroyed()) {
+      win.webContents.send('marathi:batchComplete', { translated, total: missing.length, partial: networkFailed });
+    }
+
+    if (networkFailed) {
+      console.log(`[Marathi] ${missing.length - translated} product(s) still missing — will retry on next hourly check`);
+    }
+
+    return translated;
+  } catch (e) {
+    console.error('[Marathi] Batch transliteration error:', e.message);
+    return 0;
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // RUN DAILY JOBS ON STARTUP
 // ═══════════════════════════════════════════════════════════════════════════
@@ -431,6 +517,9 @@ function createWindow() {
 
   });
 
+  // Remove default menu to prevent Chromium intercepting app shortcuts (Ctrl+F, etc.)
+  Menu.setApplicationMenu(null);
+
   // Maximize the window and then show it
   mainWindow.maximize();
   mainWindow.show();
@@ -503,61 +592,7 @@ app.whenReady().then(() => {
   }, 2000);
 
   // Batch transliterate any products missing Marathi names (non-blocking)
-  setTimeout(async () => {
-    try {
-      // One-time migration: clear old Google Translate data (status='translated')
-      // New transliterations will use status='transliterated' to avoid re-reset
-      const needsReset = db.prepare(
-        "SELECT COUNT(*) as cnt FROM products WHERE marathi_status = 'translated' AND marathi_name IS NOT NULL"
-      ).get();
-      if (needsReset && needsReset.cnt > 0) {
-        db.prepare("UPDATE products SET marathi_name = NULL, marathi_status = 'missing' WHERE marathi_status = 'translated'").run();
-
-      }
-
-      const missing = db.prepare(
-        "SELECT code, name FROM products WHERE (marathi_name IS NULL OR marathi_name = '') AND (is_deleted = 0 OR is_deleted IS NULL)"
-      ).all();
-      if (missing.length === 0) return;
-
-      // Notify renderer that batch transliteration is starting
-      if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
-        mainWindow.webContents.send('marathi:batchStart', { total: missing.length });
-      }
-
-      // Word-by-word transliteration using Google Input Tools
-      async function transliterateWord(word) {
-        if (/^[^a-zA-Z]+$/.test(word)) return word; // keep numbers/special chars
-        const url = `https://inputtools.google.com/request?text=${encodeURIComponent(word)}&itc=mr-t-i0-und&num=1`;
-        const res = await fetch(url);
-        if (!res.ok) return word;
-        const data = await res.json();
-        if (data[0] === 'SUCCESS' && data[1] && data[1][0] && data[1][0][1] && data[1][0][1][0]) {
-          return data[1][0][1][0];
-        }
-        return word;
-      }
-
-      let translated = 0;
-      for (const prod of missing) {
-        try {
-          const words = prod.name.split(/\s+/);
-          const transliterated = [];
-          for (const w of words) {
-            transliterated.push(await transliterateWord(w));
-          }
-          const marathiName = transliterated.join(' ');
-          db.prepare("UPDATE products SET marathi_name = ?, marathi_status = 'transliterated' WHERE code = ?").run(marathiName, prod.code);
-          translated++;
-          await new Promise(r => setTimeout(r, 100));
-        } catch (e) { console.error(`[Marathi] Failed for ${prod.code}:`, e.message); }
-      }
-
-      if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
-        mainWindow.webContents.send('marathi:batchComplete', { translated, total: missing.length });
-      }
-    } catch (e) { console.error('[Marathi] Batch transliteration error:', e.message); }
-  }, 3000);
+  setTimeout(() => runBatchTransliteration(mainWindow), 3000);
 });
 
 app.on('window-all-closed', () => {
@@ -570,13 +605,27 @@ app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
 
-// ─── Midnight Rollover Check ────────────────────────────────────
-// Checks every hour if the day has changed. If so, clears daily markers
-// and re-runs ALL 3 daily jobs (QS cleanup, notification scanner, overdue
-// refresh) without requiring app restart. Handles apps left open indefinitely.
+// ─── Hourly Background Check ────────────────────────────────────
+// Runs every hour. Two responsibilities:
+// 1. Midnight rollover: re-runs daily jobs when the day changes.
+// 2. Transliteration retry: retries products missing Marathi names
+//    (e.g. if startup batch failed due to no internet).
 let lastKnownDay = getToday();
 
-setInterval(() => {
+setInterval(async () => {
+  // ── Transliteration retry (every hour, regardless of day change) ──
+  try {
+    const missingCount = db.prepare(
+      "SELECT COUNT(*) as cnt FROM products WHERE (marathi_name IS NULL OR marathi_name = '') AND (is_deleted = 0 OR is_deleted IS NULL)"
+    ).get().cnt;
+    if (missingCount > 0) {
+      console.log(`[Hourly] ${missingCount} product(s) still missing Marathi names — retrying...`);
+      const win = BrowserWindow.getAllWindows()[0];
+      await runBatchTransliteration(win);
+    }
+  } catch (e) { console.error('[Hourly] Transliteration retry error:', e.message); }
+
+  // ── Midnight rollover (only when day changes) ──
   const currentDay = getToday();
   if (currentDay === lastKnownDay) return;
 

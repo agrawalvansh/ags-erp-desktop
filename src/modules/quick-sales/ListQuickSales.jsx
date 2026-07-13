@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Search, ChevronDown, Plus, Edit, Trash2, AlertTriangle } from 'lucide-react';
+import { Search, ChevronDown, Plus, Edit, Trash2, AlertTriangle, CalendarDays, SlidersHorizontal } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { naturalCompare } from '../../utils/productUtils';
@@ -9,12 +9,18 @@ const ListQuickSales = () => {
 
     const [searchTerm, setSearchTerm] = useState('');
     const [sales, setSales] = useState([]);
-    const [sortConfig, setSortConfig] = useState({ key: 'qs_id', direction: 'asc' });
+    const [sortConfig, setSortConfig] = useState({ key: 'qs_id', direction: 'desc' });
     const [currentPage, setCurrentPage] = useState(1);
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const deleteModalRef = useRef(null);
-    const itemsPerPage = 10;
+    const searchInputRef = useRef(null);
+    const [itemsPerPage, setItemsPerPage] = useState(25);
+    const ROWS_OPTIONS = [25, 50, 100, 'All'];
+    const [fromDate, setFromDate] = useState('');
+    const [toDate, setToDate] = useState('');
+    const [showFilters, setShowFilters] = useState(false);
+    const hasActiveFilters = fromDate || toDate;
 
     // Focus the delete modal when it opens
     useEffect(() => {
@@ -36,13 +42,47 @@ const ListQuickSales = () => {
         }
     };
 
+    // Global shortcut listeners (Ctrl+N, Ctrl+F, F5)
+    useEffect(() => {
+        const onNew = () => navigate('/quick-sales/create');
+        const onSearch = () => searchInputRef.current?.focus();
+        const onRefresh = () => fetchSales();
+        window.addEventListener('shortcut:new', onNew);
+        window.addEventListener('shortcut:search', onSearch);
+        window.addEventListener('shortcut:refresh', onRefresh);
+        return () => {
+            window.removeEventListener('shortcut:new', onNew);
+            window.removeEventListener('shortcut:search', onSearch);
+            window.removeEventListener('shortcut:refresh', onRefresh);
+        };
+    }, []);
+
     // Filter, sort, paginate
     const filteredSales = useMemo(() => {
-        return sales.filter(s =>
+        let filtered = sales.filter(s =>
             (s.qs_id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
             (s.remark || '').toLowerCase().includes(searchTerm.toLowerCase())
         );
-    }, [sales, searchTerm]);
+
+        // Date range filter
+        if (fromDate) {
+            const from = new Date(fromDate);
+            filtered = filtered.filter(s => {
+                const d = new Date(s.qs_date);
+                return !isNaN(d.getTime()) && d >= from;
+            });
+        }
+        if (toDate) {
+            const to = new Date(toDate);
+            to.setHours(23, 59, 59);
+            filtered = filtered.filter(s => {
+                const d = new Date(s.qs_date);
+                return !isNaN(d.getTime()) && d <= to;
+            });
+        }
+
+        return filtered;
+    }, [sales, searchTerm, fromDate, toDate]);
 
     const processedSales = useMemo(() => {
         let sorted = [...filteredSales];
@@ -59,11 +99,14 @@ const ListQuickSales = () => {
             });
         }
 
+        if (itemsPerPage === 'All') return sorted;
         const start = (currentPage - 1) * itemsPerPage;
         return sorted.slice(start, start + itemsPerPage);
-    }, [filteredSales, sortConfig, currentPage]);
+    }, [filteredSales, sortConfig, currentPage, itemsPerPage]);
 
-    const totalPages = Math.ceil(filteredSales.length / itemsPerPage);
+    const filteredCount = filteredSales.length;
+    const effectivePerPage = itemsPerPage === 'All' ? filteredCount || 1 : itemsPerPage;
+    const totalPages = Math.ceil(filteredCount / effectivePerPage);
 
     const handleSort = (key) => {
         let direction = 'asc';
@@ -96,11 +139,11 @@ const ListQuickSales = () => {
     };
 
     return (
-        <div className="flex flex-col min-h-screen bg-[#F7F9FB]">
+        <div className="flex flex-col h-screen bg-[#F7F9FB] overflow-hidden">
             {/* Page Header */}
-            <div className="px-4 md:px-8 pt-8 pb-2">
+            <div className="flex-shrink-0 px-4 md:px-8 pt-6 pb-2">
                 <div className="max-w-7xl mx-auto">
-                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-4">
                         <div>
                             <h1 className="text-3xl font-extrabold tracking-tight text-[#191C1E] mb-1">Quick Sales</h1>
                             <p className="text-[#434655] text-sm font-medium">View and manage rapid point-of-sale transactions</p>
@@ -109,6 +152,7 @@ const ListQuickSales = () => {
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#434655]" size={18} />
                                 <input
+                                    ref={searchInputRef}
                                     type="text"
                                     placeholder="Search Quick Sales..."
                                     className="w-72 bg-white border border-[#C3C6D7]/20 rounded-lg py-2.5 pl-10 pr-10 text-sm focus:border-[#004AC6] focus:ring-4 focus:ring-[#004AC6]/5 transition-all outline-none"
@@ -129,6 +173,20 @@ const ListQuickSales = () => {
                                 )}
                             </div>
                             <button
+                                onClick={() => setShowFilters(f => !f)}
+                                className={`relative p-2.5 rounded-lg transition-all cursor-pointer border ${
+                                    showFilters
+                                        ? 'bg-[#004AC6] text-white border-[#004AC6] shadow-sm'
+                                        : 'bg-white text-[#434655] border-[#C3C6D7]/20 hover:bg-[#F2F4F6]'
+                                }`}
+                                title="Toggle filters"
+                            >
+                                <SlidersHorizontal size={18} />
+                                {hasActiveFilters && !showFilters && (
+                                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#004AC6] rounded-full border-2 border-white" />
+                                )}
+                            </button>
+                            <button
                                 className="cursor-pointer bg-gradient-to-br from-[#004AC6] to-[#2563EB] text-white px-5 py-2.5 rounded-lg flex items-center gap-2 font-semibold shadow-lg shadow-[#004AC6]/20 active:scale-95 transition-transform whitespace-nowrap"
                                 onClick={() => navigate('/quick-sales/create')}
                             >
@@ -137,15 +195,33 @@ const ListQuickSales = () => {
                             </button>
                         </div>
                     </div>
+
+                    {/* ─── Collapsible Filter Bar ─── */}
+                    {showFilters && (
+                        <div className="mb-4 bg-white rounded-xl border border-[#C3C6D7]/10 px-5 py-3 flex items-center gap-3">
+                            <CalendarDays size={14} className="text-[#434655]" />
+                            <div className="flex items-center gap-1.5">
+                                <label className="text-[10px] font-bold text-[#434655] uppercase">From</label>
+                                <input type="date" className="px-2.5 py-1 bg-[#F2F4F6] border-none rounded-lg text-xs focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 outline-none transition-all" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <label className="text-[10px] font-bold text-[#434655] uppercase">To</label>
+                                <input type="date" className="px-2.5 py-1 bg-[#F2F4F6] border-none rounded-lg text-xs focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 outline-none transition-all" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+                            </div>
+                            {(fromDate || toDate) && (
+                                <button onClick={() => { setFromDate(''); setToDate(''); }} className="px-2.5 py-1 text-[10px] font-bold text-[#DC2626] bg-red-50 rounded-lg hover:bg-red-100 transition cursor-pointer uppercase tracking-wider">Clear</button>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
 
             {/* Data Table */}
-            <main className="flex-1 px-4 md:px-8 pb-12">
-                <div className="max-w-7xl mx-auto bg-white rounded-xl overflow-hidden shadow-sm border border-[#C3C6D7]/5">
-                    <div className="overflow-x-auto">
+            <div className="flex-1 flex flex-col min-h-0 px-4 md:px-8 pb-4">
+                <div className="flex-1 max-w-7xl mx-auto w-full bg-white rounded-xl overflow-auto shadow-sm border border-[#C3C6D7]/5">
+
                         <table className="w-full text-left border-collapse">
-                            <thead className="bg-[#F2F4F6]/50">
+                            <thead className="bg-[#F2F4F6] sticky top-0 z-10">
                                 <tr>
                                     <th className="py-4 px-6 text-[11px] font-bold text-[#434655] uppercase tracking-wider">No.</th>
                                     <th
@@ -191,7 +267,7 @@ const ListQuickSales = () => {
                                 {processedSales.length > 0 ? (
                                     processedSales.map((sale, index) => (
                                         <tr key={sale.qs_id} className="group hover:bg-[#F2F4F6] transition-colors cursor-pointer" onClick={() => handleEdit(sale.qs_id)}>
-                                            <td className="py-5 px-6 text-sm text-[#434655] font-medium">{String((currentPage - 1) * itemsPerPage + index + 1).padStart(2, '0')}</td>
+                                            <td className="py-5 px-6 text-sm text-[#434655] font-medium">{String((itemsPerPage === 'All' ? index : (currentPage - 1) * itemsPerPage + index) + 1).padStart(2, '0')}</td>
                                             <td className="py-5 px-6">
                                                 <span
                                                     className="bg-[#E6E8EA] px-2 py-1 rounded text-[10px] font-bold text-[#004AC6]"
@@ -230,18 +306,37 @@ const ListQuickSales = () => {
                                 )}
                             </tbody>
                         </table>
-                    </div>
 
                     {/* Pagination Footer */}
-                    {totalPages > 1 && (
-                        <div className="px-8 py-6 flex items-center justify-between bg-[#F2F4F6]/30 border-t border-[#C3C6D7]/10">
+                    <div className="px-8 py-5 flex items-center justify-between bg-[#F2F4F6]/30 border-t border-[#C3C6D7]/10">
+                        <div className="flex items-center gap-4">
                             <p className="text-sm text-[#434655]">
-                                Showing <span className="font-bold text-[#191C1E]">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+                                Showing <span className="font-bold text-[#191C1E]">{itemsPerPage === 'All' ? 1 : (currentPage - 1) * itemsPerPage + 1}</span> to{' '}
                                 <span className="font-bold text-[#191C1E]">
-                                    {Math.min(currentPage * itemsPerPage, filteredSales.length)}
+                                    {itemsPerPage === 'All' ? filteredCount : Math.min(currentPage * itemsPerPage, filteredCount)}
                                 </span>{' '}
-                                of <span className="font-bold text-[#191C1E]">{filteredSales.length}</span> results
+                                of <span className="font-bold text-[#191C1E]">{filteredCount}</span> results
                             </p>
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-[#434655] uppercase">Rows</span>
+                                <div className="flex items-center bg-white rounded-lg border border-[#C3C6D7]/20 overflow-hidden">
+                                    {ROWS_OPTIONS.map(opt => (
+                                        <button
+                                            key={opt}
+                                            onClick={() => { setItemsPerPage(opt); setCurrentPage(1); }}
+                                            className={`px-3 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
+                                                itemsPerPage === opt
+                                                    ? 'bg-[#004AC6] text-white'
+                                                    : 'text-[#434655] hover:bg-[#F2F4F6]'
+                                            }`}
+                                        >
+                                            {opt}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                        {totalPages > 1 && itemsPerPage !== 'All' && (
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
@@ -253,23 +348,15 @@ const ListQuickSales = () => {
                                 <div className="flex items-center gap-1">
                                     {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
                                         let pageNum;
-                                        if (totalPages <= 5) {
-                                            pageNum = i + 1;
-                                        } else if (currentPage <= 3) {
-                                            pageNum = i + 1;
-                                        } else if (currentPage >= totalPages - 2) {
-                                            pageNum = totalPages - 4 + i;
-                                        } else {
-                                            pageNum = currentPage - 2 + i;
-                                        }
+                                        if (totalPages <= 5) pageNum = i + 1;
+                                        else if (currentPage <= 3) pageNum = i + 1;
+                                        else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
+                                        else pageNum = currentPage - 2 + i;
                                         return (
                                             <button
                                                 key={pageNum}
                                                 onClick={() => setCurrentPage(pageNum)}
-                                                className={`w-9 h-9 flex items-center justify-center rounded-lg font-bold text-sm transition-colors cursor-pointer ${currentPage === pageNum
-                                                        ? 'bg-[#004AC6] text-white'
-                                                        : 'hover:bg-white text-[#434655]'
-                                                    }`}
+                                                className={`w-9 h-9 flex items-center justify-center rounded-lg font-bold text-sm transition-colors cursor-pointer ${currentPage === pageNum ? 'bg-[#004AC6] text-white' : 'hover:bg-white text-[#434655]'}`}
                                             >
                                                 {pageNum}
                                             </button>
@@ -284,10 +371,10 @@ const ListQuickSales = () => {
                                     Next →
                                 </button>
                             </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
-            </main>
+            </div>
 
             {/* Delete Confirmation Modal — Stitch Glass Overlay */}
             {deleteTarget !== null && (
