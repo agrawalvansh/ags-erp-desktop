@@ -12,7 +12,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-2ea44f.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/Version-2.5.2-blue.svg)](package.json)
 
-A production-grade, cross-platform desktop ERP application built for a real-world retail business. Manages **products, GST-ready invoices, customer/supplier accounts, purchase & sales orders, and double-entry ledgers** — all running 100% offline with zero recurring costs.
+A production-grade, cross-platform desktop ERP application built for a real-world retail business. Manages **products, GST-ready invoices, customer/supplier accounts, purchase & sales orders, and double-entry ledgers**   all running 100% offline with zero recurring costs.
 
 > 🔒 **100% Local. Your data never leaves your machine.**
 
@@ -22,7 +22,7 @@ A production-grade, cross-platform desktop ERP application built for a real-worl
 
 ---
 
-## 📸 At a Glance
+## At a Glance
 
 | Module | What it does |
 |--------|-------------|
@@ -37,9 +37,9 @@ A production-grade, cross-platform desktop ERP application built for a real-worl
 
 ---
 
-## 🏗 Architecture
+## Architecture
 
-The application follows Electron's **security-first** architecture with complete **context isolation** — the renderer process has zero direct access to Node.js APIs or the filesystem.
+The application follows Electron's **security-first** architecture with complete **context isolation**   the renderer process has zero direct access to Node.js APIs or the filesystem.
 
 ```mermaid
 graph TB
@@ -78,7 +78,7 @@ graph TB
 
 | Decision | Rationale |
 |----------|-----------|
-| **Context Isolation + Preload Bridge** | Security best practice — renderer cannot access `require()`, `fs`, or any Node.js API directly. All communication goes through a whitelisted `contextBridge` API. |
+| **Context Isolation + Preload Bridge** | Security best practice   renderer cannot access `require()`, `fs`, or any Node.js API directly. All communication goes through a whitelisted `contextBridge` API. |
 | **Synchronous SQL (better-sqlite3)** | 3–5× faster than async alternatives for single-user desktop apps. No connection pool overhead. Transactions are atomic by default. |
 | **Single-file Database** | The entire application state lives in one `erp.db` file in `%APPDATA%`. Easy to back up, migrate, and restore. |
 | **Versioned Migrations** | NSIS installer overwrites app code but preserves `%APPDATA%` data. The migration system ensures schema compatibility across upgrades. |
@@ -86,7 +86,7 @@ graph TB
 
 ---
 
-## 🗄 Database Schema
+## Database Schema
 
 20 tables organized into 6 domains. The schema is auto-created on first boot and maintained by a versioned migration system with post-migration validation.
 
@@ -315,7 +315,7 @@ erDiagram
 
 ---
 
-## ✨ Features
+## Features
 
 ### Invoice Lifecycle
 
@@ -334,7 +334,7 @@ stateDiagram-v2
 
 ### Linked Entry Protection
 
-Auto-created ledger entries are **immutable** — they cannot be edited or deleted directly. This enforces data integrity:
+Auto-created ledger entries are **immutable**   they cannot be edited or deleted directly. This enforces data integrity:
 
 ```mermaid
 flowchart LR
@@ -342,9 +342,9 @@ flowchart LR
     INV --> JAMA[Auto-creates Jama Entry<br/>if payment provided]
     ORD[Order Created] --> JAMA2[Auto-creates Jama Entry<br/>if advance payment]
 
-    MAAL -. "🔒 Edit blocked<br/>→ Redirects to Invoice" .-> USER((User))
-    JAMA -. "🔒 Delete blocked<br/>→ Error toast" .-> USER
-    JAMA2 -. "🔒 Delete blocked<br/>→ Error toast" .-> USER
+    MAAL -. "Edit blocked<br/>→ Redirects to Invoice" .-> USER((User))
+    JAMA -. "Delete blocked<br/>→ Error toast" .-> USER
+    JAMA2 -. "Delete blocked<br/>→ Error toast" .-> USER
 
     style MAAL fill:#DBEAFE,stroke:#2563EB,color:#1E3A5F
     style JAMA fill:#DBEAFE,stroke:#2563EB,color:#1E3A5F
@@ -375,11 +375,11 @@ flowchart LR
 
 </details>
 
-> 📖 For the complete feature list with descriptions, see [`docs/features.md`](docs/features.md).
+> For the complete feature list with descriptions, see [`docs/features.md`](docs/features.md).
 
 ---
 
-## 🔧 Tech Stack
+## Tech Stack
 
 | Layer | Technology | Purpose |
 |-------|-----------|---------|
@@ -389,7 +389,7 @@ flowchart LR
 | **Animations** | Framer Motion | Micro-interactions and page transitions |
 | **Icons** | Lucide React | Consistent, tree-shakeable icon set |
 | **Desktop Shell** | Electron 37 | Cross-platform native window, system tray, print, file system |
-| **IPC Security** | Context Bridge | Context-isolated preload script — no `nodeIntegration` |
+| **IPC Security** | Context Bridge | Context-isolated preload script   no `nodeIntegration` |
 | **Database** | SQLite 3 (better-sqlite3) | Synchronous, embedded, zero-configuration RDBMS |
 | **PDF Generation** | jsPDF · html2canvas | Client-side PDF rendering for invoices, ledgers, catalogs |
 | **Printing** | react-to-print | System printer integration with printer selection |
@@ -398,12 +398,12 @@ flowchart LR
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```
 ags-erp-desktop/
-├── main.cjs                   # Electron main process — window lifecycle, IPC routing
-├── preload.js                 # Context bridge — whitelisted window.api
+├── main.cjs                   # Electron main process   window lifecycle, IPC routing
+├── preload.js                 # Context bridge   whitelisted window.api
 ├── db.js                      # Schema creation, migrations, validation, backup
 ├── ipcHandlers.js             # ~50 IPC channel handlers (CRUD for every module)
 ├── erpApi.js                  # Shared API helpers
@@ -445,7 +445,7 @@ ags-erp-desktop/
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -453,7 +453,7 @@ ags-erp-desktop/
 |-------------|---------|-------|
 | **Node.js** | ≥ 20 | [Download](https://nodejs.org/) |
 | **Git** | Any | |
-| **Native Build Tools** | — | Required by `better-sqlite3` (C++ bindings) |
+| **Native Build Tools** |   | Required by `better-sqlite3` (C++ bindings) |
 
 **Windows:** Visual Studio Build Tools + Python  
 **macOS:** `xcode-select --install`
@@ -483,7 +483,7 @@ This builds the React UI with Vite and launches Electron. The SQLite database is
 # Windows (.exe NSIS installer)
 npm run build:win
 
-# macOS (.dmg) — must be run on a Mac
+# macOS (.dmg)   must be run on a Mac
 npm run build:mac
 
 # Auto-detect OS
@@ -494,7 +494,7 @@ The installer is output to the `release/` directory.
 
 ---
 
-## 📋 NPM Scripts
+## NPM Scripts
 
 | Script | Purpose |
 |--------|---------|
@@ -507,7 +507,7 @@ The installer is output to the `release/` directory.
 
 ---
 
-## 🔌 IPC Communication
+## IPC Communication
 
 All communication between the UI and backend uses Electron IPC. There is **no REST API** and **no HTTP server**.
 
@@ -526,7 +526,7 @@ sequenceDiagram
     P-->>R: Promise resolves with result
 ```
 
-### Channel Catalog (excerpt — ~50 total)
+### Channel Catalog (excerpt   ~50 total)
 
 | Channel | Description |
 |---------|------------|
@@ -544,7 +544,7 @@ sequenceDiagram
 
 ---
 
-## 🛡 Data Integrity
+## Data Integrity
 
 ### Migration System
 
@@ -558,8 +558,8 @@ flowchart TD
     F --> G["Run migrations<br/>in sequence"]
     G --> H["Validate schema<br/>against EXPECTED_SCHEMA"]
     E -->|No| H
-    H -->|Pass ✅| I["App continues"]
-    H -->|Fail ❌| J["Show error dialog<br/>listing missing tables/columns"]
+    H -->|Pass| I["App continues"]
+    H -->|Fail| J["Show error dialog<br/>listing missing tables/columns"]
     J --> K["app.quit()"]
 
     style F fill:#DBEAFE,stroke:#2563EB,color:#1E3A5F
@@ -582,33 +582,33 @@ flowchart TD
 
 ---
 
-## 📖 Documentation
+## Documentation
 
 | Document | Description |
 |----------|------------|
 | [`docs/features.md`](docs/features.md) | Complete 200+ feature catalog organized by module |
-| [`docs/design.md`](docs/design.md) | Design system reference — colours, typography, components |
+| [`docs/design.md`](docs/design.md) | Design system reference   colours, typography, components |
 | [`docs/migrations.md`](docs/migrations.md) | Database migration architecture and authoring guide |
 | [`docs/testing.md`](docs/testing.md) | Test documentation and quality assurance |
 | [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md) | End-user guide |
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository and create a feature branch.
 2. Follow the [design system](docs/design.md) for UI changes.
 3. Add a versioned migration in `db.js` for any schema changes (see [`docs/migrations.md`](docs/migrations.md)).
 4. Commit with [conventional messages](https://www.conventionalcommits.org/).
-5. Open a Pull Request — improvements welcome!
+5. Open a Pull Request improvements welcome!
 
 ---
 
-## 📝 License
+## License
 
 Copyright © 2025–2026 **Vansh Agrawal**. All rights reserved.
 
-Released under the **MIT License** — see [`LICENSE`](LICENSE) for full terms.
+Released under the **MIT License** see [`LICENSE`](LICENSE) for full terms.
 
 ---
 
