@@ -1,11 +1,11 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 /**
  * Global keyboard shortcuts hook.
  * 
  * Handles navigation shortcuts directly (Alt+1/2/3).
- * For page-specific actions (Ctrl+N, Ctrl+P, Ctrl+F, Ctrl+D, F5),
+ * For page-specific actions (Ctrl+N, Ctrl+P, Ctrl+F, F5),
  * dispatches CustomEvents that individual pages listen to.
  * 
  * Returns { showShortcutsModal, setShowShortcutsModal } for the Ctrl+/ cheat sheet.
@@ -13,6 +13,8 @@ import { useNavigate } from 'react-router-dom';
 export function useGlobalShortcuts() {
   const navigate = useNavigate();
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
+  const modalOpenRef = useRef(false);
+  modalOpenRef.current = showShortcutsModal;
 
   const handleKeyDown = useCallback((e) => {
     const ctrl = e.ctrlKey || e.metaKey;
@@ -21,7 +23,7 @@ export function useGlobalShortcuts() {
 
     // ─── Escape: Close shortcuts modal ───
     if (e.key === 'Escape') {
-      if (showShortcutsModal) {
+      if (modalOpenRef.current) {
         e.preventDefault();
         setShowShortcutsModal(false);
         return;
@@ -34,6 +36,16 @@ export function useGlobalShortcuts() {
     if (ctrl && (e.key === '/' || e.key === '?')) {
       e.preventDefault();
       setShowShortcutsModal(prev => !prev);
+      return;
+    }
+
+    // When modal is open, consume shortcuts without dispatching/navigating
+    if (modalOpenRef.current) {
+      if ((ctrl && (key === 'f' || key === 'n' || key === 'p')) ||
+          (e.key === 'F5' && !ctrl && !alt) ||
+          (alt && (e.key === '1' || e.key === '2' || e.key === '3'))) {
+        e.preventDefault();
+      }
       return;
     }
 
@@ -60,7 +72,6 @@ export function useGlobalShortcuts() {
       window.dispatchEvent(new CustomEvent('shortcut:print'));
       return;
     }
-
 
     // ─── F5 : Refresh ───
     if (e.key === 'F5' && !ctrl && !alt) {
@@ -89,7 +100,7 @@ export function useGlobalShortcuts() {
       navigate('/price-list');
       return;
     }
-  }, [navigate, showShortcutsModal]);
+  }, [navigate]);
 
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown);
@@ -110,6 +121,7 @@ export const SHORTCUT_GROUPS = [
       { keys: ['Ctrl', 'N'], label: 'New record (context-sensitive)' },
       { keys: ['Ctrl', 'P'], label: 'Print / PDF' },
       { keys: ['Ctrl', 'F'], label: 'Focus search bar' },
+      { keys: ['F5'], label: 'Refresh data' },
       { keys: ['Esc'], label: 'Close modal / Cancel' },
     ],
   },

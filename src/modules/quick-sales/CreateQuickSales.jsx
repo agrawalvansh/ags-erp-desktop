@@ -693,7 +693,7 @@ const CreateQuickSale = () => {
     }, [showForceNewModal, showDeleteModal]);
 
     // Global shortcut listeners (Ctrl+N → new, Ctrl+P → print)
-    const handlePrintRef2 = useRef(null);
+    const handlePrintRef = useRef(null);
     useEffect(() => {
         const onNew = () => {
             if (isDirty) {
@@ -704,7 +704,7 @@ const CreateQuickSale = () => {
         };
         const onPrint = () => {
             if (!isDirty && (currentQsId || !isNewSale)) {
-                handlePrintRef2.current();
+                handlePrintRef.current();
             }
         };
         window.addEventListener('shortcut:new', onNew);
@@ -843,7 +843,7 @@ const CreateQuickSale = () => {
             showPrinterSelection(result);
         }
     };
-    handlePrintRef2.current = handlePrint;
+    handlePrintRef.current = handlePrint;
 
     const handleConfirmPrint = async () => {
         if (!pendingPDFData) return;

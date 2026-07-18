@@ -127,6 +127,8 @@ const PriceList = () => {
     if (location.state?.editedProductCode && products.length > 0) {
       const code = location.state.editedProductCode;
       const focusNext = location.state.focusNext;
+      // Clear nav state first to prevent re-fire on re-render
+      window.history.replaceState({}, document.title);
 
       // Determine which code to highlight
       let targetCode = code;
@@ -140,6 +142,13 @@ const PriceList = () => {
 
       setHighlightedCode(targetCode);
 
+      // Navigate to the page containing the target product
+      const globalIndex = filteredProducts.findIndex(p => p.code === targetCode);
+      if (globalIndex >= 0 && itemsPerPage !== 'All') {
+        const targetPage = Math.floor(globalIndex / itemsPerPage) + 1;
+        setCurrentPage(targetPage);
+      }
+
       // Wait for render then scroll
       scrollTimer = setTimeout(() => {
         const rowElement = rowRefs.current[targetCode];
@@ -151,13 +160,10 @@ const PriceList = () => {
         fadeTimer = setTimeout(() => {
           setHighlightedCode(null);
         }, 2000);
-      }, 100);
-
-      // Clear location state
-      window.history.replaceState({}, document.title);
+      }, 150);
     }
     return () => { clearTimeout(scrollTimer); clearTimeout(fadeTimer); };
-  }, [location.state, products, filteredProducts]);
+  }, [location.state, products, filteredProducts, itemsPerPage]);
 
   const handleSort = (key) => {
     let direction = 'asc';
@@ -478,7 +484,7 @@ const PriceList = () => {
           <div className="px-8 py-5 flex items-center justify-between bg-[#F2F4F6]/30 border-t border-[#C3C6D7]/10">
             <div className="flex items-center gap-4">
               <p className="text-sm text-[#434655]">
-                Showing <span className="font-bold text-[#191C1E]">{itemsPerPage === 'All' ? 1 : (currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+                Showing <span className="font-bold text-[#191C1E]">{filteredCount === 0 ? 0 : itemsPerPage === 'All' ? 1 : (currentPage - 1) * itemsPerPage + 1}</span> to{' '}
                 <span className="font-bold text-[#191C1E]">
                   {itemsPerPage === 'All' ? filteredCount : Math.min(currentPage * itemsPerPage, filteredCount)}
                 </span>{' '}

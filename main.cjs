@@ -316,7 +316,14 @@ function pushUnreadCount(win) {
  * Retries automatically on the hourly interval if products are still missing.
  * Returns the number of newly transliterated products.
  */
+let _batchTransliterationInProgress = false;
+
 async function runBatchTransliteration(win) {
+  if (_batchTransliterationInProgress) {
+    console.log('[Marathi] Batch already in progress — skipping');
+    return 0;
+  }
+  _batchTransliterationInProgress = true;
   try {
     // One-time migration: clear old Google Translate data (status='translated')
     // New transliterations will use status='transliterated' to avoid re-reset
@@ -394,6 +401,8 @@ async function runBatchTransliteration(win) {
   } catch (e) {
     console.error('[Marathi] Batch transliteration error:', e.message);
     return 0;
+  } finally {
+    _batchTransliterationInProgress = false;
   }
 }
 

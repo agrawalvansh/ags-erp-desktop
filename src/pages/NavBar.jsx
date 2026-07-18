@@ -159,7 +159,7 @@ const NavBar = () => {
         {navSections.map((section, sIdx) => (
           <div key={sIdx} className="mb-1">
             {/* Section Label */}
-            <p className="px-5 pt-4 pb-2 text-[10px] font-bold tracking-wider text-[#94A3B8] uppercase select-none">
+            <p className="px-5 pt-4 pb-2 text-[10px] font-bold tracking-wider text-[#64748B] uppercase select-none">
               {section.label}
             </p>
 

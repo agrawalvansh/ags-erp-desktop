@@ -30,40 +30,44 @@ const BuyerAccount = () => {
     if (deleteTarget !== null) deleteModalRef.current?.focus();
   }, [deleteTarget]);
 
+  const fetchBuyers = async () => {
+    try {
+      const data = await window.api.invoke('customers:getAll');
+      const mapped = data.map((c) => ({
+        id: c.customer_id,
+        name: c.name,
+        email: '',
+        phone: c.mobile,
+        address: c.address,
+        company: '',
+        gstNumber: '',
+        panNumber: '',
+        slug: c.customer_id,
+      }));
+      setBuyers(mapped);
+    } catch (err) {
+      console.error('Error fetching buyers:', err);
+    } finally {
+      setLoadingBuyers(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchBuyers = async () => {
-      try {
-        const data = await window.api.invoke('customers:getAll');
-        const mapped = data.map((c) => ({
-          id: c.customer_id,
-          name: c.name,
-          email: '',
-          phone: c.mobile,
-          address: c.address,
-          company: '',
-          gstNumber: '',
-          panNumber: '',
-          slug: c.customer_id,
-        }));
-        setBuyers(mapped);
-      } catch (err) {
-        console.error('Error fetching buyers:', err);
-      } finally {
-        setLoadingBuyers(false);
-      }
-    };
     fetchBuyers();
   }, []);
 
-  // Global shortcut listeners (Ctrl+F, Ctrl+N)
+  // Global shortcut listeners (Ctrl+F, Ctrl+N, F5)
   useEffect(() => {
     const onSearch = () => searchInputRef.current?.focus();
     const onNew = () => navigate('/accounts/buyers/add');
+    const onRefresh = () => fetchBuyers();
     window.addEventListener('shortcut:search', onSearch);
     window.addEventListener('shortcut:new', onNew);
+    window.addEventListener('shortcut:refresh', onRefresh);
     return () => {
       window.removeEventListener('shortcut:search', onSearch);
       window.removeEventListener('shortcut:new', onNew);
+      window.removeEventListener('shortcut:refresh', onRefresh);
     };
   }, []);
 
@@ -86,11 +90,13 @@ const BuyerAccount = () => {
     let scrollTimer, fadeTimer;
     if (location.state?.returnedFromAccount && buyers.length > 0) {
       const returnedId = location.state.returnedFromAccount;
+      // Clear nav state first to prevent re-fire on re-render
+      window.history.replaceState({}, document.title);
       setHighlightedId(returnedId);
 
       // Calculate which page the returned account is on and navigate there
       const globalIndex = filteredBuyers.findIndex(b => b.slug === returnedId);
-      if (globalIndex >= 0) {
+      if (globalIndex >= 0 && itemsPerPage !== 'All') {
         const targetPage = Math.floor(globalIndex / itemsPerPage) + 1;
         setCurrentPage(targetPage);
       }
@@ -102,15 +108,16 @@ const BuyerAccount = () => {
         }
         fadeTimer = setTimeout(() => setHighlightedId(null), 2000);
       }, 150);
-
-      window.history.replaceState({}, document.title);
     }
     return () => { clearTimeout(scrollTimer); clearTimeout(fadeTimer); };
-  }, [location.state, buyers, filteredBuyers]);
+  }, [location.state, buyers, filteredBuyers, itemsPerPage]);
 
   const filteredCount = filteredBuyers.length;
   const effectivePerPage = itemsPerPage === 'All' ? filteredCount || 1 : itemsPerPage;
   const totalPages = Math.ceil(filteredCount / effectivePerPage);
+
+  // Reset page when search changes
+  useEffect(() => { setCurrentPage(1); }, [searchTerm]);
 
   useEffect(() => {
     if (totalPages > 0 && currentPage > totalPages) {
@@ -353,7 +360,7 @@ const BuyerAccount = () => {
           <div className="px-8 py-5 flex items-center justify-between bg-[#F2F4F6]/30 border-t border-[#C3C6D7]/10">
             <div className="flex items-center gap-4">
               <p className="text-sm text-[#434655]">
-                Showing <span className="font-bold text-[#191C1E]">{itemsPerPage === 'All' ? 1 : (currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+                Showing <span className="font-bold text-[#191C1E]">{filteredCount === 0 ? 0 : itemsPerPage === 'All' ? 1 : (currentPage - 1) * itemsPerPage + 1}</span> to{' '}
                 <span className="font-bold text-[#191C1E]">
                   {itemsPerPage === 'All' ? filteredCount : Math.min(currentPage * itemsPerPage, filteredCount)}
                 </span>{' '}

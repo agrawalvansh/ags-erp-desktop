@@ -30,36 +30,40 @@ const SupplierAccount = () => {
     if (deleteTarget !== null) deleteModalRef.current?.focus();
   }, [deleteTarget]);
 
+  const fetchSuppliers = async () => {
+    try {
+      const data = await window.api.invoke('suppliers:getAll');
+      const mapped = data.map((s) => ({
+        id: s.supplier_id,
+        name: s.name,
+        phone: s.mobile,
+        address: s.address,
+        slug: s.supplier_id,
+      }));
+      setSuppliers(mapped);
+    } catch (err) {
+      console.error('Error fetching suppliers:', err);
+    } finally {
+      setLoadingSuppliers(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchSuppliers = async () => {
-      try {
-        const data = await window.api.invoke('suppliers:getAll');
-        const mapped = data.map((s) => ({
-          id: s.supplier_id,
-          name: s.name,
-          phone: s.mobile,
-          address: s.address,
-          slug: s.supplier_id,
-        }));
-        setSuppliers(mapped);
-      } catch (err) {
-        console.error('Error fetching suppliers:', err);
-      } finally {
-        setLoadingSuppliers(false);
-      }
-    };
     fetchSuppliers();
   }, []);
 
-  // Global shortcut listeners (Ctrl+F, Ctrl+N)
+  // Global shortcut listeners (Ctrl+F, Ctrl+N, F5)
   useEffect(() => {
     const onSearch = () => searchInputRef.current?.focus();
     const onNew = () => navigate('/accounts/suppliers/add');
+    const onRefresh = () => fetchSuppliers();
     window.addEventListener('shortcut:search', onSearch);
     window.addEventListener('shortcut:new', onNew);
+    window.addEventListener('shortcut:refresh', onRefresh);
     return () => {
       window.removeEventListener('shortcut:search', onSearch);
       window.removeEventListener('shortcut:new', onNew);
+      window.removeEventListener('shortcut:refresh', onRefresh);
     };
   }, []);
 
@@ -95,15 +99,23 @@ const SupplierAccount = () => {
   const effectivePerPage = itemsPerPage === 'All' ? filteredCount || 1 : itemsPerPage;
   const totalPages = Math.ceil(filteredCount / effectivePerPage);
 
+  // Clamp page when filteredCount shrinks (e.g. after delete or search)
+  useEffect(() => { setCurrentPage(1); }, [searchTerm]);
+  useEffect(() => {
+    if (totalPages > 0 && currentPage > totalPages) setCurrentPage(totalPages);
+  }, [totalPages, currentPage]);
+
   // Auto-scroll and highlight when returning from supplier detail
   useEffect(() => {
     let scrollTimer, fadeTimer;
     if (location.state?.returnedFromAccount && suppliers.length > 0) {
       const returnedId = location.state.returnedFromAccount;
+      // Clear nav state first to prevent re-fire on re-render
+      window.history.replaceState({}, document.title);
       setHighlightedId(returnedId);
 
       const globalIndex = filteredSuppliers.findIndex(s => s.slug === returnedId);
-      if (globalIndex >= 0) {
+      if (globalIndex >= 0 && itemsPerPage !== 'All') {
         const targetPage = Math.floor(globalIndex / itemsPerPage) + 1;
         setCurrentPage(targetPage);
       }
@@ -115,11 +127,9 @@ const SupplierAccount = () => {
         }
         fadeTimer = setTimeout(() => setHighlightedId(null), 2000);
       }, 150);
-
-      window.history.replaceState({}, document.title);
     }
     return () => { clearTimeout(scrollTimer); clearTimeout(fadeTimer); };
-  }, [location.state, suppliers, filteredSuppliers]);
+  }, [location.state, suppliers, filteredSuppliers, itemsPerPage]);
 
   const handleSort = (key) => {
     let direction = 'asc';
@@ -341,7 +351,7 @@ const SupplierAccount = () => {
           <div className="px-8 py-5 flex items-center justify-between bg-[#F2F4F6]/30 border-t border-[#C3C6D7]/10">
             <div className="flex items-center gap-4">
               <p className="text-sm text-[#434655]">
-                Showing <span className="font-bold text-[#191C1E]">{itemsPerPage === 'All' ? 1 : (currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+                Showing <span className="font-bold text-[#191C1E]">{filteredCount === 0 ? 0 : itemsPerPage === 'All' ? 1 : (currentPage - 1) * itemsPerPage + 1}</span> to{' '}
                 <span className="font-bold text-[#191C1E]">
                   {itemsPerPage === 'All' ? filteredCount : Math.min(currentPage * itemsPerPage, filteredCount)}
                 </span>{' '}

@@ -62,8 +62,18 @@ const SupplierOrder = () => {
     let scrollTimer, fadeTimer;
     if (location.state?.returnedFromOrder && orders.length > 0) {
       const returnedId = location.state.returnedFromOrder;
+      // Clear nav state first to prevent re-fire on re-render
+      window.history.replaceState({}, document.title);
       setHighlightedId(returnedId);
 
+      // Find the order's index in the full filtered list and navigate to its page
+      const globalIndex = processedOrders.findIndex(o => o.orderNo === returnedId);
+      if (globalIndex >= 0 && itemsPerPage !== 'All') {
+        const targetPage = Math.floor(globalIndex / itemsPerPage) + 1;
+        setCurrentPage(targetPage);
+      }
+
+      // Defer scroll until the target page has rendered
       scrollTimer = setTimeout(() => {
         const rowElement = rowRefs.current[returnedId];
         if (rowElement) {
@@ -71,11 +81,9 @@ const SupplierOrder = () => {
         }
         fadeTimer = setTimeout(() => setHighlightedId(null), 2000);
       }, 150);
-
-      window.history.replaceState({}, document.title);
     }
     return () => { clearTimeout(scrollTimer); clearTimeout(fadeTimer); };
-  }, [location.state, orders]);
+  }, [location.state, orders, processedOrders, itemsPerPage]);
 
   const [sortConfig, setSortConfig] = useState({ key: 'orderNo', direction: 'desc' });
 
@@ -402,7 +410,7 @@ const SupplierOrder = () => {
           <div className="px-8 py-5 flex items-center justify-between bg-[#F2F4F6]/30 border-t border-[#C3C6D7]/10">
             <div className="flex items-center gap-4">
               <p className="text-sm text-[#434655]">
-                Showing <span className="font-bold text-[#191C1E]">{itemsPerPage === 'All' ? 1 : (currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+                Showing <span className="font-bold text-[#191C1E]">{filteredCount === 0 ? 0 : itemsPerPage === 'All' ? 1 : (currentPage - 1) * itemsPerPage + 1}</span> to{' '}
                 <span className="font-bold text-[#191C1E]">
                   {itemsPerPage === 'All' ? filteredCount : Math.min(currentPage * itemsPerPage, filteredCount)}
                 </span>{' '}

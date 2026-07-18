@@ -108,6 +108,12 @@ const ListQuickSales = () => {
     const effectivePerPage = itemsPerPage === 'All' ? filteredCount || 1 : itemsPerPage;
     const totalPages = Math.ceil(filteredCount / effectivePerPage);
 
+    // Reset page when search changes
+    useEffect(() => { setCurrentPage(1); }, [searchTerm]);
+    useEffect(() => {
+        if (totalPages > 0 && currentPage > totalPages) setCurrentPage(totalPages);
+    }, [totalPages, currentPage]);
+
     const handleSort = (key) => {
         let direction = 'asc';
         if (sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
@@ -311,7 +317,7 @@ const ListQuickSales = () => {
                     <div className="px-8 py-5 flex items-center justify-between bg-[#F2F4F6]/30 border-t border-[#C3C6D7]/10">
                         <div className="flex items-center gap-4">
                             <p className="text-sm text-[#434655]">
-                                Showing <span className="font-bold text-[#191C1E]">{itemsPerPage === 'All' ? 1 : (currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+                                Showing <span className="font-bold text-[#191C1E]">{filteredCount === 0 ? 0 : itemsPerPage === 'All' ? 1 : (currentPage - 1) * itemsPerPage + 1}</span> to{' '}
                                 <span className="font-bold text-[#191C1E]">
                                     {itemsPerPage === 'All' ? filteredCount : Math.min(currentPage * itemsPerPage, filteredCount)}
                                 </span>{' '}

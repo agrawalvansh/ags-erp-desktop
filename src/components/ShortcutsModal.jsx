@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import { Keyboard, X } from 'lucide-react';
 import { SHORTCUT_GROUPS } from '../hooks/useGlobalShortcuts';
 
@@ -8,10 +8,50 @@ import { SHORTCUT_GROUPS } from '../hooks/useGlobalShortcuts';
  */
 export default function ShortcutsModal({ isOpen, onClose }) {
   const modalRef = useRef(null);
+  const previousFocusRef = useRef(null);
 
+  // Save the element that had focus before opening, restore on close
   useEffect(() => {
-    if (isOpen) modalRef.current?.focus();
+    if (isOpen) {
+      previousFocusRef.current = document.activeElement;
+      modalRef.current?.focus();
+    } else if (previousFocusRef.current) {
+      previousFocusRef.current.focus();
+      previousFocusRef.current = null;
+    }
   }, [isOpen]);
+
+  // Focus trap — Tab cycles within the modal
+  const handleKeyDown = useCallback((e) => {
+    if (e.key === 'Escape') {
+      onClose();
+      return;
+    }
+    if (e.key !== 'Tab') return;
+
+    const modal = modalRef.current;
+    if (!modal) return;
+
+    const focusable = modal.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusable.length === 0) return;
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (e.shiftKey) {
+      if (document.activeElement === first || document.activeElement === modal) {
+        e.preventDefault();
+        last.focus();
+      }
+    } else {
+      if (document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  }, [onClose]);
 
   if (!isOpen) return null;
 
@@ -28,7 +68,7 @@ export default function ShortcutsModal({ isOpen, onClose }) {
         aria-modal="true"
         aria-labelledby="shortcuts-title"
         className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 outline-none overflow-hidden"
-        onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
+        onKeyDown={handleKeyDown}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2E8F0]">
@@ -40,6 +80,7 @@ export default function ShortcutsModal({ isOpen, onClose }) {
           </div>
           <button
             onClick={onClose}
+            aria-label="Close shortcuts"
             className="p-1.5 rounded-lg hover:bg-[#F2F4F6] text-[#94A3B8] hover:text-[#434655] transition-colors cursor-pointer"
           >
             <X size={18} />
@@ -50,7 +91,7 @@ export default function ShortcutsModal({ isOpen, onClose }) {
         <div className="px-6 py-5 space-y-6 max-h-[60vh] overflow-y-auto scrollbar-thin">
           {SHORTCUT_GROUPS.map((group) => (
             <div key={group.title}>
-              <h3 className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-wider mb-3">
+              <h3 className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider mb-3">
                 {group.title}
               </h3>
               <div className="space-y-1.5">

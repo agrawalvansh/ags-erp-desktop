@@ -218,23 +218,23 @@
 | 8.2 | Status Filter | Filter by All / Received / In Progress / Completed |
 | 8.3 | Status Badges | Colour-coded pills: emerald (completed/delivered), amber (pending/received), rose (cancelled), grey (fallback) |
 | 8.4 | Date-Range Filter | From/To date pickers with CalendarDays icon. Filters orders by `order_date`. Clear button to reset. |
-| 8.4 | Create Customer Order | Customer selection, date, items, remark, status — via dedicated form page |
-| 8.5 | Product Search in Order | Same searchable product dropdown with keyboard navigation |
-| 8.6 | Ad-hoc/Temporary Items | Add items not in product DB (`is_temporary` flag) |
-| 8.7 | Item Remark | Per-item remark field |
-| 8.8 | Packing Type per Item | Per-item packing type selection |
-| 8.9 | Payment Section | Advance payment: amount, type (Cash/UPI/Transfer/RTGS), date |
-| 8.10 | Auto-Generate Order ID | Format: `O-C-{N}` with recycling |
-| 8.11 | Edit Customer Order | Full edit with item regeneration and payment update/creation/deletion |
-| 8.12 | Delete Customer Order | Deletes order + items + cascade-deletes linked payments + recycles ID |
-| 8.13 | Status Options | Received, In Progress, Completed |
-| 8.14 | Linked Payment | Payment creates jama entry with "Order {ID}" remark in customer account |
-| 8.15 | Unsaved Changes Detection | `isDirty` tracking with `useBlocker` + `NavigationWarningModal` |
-| 8.16 | Print Order | Print-optimized order view with printer selection |
-| 8.17 | PDF Download | Download order as PDF |
-| 8.18 | Sort Orders | Sort by date, customer name, status |
-| 8.19 | Delete from List | Delete individual order from list view with confirmation modal |
-| 8.20 | Load by URL | Navigate to `/orders/customers/{orderId}` to load a specific order |
+| 8.5 | Create Customer Order | Customer selection, date, items, remark, status — via dedicated form page |
+| 8.6 | Product Search in Order | Same searchable product dropdown with keyboard navigation |
+| 8.7 | Ad-hoc/Temporary Items | Add items not in product DB (`is_temporary` flag) |
+| 8.8 | Item Remark | Per-item remark field |
+| 8.9 | Packing Type per Item | Per-item packing type selection |
+| 8.10 | Payment Section | Advance payment: amount, type (Cash/UPI/Transfer/RTGS), date |
+| 8.11 | Auto-Generate Order ID | Format: `O-C-{N}` with recycling |
+| 8.12 | Edit Customer Order | Full edit with item regeneration and payment update/creation/deletion |
+| 8.13 | Delete Customer Order | Deletes order + items + cascade-deletes linked payments + recycles ID |
+| 8.14 | Status Options | Received, In Progress, Completed |
+| 8.15 | Linked Payment | Payment creates jama entry with "Order {ID}" remark in customer account |
+| 8.16 | Unsaved Changes Detection | `isDirty` tracking with `useBlocker` + `NavigationWarningModal` |
+| 8.17 | Print Order | Print-optimized order view with printer selection |
+| 8.18 | PDF Download | Download order as PDF |
+| 8.19 | Sort Orders | Sort by date, customer name, status |
+| 8.20 | Delete from List | Delete individual order from list view with confirmation modal |
+| 8.21 | Load by URL | Navigate to `/orders/customers/{orderId}` to load a specific order |
 
 ---
 
@@ -246,19 +246,19 @@
 | 9.2 | Status Filter | Filter by All / Placed / In Progress / Completed |
 | 9.3 | Status Badges | Same colour-coded pills as customer orders (amber uses "placed" instead of "received") |
 | 9.4 | Date-Range Filter | From/To date pickers with CalendarDays icon. Filters orders by `order_date`. Clear button to reset. |
-| 9.4 | Create Supplier Order | Supplier selection, date, items, remark, status — via dedicated form page |
-| 9.5 | Product Search in Order | Same searchable product dropdown |
-| 9.6 | Ad-hoc/Temporary Items | Items not in product DB |
-| 9.7 | Item Remark & Packing Type | Per-item details |
-| 9.8 | Payment Section | Advance payment with jama entry creation |
-| 9.9 | Auto-Generate Order ID | Format: `O-S-{N}` with recycling |
-| 9.10 | Edit Supplier Order | Full edit with payment update/creation/deletion |
-| 9.11 | Delete Supplier Order | Deletes order + items + cascade-deletes linked payments + recycles ID |
-| 9.12 | Delete from List | Delete from list view with confirmation modal |
-| 9.13 | Print Order | Print-optimized output with printer selection |
-| 9.14 | PDF Download | Download order as PDF |
-| 9.15 | Unsaved Changes Detection | `isDirty` + `useBlocker` + `NavigationWarningModal` |
-| 9.16 | Load by URL | Navigate to `/orders/suppliers/{orderId}` to load a specific order |
+| 9.5 | Create Supplier Order | Supplier selection, date, items, remark, status — via dedicated form page |
+| 9.6 | Product Search in Order | Same searchable product dropdown |
+| 9.7 | Ad-hoc/Temporary Items | Items not in product DB |
+| 9.8 | Item Remark & Packing Type | Per-item details |
+| 9.9 | Payment Section | Advance payment with jama entry creation |
+| 9.10 | Auto-Generate Order ID | Format: `O-S-{N}` with recycling |
+| 9.11 | Edit Supplier Order | Full edit with payment update/creation/deletion |
+| 9.12 | Delete Supplier Order | Deletes order + items + cascade-deletes linked payments + recycles ID |
+| 9.13 | Delete from List | Delete from list view with confirmation modal |
+| 9.14 | Print Order | Print-optimized output with printer selection |
+| 9.15 | PDF Download | Download order as PDF |
+| 9.16 | Unsaved Changes Detection | `isDirty` + `useBlocker` + `NavigationWarningModal` |
+| 9.17 | Load by URL | Navigate to `/orders/suppliers/{orderId}` to load a specific order |
 
 ---
 

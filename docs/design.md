@@ -732,7 +732,7 @@ Item:        px-4 py-2 rounded-lg text-[13px]
 
 ## 25 — Date-Range Filters
 
-Used on: CustomerOrder, SupplierOrder list pages. Account ledger pages already have date filters.
+Used on: CustomerOrder, SupplierOrder, ListQuickSales, Account ledger list pages.
 
 ```
 Container:   flex items-center gap-3 mb-4
@@ -765,11 +765,7 @@ Used in: NavBar navigation items container.
 
 Thin 6px scrollbar with light theme styling:
 
-```css
-.scrollbar-thin::-webkit-scrollbar { width: 6px; }
-.scrollbar-thin::-webkit-scrollbar-track { bg-gray-100; }
-.scrollbar-thin::-webkit-scrollbar-thumb { bg-gray-300 rounded-full; }
-```
+
 
 ---
 
