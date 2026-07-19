@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useDebounce } from '../../hooks/useDebounce';
 import { Search, ChevronDown, Plus, Edit, Trash2, AlertTriangle, CalendarDays, SlidersHorizontal } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
@@ -8,6 +9,7 @@ const ListQuickSales = () => {
     const navigate = useNavigate();
 
     const [searchTerm, setSearchTerm] = useState('');
+    const debouncedSearchTerm = useDebounce(searchTerm, 300);
     const [sales, setSales] = useState([]);
     const [sortConfig, setSortConfig] = useState({ key: 'qs_id', direction: 'desc' });
     const [currentPage, setCurrentPage] = useState(1);
@@ -60,8 +62,8 @@ const ListQuickSales = () => {
     // Filter, sort, paginate
     const filteredSales = useMemo(() => {
         let filtered = sales.filter(s =>
-            (s.qs_id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (s.remark || '').toLowerCase().includes(searchTerm.toLowerCase())
+            (s.qs_id || '').toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+            (s.remark || '').toLowerCase().includes(debouncedSearchTerm.toLowerCase())
         );
 
         // Date range filter
@@ -82,7 +84,7 @@ const ListQuickSales = () => {
         }
 
         return filtered;
-    }, [sales, searchTerm, fromDate, toDate]);
+    }, [sales, debouncedSearchTerm, fromDate, toDate]);
 
     const processedSales = useMemo(() => {
         let sorted = [...filteredSales];

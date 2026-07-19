@@ -47,7 +47,9 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
 
     let status
 
-    if (total_paid >= invoice.grand_total && invoice.grand_total > 0) {
+    if (invoice.grand_total === 0) {
+      status = 'paid'
+    } else if (total_paid >= invoice.grand_total) {
       status = 'paid'
     } else if (total_paid > 0) {
       status = 'partially_paid'
@@ -115,10 +117,33 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
   // -----------------------
   // Products CRUD
   // -----------------------
-  ipcMain.handle('products:getAll', wrap(() => {
-    // Only return non-deleted products
-    const rows = db.prepare('SELECT * FROM products WHERE is_deleted = 0 OR is_deleted IS NULL').all();
-    // Convert Row objects to plain JSON-friendly objects
+  ipcMain.handle('products:getAll', wrap((payload = {}) => {
+    const { page, limit, search, sortBy, sortDir } = payload;
+    let query = 'SELECT * FROM products WHERE (is_deleted = 0 OR is_deleted IS NULL)';
+    let countQuery = 'SELECT COUNT(*) as count FROM products WHERE (is_deleted = 0 OR is_deleted IS NULL)';
+    const params = [];
+    
+    if (search) {
+      query += ' AND (name LIKE ? OR code LIKE ?)';
+      countQuery += ' AND (name LIKE ? OR code LIKE ?)';
+      params.push(`%${search}%`, `%${search}%`);
+    }
+
+    if (sortBy) {
+      const dir = String(sortDir).toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+      query += ` ORDER BY ${sortBy} ${dir}`;
+    }
+
+    if (limit) {
+      const offset = (page ? Math.max(page - 1, 0) : 0) * limit;
+      query += ' LIMIT ? OFFSET ?';
+      const rows = db.prepare(query).all(...params, limit, offset);
+      const total = db.prepare(countQuery).get(...params).count;
+      return { data: rows.map(r => ({ ...r })), total, page: page || 1, limit };
+    }
+
+    // Legacy unpaginated array response
+    const rows = db.prepare(query).all(...params);
     return rows.map(r => ({ ...r }));
   }));
 
@@ -264,8 +289,33 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
   // -----------------------
   // Customers CRUD
   // -----------------------
-  ipcMain.handle('customers:getAll', wrap(() => {
-    return db.prepare('SELECT * FROM customers').all();
+  ipcMain.handle('customers:getAll', wrap((payload = {}) => {
+    const { page, limit, search, sortBy, sortDir } = payload;
+    let query = 'SELECT * FROM customers';
+    let countQuery = 'SELECT COUNT(*) as count FROM customers';
+    const params = [];
+
+    if (search) {
+      query += ' WHERE name LIKE ? OR customer_id LIKE ?';
+      countQuery += ' WHERE name LIKE ? OR customer_id LIKE ?';
+      params.push(`%${search}%`, `%${search}%`);
+    }
+
+    if (sortBy) {
+      const dir = String(sortDir).toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+      query += ` ORDER BY ${sortBy} ${dir}`;
+    }
+
+    if (limit) {
+      const offset = (page ? Math.max(page - 1, 0) : 0) * limit;
+      query += ' LIMIT ? OFFSET ?';
+      const rows = db.prepare(query).all(...params, limit, offset);
+      const total = db.prepare(countQuery).get(...params).count;
+      return { data: rows.map(r => ({ ...r })), total, page: page || 1, limit };
+    }
+
+    // Legacy unpaginated array response
+    return db.prepare(query).all(...params);
   }));
 
   ipcMain.handle('customers:get', wrap((customer_id) => {
@@ -862,20 +912,23 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
 
   // Recalculate overdue status for all non-paid invoices (called on app startup)
   ipcMain.handle('invoices:refreshOverdueStatuses', wrap(() => {
-    const nonPaidInvoices = db.prepare(`
-      SELECT invoice_id FROM invoices
+    const result = db.prepare(`
+      UPDATE invoices
+      SET status = CASE
+        WHEN grand_total = 0 THEN 'paid'
+        WHEN (SELECT COALESCE(SUM(jama_amount), 0) FROM customer_jama_account WHERE linked_invoice_id = invoices.invoice_id) >= grand_total THEN 'paid'
+        WHEN (SELECT COALESCE(SUM(jama_amount), 0) FROM customer_jama_account WHERE linked_invoice_id = invoices.invoice_id) > 0 THEN 'partially_paid'
+        WHEN (
+          (SELECT reminder_enabled FROM customers WHERE customer_id = invoices.customer_id) = 1 
+          AND invoices.payment_due_days > 0 
+          AND date('now', 'localtime') > date(invoices.invoice_date, '+' || invoices.payment_due_days || ' days')
+        ) THEN 'overdue'
+        ELSE 'awaiting_payment'
+      END
       WHERE status IN ('awaiting_payment', 'partially_paid', 'overdue')
-    `).all()
+    `).run()
 
-    let updatedCount = 0
-    for (const inv of nonPaidInvoices) {
-      const oldStatus = db.prepare('SELECT status FROM invoices WHERE invoice_id = ?')
-        .get(inv.invoice_id)?.status
-      const newStatus = recalculateInvoiceStatus(inv.invoice_id)
-      if (newStatus !== oldStatus) updatedCount++
-    }
-
-    return { success: true, updated: updatedCount }
+    return { success: true, updated: result.changes }
   }))
 
   // ════════════════════════════════════════════════════════════════════════════
@@ -1349,8 +1402,27 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     return { success: true };
   }));
 
-  ipcMain.handle('suppliers:getAll', wrap(() => {
-    return db.prepare('SELECT * FROM suppliers').all();
+  ipcMain.handle('suppliers:getAll', wrap((payload = {}) => {
+    const { page, limit, search } = payload;
+    let query = 'SELECT * FROM suppliers';
+    let countQuery = 'SELECT COUNT(*) as count FROM suppliers';
+    const params = [];
+
+    if (search) {
+      query += ' WHERE name LIKE ? OR supplier_id LIKE ?';
+      countQuery += ' WHERE name LIKE ? OR supplier_id LIKE ?';
+      params.push(`%${search}%`, `%${search}%`);
+    }
+
+    if (limit) {
+      const offset = (page ? Math.max(page - 1, 0) : 0) * limit;
+      query += ' LIMIT ? OFFSET ?';
+      const rows = db.prepare(query).all(...params, limit, offset);
+      const total = db.prepare(countQuery).get(...params).count;
+      return { data: rows.map(r => ({ ...r })), total, page: page || 1, limit };
+    }
+    
+    return db.prepare(query).all(...params);
   }));
 
   ipcMain.handle('suppliers:get', wrap((supplier_id) => {
@@ -1463,8 +1535,29 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
   // -----------------------
   // Notifications CRUD
   // -----------------------
-  ipcMain.handle('notifications:getAll', wrap(() => {
-    return db.prepare('SELECT * FROM notifications ORDER BY created_at DESC').all();
+  ipcMain.handle('notifications:getAll', wrap((payload = {}) => {
+    const { page, limit, search } = payload;
+    let query = 'SELECT * FROM notifications';
+    let countQuery = 'SELECT COUNT(*) as count FROM notifications';
+    const params = [];
+
+    if (search) {
+      query += ' WHERE message LIKE ? OR account_name LIKE ?';
+      countQuery += ' WHERE message LIKE ? OR account_name LIKE ?';
+      params.push(`%${search}%`, `%${search}%`);
+    }
+
+    query += ' ORDER BY created_at DESC';
+
+    if (limit) {
+      const offset = (page ? Math.max(page - 1, 0) : 0) * limit;
+      query += ' LIMIT ? OFFSET ?';
+      const rows = db.prepare(query).all(...params, limit, offset);
+      const total = db.prepare(countQuery).get(...params).count;
+      return { data: rows.map(r => ({ ...r })), total, page: page || 1, limit };
+    }
+
+    return db.prepare(query).all(...params);
   }));
 
   ipcMain.handle('notifications:getUnreadCount', wrap(() => {

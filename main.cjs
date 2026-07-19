@@ -182,60 +182,49 @@ function runNotificationScanner() {
   });
   insertSupplierBatch(supplierOverdue);
 
-  // ── Clean up resolved notifications ──
-  const deleteNotif = db.prepare('DELETE FROM notifications WHERE id = ?');
-
-  const customerNotifs = db.prepare(`
-    SELECT n.id, n.reminder_key, n.invoice_no, m.maal_amount, m.id AS maal_id
-    FROM notifications n
-    JOIN customer_maal_account m ON n.reminder_key = 'customer:maal:' || m.id
-    WHERE n.type = 'customer'
-  `).all();
-
-  const cleanCustomer = db.transaction((rows) => {
-    for (const row of rows) {
-      const paid = db.prepare(`
-        SELECT COALESCE(SUM(jama_amount), 0) AS total
+  // 🟢 Clean up resolved notifications 🟢
+  db.prepare(`
+    DELETE FROM notifications
+    WHERE id IN (
+      SELECT n.id
+      FROM notifications n
+      JOIN customer_maal_account m ON n.reminder_key = 'customer:maal:' || m.id
+      LEFT JOIN (
+        SELECT linked_invoice_id, jama_remark, SUM(jama_amount) AS total
         FROM customer_jama_account
-        WHERE linked_invoice_id = ? OR jama_remark = 'Invoice ' || ?
-      `).get(row.invoice_no, row.invoice_no)?.total || 0;
-      if (paid >= row.maal_amount) deleteNotif.run(row.id);
-    }
-  });
-  cleanCustomer(customerNotifs);
+        GROUP BY linked_invoice_id, jama_remark
+      ) j ON j.linked_invoice_id = n.invoice_no OR j.jama_remark = 'Invoice ' || n.invoice_no
+      WHERE n.type = 'customer'
+        AND COALESCE(j.total, 0) >= m.maal_amount
+    )
+  `).run();
 
-  const supplierNotifs = db.prepare(`
-    SELECT n.id, n.reminder_key, n.invoice_no, m.maal_amount, m.id AS maal_id
-    FROM notifications n
-    JOIN supplier_maal_account m ON n.reminder_key = 'supplier:maal:' || m.id
-    WHERE n.type = 'supplier'
-  `).all();
-
-  const cleanSupplier = db.transaction((rows) => {
-    for (const row of rows) {
-      const paid = db.prepare(`
-        SELECT COALESCE(SUM(jama_amount), 0) AS total
+  db.prepare(`
+    DELETE FROM notifications
+    WHERE id IN (
+      SELECT n.id
+      FROM notifications n
+      JOIN supplier_maal_account m ON n.reminder_key = 'supplier:maal:' || m.id
+      LEFT JOIN (
+        SELECT jama_remark, SUM(jama_amount) AS total
         FROM supplier_jama_account
-        WHERE jama_remark = 'Invoice ' || ?
-      `).get(row.invoice_no)?.total || 0;
-      if (paid >= row.maal_amount) deleteNotif.run(row.id);
-    }
-  });
-  cleanSupplier(supplierNotifs);
+        GROUP BY jama_remark
+      ) j ON j.jama_remark = 'Invoice ' || n.invoice_no
+      WHERE n.type = 'supplier'
+        AND COALESCE(j.total, 0) >= m.maal_amount
+    )
+  `).run();
 
-  // Clean up orphaned invoice_overdue notifications
-  const overdueNotifs = db.prepare(`
-    SELECT n.id, n.invoice_no FROM notifications n WHERE n.type = 'invoice_overdue'
-  `).all();
-
-  const cleanOverdue = db.transaction((rows) => {
-    for (const row of rows) {
-      if (!row.invoice_no) { deleteNotif.run(row.id); continue; }
-      const invoice = db.prepare('SELECT status FROM invoices WHERE invoice_id = ?').get(row.invoice_no);
-      if (!invoice || invoice.status === 'paid') deleteNotif.run(row.id);
-    }
-  });
-  cleanOverdue(overdueNotifs);
+  db.prepare(`
+    DELETE FROM notifications
+    WHERE id IN (
+      SELECT n.id
+      FROM notifications n
+      LEFT JOIN invoices i ON i.invoice_id = n.invoice_no
+      WHERE n.type = 'invoice_overdue'
+        AND (n.invoice_no IS NULL OR i.status = 'paid' OR i.invoice_id IS NULL)
+    )
+  `).run();
 
   db.prepare("INSERT OR REPLACE INTO app_state (key, value) VALUES ('last_notification_scan', ?)").run(today);
   return { newCount };
@@ -250,43 +239,54 @@ function runOverdueRefresh() {
   const lastOverdueScan = db.prepare("SELECT value FROM app_state WHERE key = 'last_overdue_scan'").get();
   if (lastOverdueScan && lastOverdueScan.value === today) return 0; // Already done today
 
-  const nonPaid = db.prepare(`
-    SELECT i.invoice_id, i.invoice_date, i.payment_due_days, i.status,
-           i.grand_total, i.customer_id, c.reminder_enabled, c.name AS customer_name
+  let overdueCount = 0;
+  const nowISO = new Date().toISOString();
+
+  // Find overdue invoices in a single query
+  const overdueInvoices = db.prepare(`
+    SELECT
+      i.invoice_id,
+      i.invoice_date,
+      i.grand_total,
+      i.customer_id,
+      c.name AS customer_name,
+      COALESCE(j.total_paid, 0) AS total_paid
     FROM invoices i
     JOIN customers c ON c.customer_id = i.customer_id
-    WHERE i.status IN ('awaiting_payment', 'partially_paid', 'overdue')
+    LEFT JOIN (
+      SELECT linked_invoice_id, SUM(jama_amount) AS total_paid
+      FROM customer_jama_account
+      GROUP BY linked_invoice_id
+    ) j ON j.linked_invoice_id = i.invoice_id
+    WHERE i.status IN ('awaiting_payment', 'partially_paid')
+      AND c.reminder_enabled = 1
+      AND i.payment_due_days > 0
+      AND date('now', 'localtime') > date(i.invoice_date, '+' || i.payment_due_days || ' days')
+      AND (i.grand_total - COALESCE(j.total_paid, 0)) > 0
   `).all();
 
-  let overdueCount = 0;
-  const insertNotif = db.prepare(`
-    INSERT OR IGNORE INTO notifications
-      (type, account_id, account_name, invoice_no, invoice_date,
-       pending_amount, message, is_read, created_at, reminder_key)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
-  `);
+  if (overdueInvoices.length > 0) {
+    const insertNotif = db.prepare(`
+      INSERT OR IGNORE INTO notifications
+        (type, account_id, account_name, invoice_no, invoice_date,
+         pending_amount, message, is_read, created_at, reminder_key)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+    `);
 
-  for (const inv of nonPaid) {
-    if (inv.reminder_enabled !== 1 || inv.payment_due_days <= 0) continue;
-    const totalPaid = db.prepare(`
-      SELECT COALESCE(SUM(jama_amount), 0) AS total_paid
-      FROM customer_jama_account WHERE linked_invoice_id = ?
-    `).get(inv.invoice_id)?.total_paid || 0;
-    if (totalPaid >= inv.grand_total) continue;
+    const updateStatus = db.prepare(`UPDATE invoices SET status = 'overdue' WHERE invoice_id = ?`);
 
-    const dueDate = new Date(inv.invoice_date);
-    dueDate.setDate(dueDate.getDate() + inv.payment_due_days);
-    const now = new Date(); now.setHours(0,0,0,0); dueDate.setHours(0,0,0,0);
+    const processOverdue = db.transaction((rows) => {
+      for (const inv of rows) {
+        updateStatus.run(inv.invoice_id);
+        const pendingAmount = inv.grand_total - inv.total_paid;
+        const msg = `Invoice ${inv.invoice_id} for ${inv.customer_name}: ₹${Math.round(pendingAmount).toLocaleString('en-IN')} overdue`;
+        insertNotif.run('invoice_overdue', inv.customer_id, inv.customer_name, inv.invoice_id,
+          inv.invoice_date, pendingAmount, msg, nowISO, `overdue_invoice_${inv.invoice_id}`);
+        overdueCount++;
+      }
+    });
 
-    if (now > dueDate && inv.status !== 'overdue') {
-      db.prepare(`UPDATE invoices SET status = 'overdue' WHERE invoice_id = ?`).run(inv.invoice_id);
-      const pendingAmount = inv.grand_total - totalPaid;
-      insertNotif.run('invoice_overdue', inv.customer_id, inv.customer_name, inv.invoice_id,
-        inv.invoice_date, pendingAmount,
-        `Invoice ${inv.invoice_id} for ${inv.customer_name}: ₹${Math.round(pendingAmount).toLocaleString('en-IN')} overdue`,
-        new Date().toISOString(), `overdue_invoice_${inv.invoice_id}`);
-      overdueCount++;
-    }
+    processOverdue(overdueInvoices);
   }
 
   db.prepare("INSERT OR REPLACE INTO app_state (key, value) VALUES ('last_overdue_scan', ?)").run(today);
@@ -409,51 +409,6 @@ async function runBatchTransliteration(win) {
 // ═══════════════════════════════════════════════════════════════════════════
 // RUN DAILY JOBS ON STARTUP
 // ═══════════════════════════════════════════════════════════════════════════
-let qsCleanupCount = 0;
-try { qsCleanupCount = runQsCleanup(); } catch (e) { console.error('[Scheduler] Quick sales cleanup error:', e.message); }
-
-// ─── Fix stale notification account_ids ─────────────────
-try {
-  const fixNotifIds = db.transaction(() => {
-    // Fix supplier notifications
-    const supplierNotifs = db.prepare(
-      `SELECT n.id, n.account_id, n.account_name
-       FROM notifications n
-       LEFT JOIN suppliers s ON s.supplier_id = n.account_id
-       WHERE n.type = 'supplier' AND s.supplier_id IS NULL`
-    ).all();
-    for (const notif of supplierNotifs) {
-      const match = db.prepare(
-        `SELECT supplier_id FROM suppliers WHERE LOWER(name) = LOWER(?) LIMIT 1`
-      ).get(notif.account_name);
-      if (match) {
-        db.prepare(`UPDATE notifications SET account_id = ? WHERE id = ?`)
-          .run(match.supplier_id, notif.id);
-        console.log(`[Migration] Fixed supplier notification #${notif.id}: '${notif.account_id}' → '${match.supplier_id}'`);
-      }
-    }
-
-    // Fix customer notifications
-    const customerNotifs = db.prepare(
-      `SELECT n.id, n.account_id, n.account_name
-       FROM notifications n
-       LEFT JOIN customers c ON c.customer_id = n.account_id
-       WHERE n.type IN ('customer', 'invoice_overdue') AND c.customer_id IS NULL`
-    ).all();
-    for (const notif of customerNotifs) {
-      const match = db.prepare(
-        `SELECT customer_id FROM customers WHERE LOWER(name) = LOWER(?) LIMIT 1`
-      ).get(notif.account_name);
-      if (match) {
-        db.prepare(`UPDATE notifications SET account_id = ? WHERE id = ?`)
-          .run(match.customer_id, notif.id);
-        console.log(`[Migration] Fixed customer notification #${notif.id}: '${notif.account_id}' → '${match.customer_id}'`);
-      }
-    }
-  });
-  fixNotifIds();
-} catch (e) { console.error('[Migration] Notification account_id fix error:', e.message); }
-
 
 // ─── Register IPC handlers ─────────────────────────────
 const registerIpcHandlers = require('./ipcHandlers');
@@ -540,19 +495,25 @@ function createWindow() {
 app.whenReady().then(() => {
   createWindow();
 
-  // Notify renderer about QS cleanup (runs after window loads)
-  if (qsCleanupCount > 0) {
-    const sendCleanupMsg = () => {
-      if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
-        mainWindow.webContents.send('cleanup:quickSalesDeleted', { count: qsCleanupCount });
+  setTimeout(() => {
+    try {
+      const count = runQsCleanup();
+      if (count > 0) {
+        const sendCleanupMsg = () => {
+          if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+            mainWindow.webContents.send('cleanup:quickSalesDeleted', { count });
+          }
+        };
+        if (mainWindow.webContents.isLoading()) {
+          mainWindow.webContents.once('did-finish-load', sendCleanupMsg);
+        } else {
+          sendCleanupMsg();
+        }
       }
-    };
-    if (mainWindow.webContents.isLoading()) {
-      mainWindow.webContents.once('did-finish-load', sendCleanupMsg);
-    } else {
-      sendCleanupMsg();
+    } catch (e) {
+      console.error('[Scheduler] Quick sales cleanup error:', e.message);
     }
-  }
+  }, 1000);
 
   // Notify renderer about successful upgrade (version-based detection)
   const currentVersion = app.getVersion();

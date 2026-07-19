@@ -4,10 +4,12 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal';
 import { naturalCompare } from '../../utils/productUtils';
+import { useDebounce } from '../../hooks/useDebounce';
 
 // List of suppliers (copy of BuyerAccount but using suppliers endpoints)
 const SupplierAccount = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const [sortConfig, setSortConfig] = useState({ key: 'id', direction: 'asc' });
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
@@ -30,9 +32,19 @@ const SupplierAccount = () => {
     if (deleteTarget !== null) deleteModalRef.current?.focus();
   }, [deleteTarget]);
 
+  const [totalSuppliers, setTotalSuppliers] = useState(0);
+
   const fetchSuppliers = async () => {
     try {
-      const data = await window.api.invoke('suppliers:getAll');
+      const payload = {
+        page: currentPage,
+        limit: itemsPerPage === 'All' ? null : itemsPerPage,
+        search: debouncedSearchTerm
+      };
+      const res = await window.api.invoke('suppliers:getAll', payload);
+      const data = res.data || res;
+      const total = res.total ?? data.length;
+
       const mapped = data.map((s) => ({
         id: s.supplier_id,
         name: s.name,
@@ -41,6 +53,7 @@ const SupplierAccount = () => {
         slug: s.supplier_id,
       }));
       setSuppliers(mapped);
+      setTotalSuppliers(total);
     } catch (err) {
       console.error('Error fetching suppliers:', err);
     } finally {
@@ -50,7 +63,7 @@ const SupplierAccount = () => {
 
   useEffect(() => {
     fetchSuppliers();
-  }, []);
+  }, [currentPage, itemsPerPage, debouncedSearchTerm]);
 
   // Global shortcut listeners (Ctrl+F, Ctrl+N, F5)
   useEffect(() => {

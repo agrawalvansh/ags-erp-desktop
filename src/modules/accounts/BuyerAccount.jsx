@@ -4,9 +4,11 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal';
 import { naturalCompare } from '../../utils/productUtils';
+import { useDebounce } from '../../hooks/useDebounce';
 
 const BuyerAccount = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const [sortConfig, setSortConfig] = useState({ key: 'id', direction: 'asc' });
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
@@ -30,9 +32,19 @@ const BuyerAccount = () => {
     if (deleteTarget !== null) deleteModalRef.current?.focus();
   }, [deleteTarget]);
 
+  const [totalBuyers, setTotalBuyers] = useState(0);
+
   const fetchBuyers = async () => {
     try {
-      const data = await window.api.invoke('customers:getAll');
+      const payload = {
+        page: currentPage,
+        limit: itemsPerPage === 'All' ? null : itemsPerPage,
+        search: debouncedSearchTerm
+      };
+      const res = await window.api.invoke('customers:getAll', payload);
+      const data = res.data || res;
+      const total = res.total ?? data.length;
+
       const mapped = data.map((c) => ({
         id: c.customer_id,
         name: c.name,
@@ -45,6 +57,7 @@ const BuyerAccount = () => {
         slug: c.customer_id,
       }));
       setBuyers(mapped);
+      setTotalBuyers(total);
     } catch (err) {
       console.error('Error fetching buyers:', err);
     } finally {
@@ -54,7 +67,7 @@ const BuyerAccount = () => {
 
   useEffect(() => {
     fetchBuyers();
-  }, []);
+  }, [currentPage, itemsPerPage, debouncedSearchTerm]);
 
   // Global shortcut listeners (Ctrl+F, Ctrl+N, F5)
   useEffect(() => {
@@ -85,6 +98,20 @@ const BuyerAccount = () => {
     );
   }, [searchTerm, buyers]);
 
+  const sortedBuyers = useMemo(() => {
+    let sorted = [...filteredBuyers];
+    if (sortConfig.key) {
+      sorted.sort((a, b) => {
+        const dir = sortConfig.direction === 'asc' ? 1 : -1;
+        if (sortConfig.key === 'id') return dir * naturalCompare(a.id, b.id);
+        if (a[sortConfig.key] < b[sortConfig.key]) return -dir;
+        if (a[sortConfig.key] > b[sortConfig.key]) return dir;
+        return 0;
+      });
+    }
+    return sorted;
+  }, [filteredBuyers, sortConfig]);
+
   // Auto-scroll and highlight when returning from account detail
   useEffect(() => {
     let scrollTimer, fadeTimer;
@@ -94,8 +121,8 @@ const BuyerAccount = () => {
       window.history.replaceState({}, document.title);
       setHighlightedId(returnedId);
 
-      // Calculate which page the returned account is on and navigate there
-      const globalIndex = filteredBuyers.findIndex(b => b.slug === returnedId);
+      // Calculate which page the returned account is on (using sorted order)
+      const globalIndex = sortedBuyers.findIndex(b => b.slug === returnedId);
       if (globalIndex >= 0 && itemsPerPage !== 'All') {
         const targetPage = Math.floor(globalIndex / itemsPerPage) + 1;
         setCurrentPage(targetPage);
@@ -110,7 +137,7 @@ const BuyerAccount = () => {
       }, 150);
     }
     return () => { clearTimeout(scrollTimer); clearTimeout(fadeTimer); };
-  }, [location.state, buyers, filteredBuyers, itemsPerPage]);
+  }, [location.state, buyers, sortedBuyers, itemsPerPage]);
 
   const filteredCount = filteredBuyers.length;
   const effectivePerPage = itemsPerPage === 'All' ? filteredCount || 1 : itemsPerPage;
@@ -126,20 +153,10 @@ const BuyerAccount = () => {
   }, [totalPages, currentPage]);
 
   const processedBuyers = useMemo(() => {
-    let sorted = [...filteredBuyers];
-    if (sortConfig.key) {
-      sorted.sort((a, b) => {
-        const dir = sortConfig.direction === 'asc' ? 1 : -1;
-        if (sortConfig.key === 'id') return dir * naturalCompare(a.id, b.id);
-        if (a[sortConfig.key] < b[sortConfig.key]) return -dir;
-        if (a[sortConfig.key] > b[sortConfig.key]) return dir;
-        return 0;
-      });
-    }
-    if (itemsPerPage === 'All') return sorted;
+    if (itemsPerPage === 'All') return sortedBuyers;
     const start = (currentPage - 1) * itemsPerPage;
-    return sorted.slice(start, start + itemsPerPage);
-  }, [filteredBuyers, sortConfig, currentPage, itemsPerPage]);
+    return sortedBuyers.slice(start, start + itemsPerPage);
+  }, [sortedBuyers, currentPage, itemsPerPage]);
 
   const handleSort = (key) => {
     let direction = 'asc';
@@ -311,7 +328,7 @@ const BuyerAccount = () => {
                       className={`group hover:bg-[#F2F4F6]/30 transition-colors cursor-pointer ${highlightedId === buyer.slug ? 'bg-[#EFF6FF] ring-1 ring-[#2563EB]/30' : ''}`}
                       onClick={() => handleRowClick(buyer.slug)}
                     >
-                      <td className="py-5 px-6 text-sm font-medium text-[#434655]">{String((currentPage - 1) * itemsPerPage + index + 1).padStart(2, '0')}</td>
+                      <td className="py-5 px-6 text-sm font-medium text-[#434655]">{String((itemsPerPage === 'All' ? index : (currentPage - 1) * itemsPerPage + index) + 1).padStart(2, '0')}</td>
                       <td className="py-5 px-6 text-sm font-bold text-[#004AC6]">{buyer.id}</td>
                       <td className="py-5 px-6">
                         <div className="flex items-center gap-3">

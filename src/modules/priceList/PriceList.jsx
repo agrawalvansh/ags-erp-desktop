@@ -1,4 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useDebounce } from '../../hooks/useDebounce';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ChevronDown, Plus, Search, Eye, EyeOff, Edit, Trash2, AlertTriangle, CircleX, Download } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -11,6 +12,7 @@ const PriceList = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const searchInputRef = useRef(null);
   const [products, setProducts] = useState([]);
   const [sortConfig, setSortConfig] = useState({ key: 'productName', direction: 'asc' });
@@ -31,28 +33,44 @@ const PriceList = () => {
   const [selectedPrinter, setSelectedPrinter] = useState('');
   const [isPrinting, setIsPrinting] = useState(false);
 
-  // Load products from backend on first render (IPC)
+  // Load products from backend with server-side pagination
+  const [totalProducts, setTotalProducts] = useState(0);
+
+  const fetchProducts = async () => {
+    try {
+      const payload = {
+        page: currentPage,
+        limit: itemsPerPage === 'All' ? null : itemsPerPage,
+        search: debouncedSearchTerm,
+        sortBy: sortConfig.key === 'productName' ? 'name' : sortConfig.key === 'costPrice' ? 'cost_price' : sortConfig.key === 'sellingPrice' ? 'selling_price' : sortConfig.key,
+        sortDir: sortConfig.direction,
+      };
+      const res = await window.api.getProducts(payload);
+      
+      const data = res.data || res;
+      const total = res.total ?? data.length;
+      
+      const normalized = data.map(p => ({
+        id: p.code,
+        productName: p.name,
+        code: p.code,
+        size: p.size,
+        costPrice: p.cost_price,
+        packingType: p.packing_type,
+        sellingPrice: p.selling_price,
+        updatedAt: p.updated_at,
+      }));
+      
+      setProducts(normalized);
+      setTotalProducts(total);
+    } catch (err) {
+      console.error('Error fetching products:', err);
+    }
+  };
+
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const data = await window.api.getProducts();
-        const normalized = data.map(p => ({
-          id: p.code,
-          productName: p.name,
-          code: p.code,
-          size: p.size,
-          costPrice: p.cost_price,
-          packingType: p.packing_type,
-          sellingPrice: p.selling_price,
-          updatedAt: p.updated_at,
-        }));
-        setProducts(normalized);
-      } catch (err) {
-        console.error('Error fetching products:', err);
-      }
-    };
     fetchProducts();
-  }, []);
+  }, [currentPage, itemsPerPage, debouncedSearchTerm, sortConfig]);
 
   // Global shortcut listeners (Ctrl+F, Ctrl+N, F5)
   useEffect(() => {
@@ -69,43 +87,9 @@ const PriceList = () => {
     };
   }, []);
 
-  // Get filtered and sorted products (no pagination)
-  const filteredProducts = useMemo(() => {
-    let filtered = products.filter(item =>
-      (item.productName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.code || '').toLowerCase().includes(searchTerm.toLowerCase())
-    );
+  const filteredProducts = products; // Server handles filtering and sorting
 
-    // Apply smart sorting: name A-Z, then numeric size
-    if (sortConfig.key === 'productName') {
-      filtered = sortProducts(filtered, 'productName', 'size');
-      if (sortConfig.direction === 'desc') {
-        filtered = filtered.reverse();
-      }
-    } else if (sortConfig.key) {
-      filtered.sort((a, b) => {
-        let valA = a[sortConfig.key];
-        let valB = b[sortConfig.key];
-
-        if (typeof valA === 'number' && typeof valB === 'number') {
-          return sortConfig.direction === 'asc' ? valA - valB : valB - valA;
-        }
-
-        valA = String(valA || '').toLowerCase();
-        valB = String(valB || '').toLowerCase();
-
-        if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
-        if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
-        return 0;
-      });
-    } else {
-      filtered = sortProducts(filtered, 'productName', 'size');
-    }
-
-    return filtered;
-  }, [products, searchTerm, sortConfig]);
-
-  const filteredCount = filteredProducts.length;
+  const filteredCount = totalProducts;
   const effectivePerPage = itemsPerPage === 'All' ? filteredCount || 1 : itemsPerPage;
   const totalPages = Math.ceil(filteredCount / effectivePerPage);
 
@@ -115,11 +99,7 @@ const PriceList = () => {
     if (totalPages > 0 && currentPage > totalPages) setCurrentPage(totalPages);
   }, [totalPages, currentPage]);
 
-  const paginatedProducts = useMemo(() => {
-    if (itemsPerPage === 'All') return filteredProducts;
-    const start = (currentPage - 1) * itemsPerPage;
-    return filteredProducts.slice(start, start + itemsPerPage);
-  }, [filteredProducts, currentPage, itemsPerPage]);
+  const paginatedProducts = products; // Server handles pagination
 
   // Auto-scroll to edited product (or next row if focusNext) when returning from edit page
   useEffect(() => {

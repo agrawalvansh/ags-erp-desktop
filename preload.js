@@ -53,6 +53,18 @@ exposed.onAppUpgraded = (callback) => {
   return () => ipcRenderer.removeListener('app:upgraded', handler);
 };
 
+exposed.onMarathiBatchStart = (callback) => {
+  const handler = (_event, data) => callback(data);
+  ipcRenderer.on('marathi:batchStart', handler);
+  return () => ipcRenderer.removeListener('marathi:batchStart', handler);
+};
+
+exposed.onMarathiBatchComplete = (callback) => {
+  const handler = (_event, data) => callback(data);
+  ipcRenderer.on('marathi:batchComplete', handler);
+  return () => ipcRenderer.removeListener('marathi:batchComplete', handler);
+};
+
 // Expose to renderer ------------------------------------------------
 if (!('api' in globalThis)) {
   contextBridge.exposeInMainWorld('api', exposed);

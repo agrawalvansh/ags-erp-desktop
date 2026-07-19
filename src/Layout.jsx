@@ -23,13 +23,15 @@ function Layout() {
 
     // Global listener for Marathi batch transliteration events
     useEffect(() => {
+        let cleanupStart, cleanupComplete, cleanupQs, cleanupApp;
+
         if (window.api?.onMarathiBatchStart) {
-            window.api.onMarathiBatchStart((data) => {
+            cleanupStart = window.api.onMarathiBatchStart((data) => {
                 toast.loading(`Generating Marathi script for ${data.total} products...`, { id: 'marathi-batch' });
             });
         }
         if (window.api?.onMarathiBatchComplete) {
-            window.api.onMarathiBatchComplete((data) => {
+            cleanupComplete = window.api.onMarathiBatchComplete((data) => {
                 toast.dismiss('marathi-batch');
                 if (data.translated > 0) {
                     toast.success(`Marathi script generation completed (${data.translated} products)`);
@@ -38,14 +40,14 @@ function Layout() {
         }
         // Quick Sales auto-cleanup notification
         if (window.api?.onQuickSalesCleanup) {
-            window.api.onQuickSalesCleanup((data) => {
+            cleanupQs = window.api.onQuickSalesCleanup((data) => {
                 if (data.count > 0) {
                     toast.success(`${data.count} quick sale${data.count > 1 ? 's' : ''} older than 30 days deleted`);
                 }
             });
         }
         if (window.api?.onAppUpgraded) {
-            window.api.onAppUpgraded((data) => {
+            cleanupApp = window.api.onAppUpgraded((data) => {
                 toast(
                     `Successfully upgraded to v${data.to}!\nThank you for using AGS ERP.`,
                     {
@@ -63,6 +65,13 @@ function Layout() {
                 );
             });
         }
+
+        return () => {
+            if (cleanupStart) cleanupStart();
+            if (cleanupComplete) cleanupComplete();
+            if (cleanupQs) cleanupQs();
+            if (cleanupApp) cleanupApp();
+        };
     }, []);
 
     if (!isAuthenticated) {

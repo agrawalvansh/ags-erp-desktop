@@ -20,6 +20,114 @@ export const parseDate = (dateStr) => {
   return new Date(yyyy, mm - 1, dd);
 };
 
+const AccountRow = React.memo(({ row, type, editingRow, editDraft, setEditDraft, handleSaveEdit, setEditingRow, handleEditClick, setDeleteTarget, handleInvoiceNavigate, formatCurrency, formatDate }) => {
+  const isEditing = editingRow === row.id;
+  
+  if (type === 'maal') {
+    return (
+      <tr className="hover:bg-[#F2F4F6]/30 transition-colors">
+        <td className="px-4 py-3 text-sm text-[#434655]">
+          {isEditing ? (
+            <input type="date" className="w-full px-2 py-1 border border-[#C3C6D7]/30 rounded-lg text-sm focus:ring-2 focus:ring-[#004AC6]/20 focus:border-[#004AC6] outline-none" value={editDraft.maalDate || ''} onChange={(e) => setEditDraft({ ...editDraft, maalDate: e.target.value })} />
+          ) : formatDate(row.maalDate)}
+        </td>
+        <td className="px-4 py-3 text-sm font-bold text-[#004AC6]">
+          {isEditing ? (
+            <input type="text" className="w-full px-2 py-1 border border-[#C3C6D7]/30 rounded-lg text-sm focus:ring-2 focus:ring-[#004AC6]/20 focus:border-[#004AC6] outline-none" value={editDraft.maalInvoiceNumber || ''} onChange={(e) => setEditDraft({ ...editDraft, maalInvoiceNumber: e.target.value })} />
+          ) : (
+            <span className="flex items-center gap-2">
+              <span
+                className={row.isLinkedToInvoice ? 'cursor-pointer hover:underline' : ''}
+                onClick={() => row.isLinkedToInvoice && handleInvoiceNavigate(row.maalInvoiceNumber)}
+              >{row.maalInvoiceNumber}</span>
+              {row.status && (
+                <span className={`
+                  px-1.5 py-0.5 rounded-full text-[9px] font-bold leading-none whitespace-nowrap
+                  ${row.status === 'paid'
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : row.status === 'partially_paid'
+                    ? 'bg-amber-100 text-amber-700'
+                    : row.status === 'overdue'
+                    ? 'bg-red-100 text-red-700'
+                    : 'bg-blue-100 text-blue-700'}
+                `}>
+                  {row.status === 'awaiting_payment' ? 'Awaiting'
+                    : row.status === 'partially_paid' ? 'Partial'
+                    : row.status === 'paid' ? 'Paid'
+                    : 'Overdue'}
+                </span>
+              )}
+            </span>
+          )}
+        </td>
+        <td className="px-4 py-3 text-sm text-right font-semibold text-[#191C1E]">
+          {isEditing ? (
+            <input type="number" className="w-full px-2 py-1 border border-[#C3C6D7]/30 rounded-lg text-sm text-right focus:ring-2 focus:ring-[#004AC6]/20 focus:border-[#004AC6] outline-none" value={editDraft.maalAmount || ''} onChange={(e) => setEditDraft({ ...editDraft, maalAmount: e.target.value })} />
+          ) : formatCurrency(row.maalAmount)}
+        </td>
+        <td className="px-4 py-3 text-sm text-[#434655]">
+          {isEditing ? (
+            <input type="text" className="w-full px-2 py-1 border border-[#C3C6D7]/30 rounded-lg text-sm focus:ring-2 focus:ring-[#004AC6]/20 focus:border-[#004AC6] outline-none" value={editDraft.maalRemark || ''} onChange={(e) => setEditDraft({ ...editDraft, maalRemark: e.target.value })} />
+          ) : row.maalRemark}
+        </td>
+        <td className="px-4 py-3 text-center">
+          {isEditing ? (
+            <div className="flex justify-center gap-1">
+              <button className="p-1.5 text-green-600 hover:bg-green-50 rounded-full transition cursor-pointer" onClick={() => handleSaveEdit(row.id)}><Save size={16} /></button>
+              <button className="p-1.5 text-[#434655] hover:bg-gray-100 rounded-full transition cursor-pointer" onClick={() => setEditingRow(null)}><X size={16} /></button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center gap-1">
+              <button className="p-1.5 rounded-full hover:bg-white text-[#434655] hover:text-[#004AC6] transition-all hover:shadow-sm cursor-pointer" onClick={() => handleEditClick(row)} title={row.isLinkedToInvoice ? 'View Invoice' : 'Edit Entry'}><Edit size={16} /></button>
+              <button className="p-1.5 rounded-full hover:bg-white text-[#434655] hover:text-[#DC2626] transition-all hover:shadow-sm cursor-pointer" onClick={() => setDeleteTarget(row)} title={row.isLinkedToInvoice ? 'Delete Invoice' : 'Delete Entry'}><Trash2 size={16} /></button>
+            </div>
+          )}
+        </td>
+      </tr>
+    );
+  }
+
+  return (
+    <tr className="hover:bg-[#F2F4F6]/30 transition-colors">
+      <td className="px-4 py-3 text-sm text-[#434655]">
+        {isEditing ? (
+          <input type="date" className="w-full px-2 py-1 border border-[#C3C6D7]/30 rounded-lg text-sm focus:ring-2 focus:ring-[#004AC6]/20 focus:border-[#004AC6] outline-none" value={editDraft.jamaDate || ''} onChange={(e) => setEditDraft({ ...editDraft, jamaDate: e.target.value })} />
+        ) : formatDate(row.jamaDate)}
+      </td>
+      <td className="px-4 py-3">
+        {isEditing ? (
+          <input type="text" className="w-full px-2 py-1 border border-[#C3C6D7]/30 rounded-lg text-sm focus:ring-2 focus:ring-[#004AC6]/20 focus:border-[#004AC6] outline-none" value={editDraft.jamaTxnType || ''} onChange={(e) => setEditDraft({ ...editDraft, jamaTxnType: e.target.value })} />
+        ) : (
+          <span className="inline-block text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100/50 text-emerald-700">{row.jamaTxnType}</span>
+        )}
+      </td>
+      <td className="px-4 py-3 text-sm text-right font-semibold text-[#191C1E]">
+        {isEditing ? (
+          <input type="number" className="w-full px-2 py-1 border border-[#C3C6D7]/30 rounded-lg text-sm text-right focus:ring-2 focus:ring-[#004AC6]/20 focus:border-[#004AC6] outline-none" value={editDraft.jamaAmount || ''} onChange={(e) => setEditDraft({ ...editDraft, jamaAmount: e.target.value })} />
+        ) : formatCurrency(row.jamaAmount)}
+      </td>
+      <td className="px-4 py-3 text-sm text-[#434655]">
+        {isEditing ? (
+          <input type="text" className="w-full px-2 py-1 border border-[#C3C6D7]/30 rounded-lg text-sm focus:ring-2 focus:ring-[#004AC6]/20 focus:border-[#004AC6] outline-none" value={editDraft.jamaRemark || ''} onChange={(e) => setEditDraft({ ...editDraft, jamaRemark: e.target.value })} />
+        ) : row.jamaRemark}
+      </td>
+      <td className="px-4 py-3 text-center">
+        {isEditing ? (
+          <div className="flex justify-center gap-1">
+            <button className="p-1.5 text-green-600 hover:bg-green-50 rounded-full transition cursor-pointer" onClick={() => handleSaveEdit(row.id)}><Save size={16} /></button>
+            <button className="p-1.5 text-[#434655] hover:bg-gray-100 rounded-full transition cursor-pointer" onClick={() => setEditingRow(null)}><X size={16} /></button>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center gap-1">
+            <button className="p-1.5 rounded-full hover:bg-white text-[#434655] hover:text-[#004AC6] transition-all hover:shadow-sm cursor-pointer" onClick={() => handleEditClick(row)}><Edit size={16} /></button>
+            <button className="p-1.5 rounded-full hover:bg-white text-[#434655] hover:text-[#DC2626] transition-all hover:shadow-sm cursor-pointer" onClick={() => setDeleteTarget(row)}><Trash2 size={16} /></button>
+          </div>
+        )}
+      </td>
+    </tr>
+  );
+});
+
 const BuyerAccountDetail = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -920,65 +1028,21 @@ const BuyerAccountDetail = () => {
                 </thead>
                 <tbody className="divide-y divide-[#F2F4F6]">
                   {maalData.length > 0 ? maalData.map((row) => (
-                    <tr key={row.id} className="hover:bg-[#F2F4F6]/30 transition-colors">
-                      <td className="px-4 py-3 text-sm text-[#434655]">
-                        {editingRow === row.id ? (
-                          <input type="date" className="w-full px-2 py-1 border border-[#C3C6D7]/30 rounded-lg text-sm focus:ring-2 focus:ring-[#004AC6]/20 focus:border-[#004AC6] outline-none" value={editDraft.maalDate || ''} onChange={(e) => setEditDraft({ ...editDraft, maalDate: e.target.value })} />
-                        ) : formatDate(row.maalDate)}
-                      </td>
-                      <td className="px-4 py-3 text-sm font-bold text-[#004AC6]">
-                        {editingRow === row.id ? (
-                          <input type="text" className="w-full px-2 py-1 border border-[#C3C6D7]/30 rounded-lg text-sm focus:ring-2 focus:ring-[#004AC6]/20 focus:border-[#004AC6] outline-none" value={editDraft.maalInvoiceNumber || ''} onChange={(e) => setEditDraft({ ...editDraft, maalInvoiceNumber: e.target.value })} />
-                        ) : (
-                          <span className="flex items-center gap-2">
-                            <span
-                              className={row.isLinkedToInvoice ? 'cursor-pointer hover:underline' : ''}
-                              onClick={() => row.isLinkedToInvoice && handleInvoiceNavigate(row.maalInvoiceNumber)}
-                            >{row.maalInvoiceNumber}</span>
-                            {row.status && (
-                              <span className={`
-                                px-1.5 py-0.5 rounded-full text-[9px] font-bold leading-none whitespace-nowrap
-                                ${row.status === 'paid'
-                                  ? 'bg-emerald-100 text-emerald-700'
-                                  : row.status === 'partially_paid'
-                                  ? 'bg-amber-100 text-amber-700'
-                                  : row.status === 'overdue'
-                                  ? 'bg-red-100 text-red-700'
-                                  : 'bg-blue-100 text-blue-700'}
-                              `}>
-                                {row.status === 'awaiting_payment' ? 'Awaiting'
-                                  : row.status === 'partially_paid' ? 'Partial'
-                                  : row.status === 'paid' ? 'Paid'
-                                  : 'Overdue'}
-                              </span>
-                            )}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-right font-semibold text-[#191C1E]">
-                        {editingRow === row.id ? (
-                          <input type="number" className="w-full px-2 py-1 border border-[#C3C6D7]/30 rounded-lg text-sm text-right focus:ring-2 focus:ring-[#004AC6]/20 focus:border-[#004AC6] outline-none" value={editDraft.maalAmount || ''} onChange={(e) => setEditDraft({ ...editDraft, maalAmount: e.target.value })} />
-                        ) : formatCurrency(row.maalAmount)}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-[#434655]">
-                        {editingRow === row.id ? (
-                          <input type="text" className="w-full px-2 py-1 border border-[#C3C6D7]/30 rounded-lg text-sm focus:ring-2 focus:ring-[#004AC6]/20 focus:border-[#004AC6] outline-none" value={editDraft.maalRemark || ''} onChange={(e) => setEditDraft({ ...editDraft, maalRemark: e.target.value })} />
-                        ) : row.maalRemark}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {editingRow === row.id ? (
-                          <div className="flex justify-center gap-1">
-                            <button className="p-1.5 text-green-600 hover:bg-green-50 rounded-full transition cursor-pointer" onClick={() => handleSaveEdit(row.id)}><Save size={16} /></button>
-                            <button className="p-1.5 text-[#434655] hover:bg-gray-100 rounded-full transition cursor-pointer" onClick={() => setEditingRow(null)}><X size={16} /></button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-center gap-1">
-                            <button className="p-1.5 rounded-full hover:bg-white text-[#434655] hover:text-[#004AC6] transition-all hover:shadow-sm cursor-pointer" onClick={() => handleEditClick(row)} title={row.isLinkedToInvoice ? 'View Invoice' : 'Edit Entry'}><Edit size={16} /></button>
-                            <button className="p-1.5 rounded-full hover:bg-white text-[#434655] hover:text-[#DC2626] transition-all hover:shadow-sm cursor-pointer" onClick={() => setDeleteTarget(row)} title={row.isLinkedToInvoice ? 'Delete Invoice' : 'Delete Entry'}><Trash2 size={16} /></button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
+                    <AccountRow 
+                      key={row.id} 
+                      row={row} 
+                      type="maal" 
+                      editingRow={editingRow} 
+                      editDraft={editDraft} 
+                      setEditDraft={setEditDraft} 
+                      handleSaveEdit={handleSaveEdit} 
+                      setEditingRow={setEditingRow} 
+                      handleEditClick={handleEditClick} 
+                      setDeleteTarget={setDeleteTarget} 
+                      handleInvoiceNavigate={handleInvoiceNavigate} 
+                      formatCurrency={formatCurrency} 
+                      formatDate={formatDate} 
+                    />
                   )) : (
                     <tr><td colSpan="5" className="px-4 py-8 text-center text-[#434655] text-sm">No maal entries found.</td></tr>
                   )}
@@ -1013,43 +1077,21 @@ const BuyerAccountDetail = () => {
                 </thead>
                 <tbody className="divide-y divide-[#F2F4F6]">
                   {jamaData.length > 0 ? jamaData.map((row) => (
-                    <tr key={row.id} className="hover:bg-[#F2F4F6]/30 transition-colors">
-                      <td className="px-4 py-3 text-sm text-[#434655]">
-                        {editingRow === row.id ? (
-                          <input type="date" className="w-full px-2 py-1 border border-[#C3C6D7]/30 rounded-lg text-sm focus:ring-2 focus:ring-[#004AC6]/20 focus:border-[#004AC6] outline-none" value={editDraft.jamaDate || ''} onChange={(e) => setEditDraft({ ...editDraft, jamaDate: e.target.value })} />
-                        ) : formatDate(row.jamaDate)}
-                      </td>
-                      <td className="px-4 py-3">
-                        {editingRow === row.id ? (
-                          <input type="text" className="w-full px-2 py-1 border border-[#C3C6D7]/30 rounded-lg text-sm focus:ring-2 focus:ring-[#004AC6]/20 focus:border-[#004AC6] outline-none" value={editDraft.jamaTxnType || ''} onChange={(e) => setEditDraft({ ...editDraft, jamaTxnType: e.target.value })} />
-                        ) : (
-                          <span className="inline-block text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100/50 text-emerald-700">{row.jamaTxnType}</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-right font-semibold text-[#191C1E]">
-                        {editingRow === row.id ? (
-                          <input type="number" className="w-full px-2 py-1 border border-[#C3C6D7]/30 rounded-lg text-sm text-right focus:ring-2 focus:ring-[#004AC6]/20 focus:border-[#004AC6] outline-none" value={editDraft.jamaAmount || ''} onChange={(e) => setEditDraft({ ...editDraft, jamaAmount: e.target.value })} />
-                        ) : formatCurrency(row.jamaAmount)}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-[#434655]">
-                        {editingRow === row.id ? (
-                          <input type="text" className="w-full px-2 py-1 border border-[#C3C6D7]/30 rounded-lg text-sm focus:ring-2 focus:ring-[#004AC6]/20 focus:border-[#004AC6] outline-none" value={editDraft.jamaRemark || ''} onChange={(e) => setEditDraft({ ...editDraft, jamaRemark: e.target.value })} />
-                        ) : row.jamaRemark}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {editingRow === row.id ? (
-                          <div className="flex justify-center gap-1">
-                            <button className="p-1.5 text-green-600 hover:bg-green-50 rounded-full transition cursor-pointer" onClick={() => handleSaveEdit(row.id)}><Save size={16} /></button>
-                            <button className="p-1.5 text-[#434655] hover:bg-gray-100 rounded-full transition cursor-pointer" onClick={() => setEditingRow(null)}><X size={16} /></button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-center gap-1">
-                            <button className="p-1.5 rounded-full hover:bg-white text-[#434655] hover:text-[#004AC6] transition-all hover:shadow-sm cursor-pointer" onClick={() => handleEditClick(row)}><Edit size={16} /></button>
-                            <button className="p-1.5 rounded-full hover:bg-white text-[#434655] hover:text-[#DC2626] transition-all hover:shadow-sm cursor-pointer" onClick={() => setDeleteTarget(row)}><Trash2 size={16} /></button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
+                    <AccountRow 
+                      key={row.id} 
+                      row={row} 
+                      type="jama" 
+                      editingRow={editingRow} 
+                      editDraft={editDraft} 
+                      setEditDraft={setEditDraft} 
+                      handleSaveEdit={handleSaveEdit} 
+                      setEditingRow={setEditingRow} 
+                      handleEditClick={handleEditClick} 
+                      setDeleteTarget={setDeleteTarget} 
+                      handleInvoiceNavigate={handleInvoiceNavigate} 
+                      formatCurrency={formatCurrency} 
+                      formatDate={formatDate} 
+                    />
                   )) : (
                     <tr><td colSpan="5" className="px-4 py-8 text-center text-[#434655] text-sm">No jama entries found.</td></tr>
                   )}

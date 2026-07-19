@@ -41,7 +41,7 @@ export function useGlobalShortcuts() {
 
     // When modal is open, consume shortcuts without dispatching/navigating
     if (modalOpenRef.current) {
-      if ((ctrl && (key === 'f' || key === 'n' || key === 'p')) ||
+      if ((ctrl && (key === 'f' || key === 'n' || key === 'p' || key === 's')) ||
           (e.key === 'F5' && !ctrl && !alt) ||
           (alt && (e.key === '1' || e.key === '2' || e.key === '3'))) {
         e.preventDefault();

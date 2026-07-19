@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useDebounce } from '../../hooks/useDebounce';
 import { Search, ChevronDown, Plus, Edit, Trash2, X, CalendarDays, SlidersHorizontal } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -8,6 +9,7 @@ const CustomerOrder = () => {
   const navigate = useNavigate();
 
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const searchInputRef = useRef(null);
   const [orders, setOrders] = useState([]);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -102,8 +104,8 @@ const CustomerOrder = () => {
 
     let filtered = merged.filter(
       (o) =>
-        (o.orderNo || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (o.name || '').toLowerCase().includes(searchTerm.toLowerCase())
+        (o.orderNo || '').toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        (o.name || '').toLowerCase().includes(debouncedSearchTerm.toLowerCase())
     );
 
     // Date range filter
@@ -134,14 +136,14 @@ const CustomerOrder = () => {
     }
 
     return filtered;
-  }, [searchTerm, sortConfig, orders, statusFilter, fromDate, toDate]);
+  }, [debouncedSearchTerm, sortConfig, orders, statusFilter, fromDate, toDate]);
 
   const filteredCount = processedOrders.length;
   const effectivePerPage = itemsPerPage === 'All' ? filteredCount || 1 : itemsPerPage;
   const totalPages = Math.ceil(filteredCount / effectivePerPage);
 
   // Reset page when search/filter changes
-  useEffect(() => { setCurrentPage(1); }, [searchTerm, statusFilter, fromDate, toDate]);
+  useEffect(() => { setCurrentPage(1); }, [debouncedSearchTerm, statusFilter, fromDate, toDate]);
   useEffect(() => {
     if (totalPages > 0 && currentPage > totalPages) setCurrentPage(totalPages);
   }, [totalPages, currentPage]);

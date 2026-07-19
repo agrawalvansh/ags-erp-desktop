@@ -354,7 +354,7 @@ flowchart LR
 ### Complete Feature Count: **200+**
 
 <details>
-<summary><strong>📋 Expand Full Feature Summary (14 categories)</strong></summary>
+<summary><strong>Expand Full Feature Summary (14 categories)</strong></summary>
 
 | Category | Count | Highlights |
 |----------|------:|-----------|
