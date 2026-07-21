@@ -188,14 +188,14 @@ function runNotificationScanner() {
     WHERE id IN (
       SELECT n.id
       FROM notifications n
-      JOIN customer_maal_account m ON n.reminder_key = 'customer:maal:' || m.id
+      LEFT JOIN customer_maal_account m ON n.reminder_key = 'customer:maal:' || m.id
       LEFT JOIN (
         SELECT linked_invoice_id, jama_remark, SUM(jama_amount) AS total
         FROM customer_jama_account
         GROUP BY linked_invoice_id, jama_remark
       ) j ON j.linked_invoice_id = n.invoice_no OR j.jama_remark = 'Invoice ' || n.invoice_no
       WHERE n.type = 'customer'
-        AND COALESCE(j.total, 0) >= m.maal_amount
+        AND (m.id IS NULL OR COALESCE(j.total, 0) >= m.maal_amount)
     )
   `).run();
 
@@ -204,14 +204,14 @@ function runNotificationScanner() {
     WHERE id IN (
       SELECT n.id
       FROM notifications n
-      JOIN supplier_maal_account m ON n.reminder_key = 'supplier:maal:' || m.id
+      LEFT JOIN supplier_maal_account m ON n.reminder_key = 'supplier:maal:' || m.id
       LEFT JOIN (
         SELECT jama_remark, SUM(jama_amount) AS total
         FROM supplier_jama_account
         GROUP BY jama_remark
       ) j ON j.jama_remark = 'Invoice ' || n.invoice_no
       WHERE n.type = 'supplier'
-        AND COALESCE(j.total, 0) >= m.maal_amount
+        AND (m.id IS NULL OR COALESCE(j.total, 0) >= m.maal_amount)
     )
   `).run();
 
@@ -222,7 +222,7 @@ function runNotificationScanner() {
       FROM notifications n
       LEFT JOIN invoices i ON i.invoice_id = n.invoice_no
       WHERE n.type = 'invoice_overdue'
-        AND (n.invoice_no IS NULL OR i.status = 'paid' OR i.invoice_id IS NULL)
+        AND (n.invoice_no IS NULL OR i.status != 'overdue' OR i.invoice_id IS NULL)
     )
   `).run();
 
@@ -504,10 +504,12 @@ app.whenReady().then(() => {
             mainWindow.webContents.send('cleanup:quickSalesDeleted', { count });
           }
         };
-        if (mainWindow.webContents.isLoading()) {
-          mainWindow.webContents.once('did-finish-load', sendCleanupMsg);
-        } else {
-          sendCleanupMsg();
+        if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+          if (mainWindow.webContents.isLoading()) {
+            mainWindow.webContents.once('did-finish-load', sendCleanupMsg);
+          } else {
+            sendCleanupMsg();
+          }
         }
       }
     } catch (e) {
@@ -526,10 +528,12 @@ app.whenReady().then(() => {
         mainWindow.webContents.send('app:upgraded', { from: lastVersion.value, to: currentVersion });
       }
     };
-    if (mainWindow.webContents.isLoading()) {
-      mainWindow.webContents.once('did-finish-load', sendUpgradeMsg);
-    } else {
-      sendUpgradeMsg();
+    if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+      if (mainWindow.webContents.isLoading()) {
+        mainWindow.webContents.once('did-finish-load', sendUpgradeMsg);
+      } else {
+        sendUpgradeMsg();
+      }
     }
   }
 

@@ -130,8 +130,11 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     }
 
     if (sortBy) {
-      const dir = String(sortDir).toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
-      query += ` ORDER BY ${sortBy} ${dir}`;
+      const allowedSortColumns = ['code', 'name', 'size', 'packing_type', 'cost_price', 'selling_price', 'updated_at', 'marathi_name', 'marathi_status'];
+      if (allowedSortColumns.includes(sortBy)) {
+        const dir = String(sortDir).toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+        query += ` ORDER BY ${sortBy} ${dir}`;
+      }
     }
 
     if (limit) {
@@ -302,8 +305,11 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     }
 
     if (sortBy) {
-      const dir = String(sortDir).toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
-      query += ` ORDER BY ${sortBy} ${dir}`;
+      const allowedSortColumns = ['customer_id', 'name', 'phone', 'email', 'address', 'gstin', 'reminder_enabled', 'reminder_days'];
+      if (allowedSortColumns.includes(sortBy)) {
+        const dir = String(sortDir).toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+        query += ` ORDER BY ${sortBy} ${dir}`;
+      }
     }
 
     if (limit) {
@@ -912,23 +918,20 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
 
   // Recalculate overdue status for all non-paid invoices (called on app startup)
   ipcMain.handle('invoices:refreshOverdueStatuses', wrap(() => {
-    const result = db.prepare(`
-      UPDATE invoices
-      SET status = CASE
-        WHEN grand_total = 0 THEN 'paid'
-        WHEN (SELECT COALESCE(SUM(jama_amount), 0) FROM customer_jama_account WHERE linked_invoice_id = invoices.invoice_id) >= grand_total THEN 'paid'
-        WHEN (SELECT COALESCE(SUM(jama_amount), 0) FROM customer_jama_account WHERE linked_invoice_id = invoices.invoice_id) > 0 THEN 'partially_paid'
-        WHEN (
-          (SELECT reminder_enabled FROM customers WHERE customer_id = invoices.customer_id) = 1 
-          AND invoices.payment_due_days > 0 
-          AND date('now', 'localtime') > date(invoices.invoice_date, '+' || invoices.payment_due_days || ' days')
-        ) THEN 'overdue'
-        ELSE 'awaiting_payment'
-      END
+    const invoices = db.prepare(`
+      SELECT invoice_id, status FROM invoices
       WHERE status IN ('awaiting_payment', 'partially_paid', 'overdue')
-    `).run()
+    `).all()
 
-    return { success: true, updated: result.changes }
+    let updatedCount = 0;
+    for (const inv of invoices) {
+      const newStatus = recalculateInvoiceStatus(inv.invoice_id)
+      if (newStatus && newStatus !== inv.status) {
+        updatedCount++;
+      }
+    }
+
+    return { success: true, updated: updatedCount }
   }))
 
   // ════════════════════════════════════════════════════════════════════════════
