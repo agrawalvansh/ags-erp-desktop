@@ -22,7 +22,7 @@ const AddSupplierAccount = () => {
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [originalValues, setOriginalValues] = useState(null);
-  const [saved, setSaved] = useState(false);
+  const savedRef = useRef(false); // ref so isDirty reads it synchronously on navigate
 
   // Focus the delete modal when it opens
   useEffect(() => {
@@ -63,20 +63,24 @@ const AddSupplierAccount = () => {
     fetchData();
   }, [isEdit, paramId]);
 
-  // Unsaved changes detection
+  // Unsaved changes detection.
+  // isDirty is a useMemo — it cannot react to ref changes, so savedRef is NOT
+  // read here. Instead, savedRef is read directly in the blocker callback
+  // (which is evaluated fresh on every navigation) so it always sees the
+  // synchronous write that happened just before navigate() was called.
   const isDirty = useMemo(() => {
-    if (saved) return false;
     if (!isEdit) return name.trim() !== '';
     if (!originalValues) return false;
     return name !== originalValues.name || address !== originalValues.address || mobile !== originalValues.mobile;
-  }, [name, address, mobile, originalValues, isEdit, saved]);
+  }, [name, address, mobile, originalValues, isEdit]);
 
+  // blocker reads savedRef.current directly — synchronously true after save
   const blocker = useBlocker(({ currentLocation, nextLocation }) =>
-    isDirty && currentLocation.pathname !== nextLocation.pathname
+    !savedRef.current && isDirty && currentLocation.pathname !== nextLocation.pathname
   );
 
   useEffect(() => {
-    const handler = (e) => { if (isDirty) { e.preventDefault(); e.returnValue = ''; } };
+    const handler = (e) => { if (!savedRef.current && isDirty) { e.preventDefault(); e.returnValue = ''; } };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
   }, [isDirty]);
@@ -97,8 +101,9 @@ const AddSupplierAccount = () => {
       await window.api.invoke(channel, { supplier_id: supplierId, name, address, mobile });
 
       toast.success(isEdit ? 'Supplier updated successfully' : 'Supplier added successfully');
-      setSaved(true);
-      setTimeout(() => navigate('/accounts/suppliers'), 0);
+      // Set ref synchronously so isDirty is false before navigate() runs the blocker check
+      savedRef.current = true;
+      navigate('/accounts/suppliers');
     } catch (err) {
       toast.error(err.message);
       setErrors({ general: err.message });

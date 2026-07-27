@@ -103,7 +103,7 @@ export function generateQuickSalePDF(data) {
   setDefaultFont('bold');
   doc.setFontSize(8);
   doc.setTextColor(...medGray);
-  doc.text('SALE DETAILS', rightValX, rightY, { align: 'right' });
+  doc.text('QS DETAILS', rightValX, rightY, { align: 'right' });
   rightY += 5;
 
   const drawDetailRow = (label, value) => {
@@ -117,7 +117,7 @@ export function generateQuickSalePDF(data) {
     rightY += 4.5;
   };
 
-  drawDetailRow('Reference:', qsId);
+  drawDetailRow('QS Number:', qsId);
   drawDetailRow('Date:', fmtDate(saleDate));
 
   y = rightY + 4;

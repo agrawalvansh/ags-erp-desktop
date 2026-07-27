@@ -161,7 +161,7 @@ export function generateInvoicePDF(data) {
   setDefaultFont('bold');
   doc.setFontSize(8);
   doc.setTextColor(...medGray);
-  doc.text('INVOICE DETAILS', rightValX, rightY, { align: 'right' });
+  doc.text('ESTIMATE DETAILS', rightValX, rightY, { align: 'right' });
   rightY += 5;
 
   const drawDetailRow = (label, value) => {
@@ -175,7 +175,7 @@ export function generateInvoicePDF(data) {
     rightY += 4.5;
   };
 
-  drawDetailRow('Invoice No:', invoiceNo);
+  drawDetailRow('Estimate No:', invoiceNo);
   drawDetailRow('Date:', fmtDate(invoiceDate));
   if (customerId) {
     drawDetailRow('Customer ID:', customerId);

@@ -23,7 +23,7 @@ import SelectDropdown from '../../components/SelectDropdown';
 
 // Add Item Form Component
 // Improved Add Item Form Component
-const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors, productNameInputRef, onProductSelected }) => {
+const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors, productNameInputRef, onProductSelected, isSubmitting }) => {
   const [showProdDropdown, setShowProdDropdown] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [showWeightCalc, setShowWeightCalc] = useState(false);
@@ -248,7 +248,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
                   step="0.001"
                   value={newItem.quantity}
                   onChange={(e) => setNewItem({ ...newItem, quantity: e.target.value })}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddItem(); } }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (!isSubmitting) handleAddItem(); } }}
                   className={`w-full py-2.5 px-3 pr-8 bg-[#F2F4F6] border-none rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all ${formErrors.quantity ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
                   placeholder="0"
                 />
@@ -297,7 +297,7 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
                   step="1"
                   value={newItem.sellingPrice}
                   onChange={(e) => setNewItem({ ...newItem, sellingPrice: e.target.value })}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddItem(); } }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (!isSubmitting) handleAddItem(); } }}
                   className={`w-full pl-7 py-2.5 pr-2 bg-[#F2F4F6] border-none rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-[#004AC6]/15 transition-all ${formErrors.sellingPrice ? 'ring-2 ring-[#BA1A1A]/30' : ''}`}
                   placeholder="0.00"
                 />
@@ -342,10 +342,11 @@ const AddItemForm = ({ newItem, setNewItem, handleAddItem, products, formErrors,
         <div className="col-span-12 md:col-span-2 md:col-start-11">
           <button
             onClick={handleAddItem}
-            className="cursor-pointer w-full py-2.5 bg-gradient-to-br from-[#004AC6] to-[#2563EB] text-white font-bold text-sm uppercase rounded-lg shadow-sm hover:opacity-90 transition-all flex items-center justify-center gap-2"
+            disabled={isSubmitting}
+            className={`cursor-pointer w-full py-2.5 bg-gradient-to-br from-[#004AC6] to-[#2563EB] text-white font-bold text-sm uppercase rounded-lg shadow-sm hover:opacity-90 transition-all flex items-center justify-center gap-2 ${isSubmitting ? 'opacity-60 cursor-not-allowed' : ''}`}
           >
             <Plus size={16} />
-            <span>Add Item</span>
+            <span>{isSubmitting ? 'Adding...' : 'Add Item'}</span>
           </button>
           <div className="h-5"></div>
         </div>
@@ -394,6 +395,8 @@ const Invoice = () => {
   const [showCustUpdateModal, setShowCustUpdateModal] = useState(false);
   const pendingSaveRef = useRef(false);
   const custActionRef = useRef(false); // Prevent new-customer modal when selecting/clearing
+  const isAddingItemRef = useRef(false); // C7: prevent duplicate Add Item on rapid click
+  const isPaymentSubmittingRef = useRef(false); // C8: prevent duplicate payment on rapid click
   const [showNewCustModal, setShowNewCustModal] = useState(false);
   const [similarCustomers, setSimilarCustomers] = useState([]);
 
@@ -746,9 +749,12 @@ const Invoice = () => {
     }
   }, [highlightedCustIndex, showCustDropdown]);
 
-  // Watch for changes in customerId to toggle editing state
+  // Watch for changes in customerId to toggle editing state.
+  // Only mark as editing if there are already items — selecting or creating a
+  // customer on a blank new invoice should not immediately set isSaved = false,
+  // because isDirty already handles that via `customerId && invoiceItems.length > 0`.
   useEffect(() => {
-    if (customerId) {
+    if (customerId && invoiceItems.length > 0) {
       setIsEditing(true);
       setIsSaved(false);
     }
@@ -795,6 +801,9 @@ const Invoice = () => {
   };
 
   const handleAddItem = async () => {
+    if (isAddingItemRef.current) return; // C7: block duplicate rapid clicks
+    isAddingItemRef.current = true;
+    try {
     if (!validateForm()) return;
 
     const quantity = parseFloat(newItem.quantity);
@@ -958,6 +967,9 @@ const Invoice = () => {
         productNameInputRef.current.focus();
       }
     }, 100);
+    } finally {
+      isAddingItemRef.current = false; // C7: always release lock so next add works
+    }
   };
 
   const handleEditItem = (index) => {
@@ -1041,6 +1053,10 @@ const Invoice = () => {
         address: address || '',
         mobile: mobileNo || ''
       });
+      // Set custActionRef BEFORE setCustomerId so the blur timer (still running
+      // from when the input lost focus) sees the flag and skips re-opening the
+      // "Customer Not Found" modal a second time.
+      custActionRef.current = true;
       setCustomerId(newCustId);
       const updatedCustomers = await window.api.getCustomers();
       setCustomers(updatedCustomers);
@@ -1282,33 +1298,39 @@ const Invoice = () => {
 
   // Multi-payment: save (add or edit)
   async function handleSavePayment() {
-    const amt = parseFloat(payForm.payment_amount);
-    if (!amt || amt <= 0) { toast.error('Enter a valid amount'); return; }
+    if (isPaymentSubmittingRef.current) return; // C8: block duplicate rapid clicks
+    isPaymentSubmittingRef.current = true;
+    try {
+      const amt = parseFloat(payForm.payment_amount);
+      if (!amt || amt <= 0) { toast.error('Enter a valid amount'); return; }
 
-    if (editingPayment) {
-      const res = await window.api.invoiceUpdatePayment({
-        payment_id: editingPayment.id,
-        invoice_id: currentInvoiceId,
-        ...payForm,
-        payment_amount: amt
-      });
-      if (res.error) { toast.error(res.error); return; }
-      toast.success('Payment updated successfully');
-    } else {
-      const res = await window.api.invoiceAddPayment({
-        invoice_id: currentInvoiceId,
-        customer_id: customerId,
-        ...payForm,
-        payment_amount: amt
-      });
-      if (res.error) { toast.error(res.error); return; }
-      toast.success('Payment saved successfully');
+      if (editingPayment) {
+        const res = await window.api.invoiceUpdatePayment({
+          payment_id: editingPayment.id,
+          invoice_id: currentInvoiceId,
+          ...payForm,
+          payment_amount: amt
+        });
+        if (res.error) { toast.error(res.error); return; }
+        toast.success('Payment updated successfully');
+      } else {
+        const res = await window.api.invoiceAddPayment({
+          invoice_id: currentInvoiceId,
+          customer_id: customerId,
+          ...payForm,
+          payment_amount: amt
+        });
+        if (res.error) { toast.error(res.error); return; }
+        toast.success('Payment saved successfully');
+      }
+
+      setShowPaymentForm(false);
+      setEditingPayment(null);
+      // Reload invoice to refresh payment list and status
+      await loadInvoice(currentInvoiceId);
+    } finally {
+      isPaymentSubmittingRef.current = false; // C8: always release lock
     }
-
-    setShowPaymentForm(false);
-    setEditingPayment(null);
-    // Reload invoice to refresh payment list and status
-    await loadInvoice(currentInvoiceId);
   }
 
   // Multi-payment: delete
@@ -1838,6 +1860,7 @@ const Invoice = () => {
               formErrors={formErrors}
               productNameInputRef={productNameInputRef}
               onProductSelected={() => { }}
+              isSubmitting={isAddingItemRef.current}
             />
           </div>
         </div>
@@ -2115,11 +2138,11 @@ const Invoice = () => {
                         <button
                           type="button"
                           onClick={handleSavePayment}
-                          className="px-5 py-2 text-white font-bold text-xs rounded-lg
-                                     shadow-lg shadow-[#004AC6]/20 active:scale-95 transition-all cursor-pointer"
+                          disabled={isPaymentSubmittingRef.current}
+                          className={`px-5 py-2 text-white font-bold text-xs rounded-lg shadow-lg shadow-[#004AC6]/20 active:scale-95 transition-all cursor-pointer ${isPaymentSubmittingRef.current ? 'opacity-60 cursor-not-allowed' : ''}`}
                           style={{ background: 'linear-gradient(135deg, #004AC6 0%, #2563EB 100%)' }}
                         >
-                          {editingPayment ? 'Update Payment' : 'Save Payment'}
+                          {isPaymentSubmittingRef.current ? 'Saving...' : (editingPayment ? 'Update Payment' : 'Save Payment')}
                         </button>
                         <button
                           type="button"
@@ -2288,7 +2311,7 @@ const Invoice = () => {
               {payments.map((pay, idx) => (
                 <div key={pay.id || idx} className="flex justify-between mb-1">
                   <span className="text-sm text-gray-600">
-                    {pay.remark || pay.payment_type || 'Payment'} ({pay.payment_date}):
+                    {pay.payment_date}:
                   </span>
                   <span className="text-sm font-medium">− ₹{formatNumber(pay.payment_amount)}</span>
                 </div>

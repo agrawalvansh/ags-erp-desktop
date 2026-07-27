@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useParams, useBlocker } from 'react-router-dom';
 import { ArrowLeft, Trash2, Save } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -34,7 +34,7 @@ const AddAccountEntry = () => {
   const [linkToInvoice, setLinkToInvoice] = useState(false);
   const [unpaidInvoices, setUnpaidInvoices] = useState([]);
   const [linkedInvoiceId, setLinkedInvoiceId] = useState('');
-  const [saved, setSaved] = useState(false);
+  const savedRef = useRef(false);
 
   // Load existing entry when editing
   useEffect(() => {
@@ -78,7 +78,6 @@ const AddAccountEntry = () => {
 
   // Unsaved changes detection
   const isDirty = useMemo(() => {
-    if (saved) return false;
     if (!isEditing) {
       return formData.date !== '' || formData.amount !== '' || formData.invoiceNumber !== '' || formData.txnType !== '' || formData.remark !== '';
     }
@@ -88,14 +87,14 @@ const AddAccountEntry = () => {
       || formData.txnType !== originalFormData.txnType
       || String(formData.amount) !== String(originalFormData.amount)
       || formData.remark !== originalFormData.remark;
-  }, [formData, originalFormData, isEditing, saved]);
+  }, [formData, originalFormData, isEditing]);
 
   const blocker = useBlocker(({ currentLocation, nextLocation }) =>
-    isDirty && currentLocation.pathname !== nextLocation.pathname
+    !savedRef.current && isDirty && currentLocation.pathname !== nextLocation.pathname
   );
 
   useEffect(() => {
-    const handler = (e) => { if (isDirty) { e.preventDefault(); e.returnValue = ''; } };
+    const handler = (e) => { if (!savedRef.current && isDirty) { e.preventDefault(); e.returnValue = ''; } };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
   }, [isDirty]);
@@ -158,8 +157,8 @@ const AddAccountEntry = () => {
 
       // Only on confirmed success
       toast.success(isEditing ? 'Entry updated successfully' : 'Entry added successfully');
-      setSaved(true);
-      setTimeout(() => navigate(`/accounts/customers/${slug}`), 0);
+      savedRef.current = true;
+      navigate(`/accounts/customers/${slug}`);
     } catch (err) {
       toast.error('An error occurred while saving. Please try again.');
       console.error('Error saving entry:', err);

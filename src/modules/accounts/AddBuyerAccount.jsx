@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useParams, useBlocker } from 'react-router-dom';
 import { ArrowLeft, Save, Trash2, Lock } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -21,7 +22,7 @@ const AddBuyerAccount = () => {
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [originalValues, setOriginalValues] = useState(null);
-  const [saved, setSaved] = useState(false);
+  const savedRef = useRef(false); // ref so isDirty reads it synchronously on navigate
 
   // Focus the delete modal when it opens
   useEffect(() => {
@@ -63,20 +64,25 @@ const AddBuyerAccount = () => {
     fetchData();
   }, [isEdit, paramId]);
 
-  // Unsaved changes detection
+  // Unsaved changes detection.
+  // For the blocker we read savedRef directly (synchronous) rather than going
+  // through isDirty (a useMemo that can't react to a ref change). This is the
+  // only reliable way to prevent the "Unsaved Changes" modal from firing right
+  // after a successful save, because React state updates are asynchronous but
+  // ref writes are synchronous.
   const isDirty = useMemo(() => {
-    if (saved) return false;
     if (!isEdit) return name.trim() !== '';
     if (!originalValues) return false;
     return name !== originalValues.name || address !== originalValues.address || mobile !== originalValues.mobile;
-  }, [name, address, mobile, originalValues, isEdit, saved]);
+  }, [name, address, mobile, originalValues, isEdit]);
 
+  // blocker reads savedRef.current directly — synchronously true after save
   const blocker = useBlocker(({ currentLocation, nextLocation }) =>
-    isDirty && currentLocation.pathname !== nextLocation.pathname
+    !savedRef.current && isDirty && currentLocation.pathname !== nextLocation.pathname
   );
 
   useEffect(() => {
-    const handler = (e) => { if (isDirty) { e.preventDefault(); e.returnValue = ''; } };
+    const handler = (e) => { if (!savedRef.current && isDirty) { e.preventDefault(); e.returnValue = ''; } };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
   }, [isDirty]);
@@ -98,8 +104,9 @@ const AddBuyerAccount = () => {
       await window.api.invoke(channel, payload);
 
       toast.success(isEdit ? 'Customer updated successfully' : 'Customer added successfully');
-      setSaved(true);
-      setTimeout(() => navigate('/accounts/customers'), 0);
+      // Set ref synchronously so isDirty is false before navigate() runs the blocker check
+      savedRef.current = true;
+      navigate('/accounts/customers');
     } catch (err) {
       toast.error(err.message);
       setErrors({ general: err.message });

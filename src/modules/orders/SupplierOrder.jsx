@@ -57,34 +57,7 @@ const SupplierOrder = () => {
     };
   }, []);
 
-  // Auto-scroll and highlight when returning from order detail
-  useEffect(() => {
-    let scrollTimer, fadeTimer;
-    if (location.state?.returnedFromOrder && orders.length > 0) {
-      const returnedId = location.state.returnedFromOrder;
-      // Clear nav state first to prevent re-fire on re-render
-      window.history.replaceState({}, document.title);
-      setHighlightedId(returnedId);
-
-      // Find the order's index in the full filtered list and navigate to its page
-      const globalIndex = processedOrders.findIndex(o => o.orderNo === returnedId);
-      if (globalIndex >= 0 && itemsPerPage !== 'All') {
-        const targetPage = Math.floor(globalIndex / itemsPerPage) + 1;
-        setCurrentPage(targetPage);
-      }
-
-      // Defer scroll until the target page has rendered
-      scrollTimer = setTimeout(() => {
-        const rowElement = rowRefs.current[returnedId];
-        if (rowElement) {
-          rowElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-        fadeTimer = setTimeout(() => setHighlightedId(null), 2000);
-      }, 150);
-    }
-    return () => { clearTimeout(scrollTimer); clearTimeout(fadeTimer); };
-  }, [location.state, orders, processedOrders, itemsPerPage]);
-
+  // sortConfig and processedOrders declared BEFORE the auto-scroll useEffect (C6 fix).
   const [sortConfig, setSortConfig] = useState({ key: 'orderNo', direction: 'desc' });
 
   const processedOrders = useMemo(() => {
@@ -137,6 +110,34 @@ const SupplierOrder = () => {
 
     return filtered;
   }, [searchTerm, sortConfig, orders, statusFilter, fromDate, toDate]);
+
+  // Auto-scroll and highlight when returning from order detail
+  useEffect(() => {
+    let scrollTimer, fadeTimer;
+    if (location.state?.returnedFromOrder && orders.length > 0) {
+      const returnedId = location.state.returnedFromOrder;
+      // Clear nav state first to prevent re-fire on re-render
+      window.history.replaceState({}, document.title);
+      setHighlightedId(returnedId);
+
+      // Find the order's index in the full filtered list and navigate to its page
+      const globalIndex = processedOrders.findIndex(o => o.orderNo === returnedId);
+      if (globalIndex >= 0 && itemsPerPage !== 'All') {
+        const targetPage = Math.floor(globalIndex / itemsPerPage) + 1;
+        setCurrentPage(targetPage);
+      }
+
+      // Defer scroll until the target page has rendered
+      scrollTimer = setTimeout(() => {
+        const rowElement = rowRefs.current[returnedId];
+        if (rowElement) {
+          rowElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        fadeTimer = setTimeout(() => setHighlightedId(null), 2000);
+      }, 150);
+    }
+    return () => { clearTimeout(scrollTimer); clearTimeout(fadeTimer); };
+  }, [location.state, orders, processedOrders, itemsPerPage]);
 
   const filteredCount = processedOrders.length;
   const effectivePerPage = itemsPerPage === 'All' ? filteredCount || 1 : itemsPerPage;

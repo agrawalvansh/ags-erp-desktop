@@ -74,26 +74,25 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     // Manage overdue notifications
     const reminderKey = `overdue_invoice_${invoice_id}`
     if (status === 'overdue' && invoice.old_status !== 'overdue') {
-      // Create notification if not exists
+      // Create notification if not already present.
+      // INSERT OR IGNORE handles the unique reminder_key constraint — no try/catch needed.
       const pendingAmount = invoice.grand_total - total_paid
-      try {
-        db.prepare(`
-          INSERT OR IGNORE INTO notifications
-            (type, account_id, account_name, invoice_no, invoice_date,
-             pending_amount, message, is_read, created_at, reminder_key)
-          VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
-        `).run(
-          'invoice_overdue',
-          invoice.customer_id,
-          invoice.customer_name,
-          invoice_id,
-          invoice.invoice_date,
-          pendingAmount,
-          `Invoice ${invoice_id} for ${invoice.customer_name}: ₹${pendingAmount.toLocaleString('en-IN')} overdue`,
-          new Date().toISOString(),
-          reminderKey
-        )
-      } catch (e) { /* ignore duplicate key */ }
+      db.prepare(`
+        INSERT OR IGNORE INTO notifications
+          (type, account_id, account_name, invoice_no, invoice_date,
+           pending_amount, message, is_read, created_at, reminder_key)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+      `).run(
+        'invoice_overdue',
+        invoice.customer_id,
+        invoice.customer_name,
+        invoice_id,
+        invoice.invoice_date,
+        pendingAmount,
+        `Invoice ${invoice_id} for ${invoice.customer_name}: ₹${pendingAmount.toLocaleString('en-IN')} overdue`,
+        new Date().toISOString(),
+        reminderKey
+      )
     } else if (invoice.old_status === 'overdue' && status !== 'overdue') {
       // Clear notification when no longer overdue
       db.prepare('DELETE FROM notifications WHERE reminder_key = ?').run(reminderKey)
@@ -183,10 +182,20 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
             result.push(word); // fallback to original
           }
         } catch (fetchErr) {
+          // clearTimeout is safe to call even after the timer has already fired —
+          // it is a no-op in that case, so calling it here is always correct.
           clearTimeout(timeout);
-          // Network error / abort — signal offline failure
+          if (fetchErr.name === 'AbortError') {
+            // Request timed out (5 s) — treat as offline, fall back to original word
+            console.warn(`[transliterate] Timeout for word "${word}" — falling back`);
+          } else {
+            // Genuine network error (DNS failure, refused connection, etc.)
+            console.warn(`[transliterate] Network error for word "${word}": ${fetchErr.message}`);
+          }
+          // In both cases fall back to the untransliterated word so the caller
+          // can decide whether to retry (anyTranslated will remain false if
+          // no word succeeded, causing transliterateToMarathi to return null).
           result.push(word);
-          // Don't continue silently — this is likely a connectivity issue
         }
       }
       // If there were words to transliterate but NONE succeeded, it means no internet
@@ -916,19 +925,127 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     `).all(customer_id)
   }))
 
-  // Recalculate overdue status for all non-paid invoices (called on app startup)
+  // Recalculate overdue status for all non-paid invoices (called on app startup).
+  //
+  // FIX (C4): Replaced the N+1 loop (1 SELECT + 3 queries per invoice via
+  // recalculateInvoiceStatus) with two bulk SQL passes:
+  //
+  //   Pass 1 — single UPDATE marks every eligible invoice as 'overdue' at once.
+  //   Pass 2 — single UPDATE clears 'overdue' back to 'awaiting_payment' for
+  //            invoices that are no longer overdue (e.g. payment received since
+  //            last run, or customer reminder was disabled).
+  //
+  // After the bulk status updates we do a targeted notification sweep —
+  // only fetching the invoices whose status actually changed (typically a
+  // tiny subset), so the notification logic stays correct while the DB work
+  // is O(1) queries instead of O(N).
   ipcMain.handle('invoices:refreshOverdueStatuses', wrap(() => {
-    const invoices = db.prepare(`
-      SELECT invoice_id, status FROM invoices
-      WHERE status IN ('awaiting_payment', 'partially_paid', 'overdue')
-    `).all()
+    const nowISO = new Date().toISOString();
 
-    let updatedCount = 0;
-    for (const inv of invoices) {
-      const newStatus = recalculateInvoiceStatus(inv.invoice_id)
-      if (newStatus && newStatus !== inv.status) {
-        updatedCount++;
-      }
+    // ── Pass 1: mark newly-overdue invoices ──────────────────────────────────
+    // Conditions (mirrors recalculateInvoiceStatus JS logic):
+    //   • not yet paid (status != 'paid')
+    //   • no payments recorded (total_paid = 0) — partially_paid can never be overdue
+    //   • customer has reminders enabled
+    //   • invoice has a due-day window
+    //   • today is past the due date
+    //   • not already marked overdue (avoids re-triggering notification logic)
+    const markOverdue = db.prepare(`
+      UPDATE invoices
+      SET status = 'overdue'
+      WHERE status IN ('awaiting_payment')
+        AND payment_due_days > 0
+        AND customer_id IN (
+          SELECT customer_id FROM customers WHERE reminder_enabled = 1
+        )
+        AND date('now', 'localtime') > date(invoice_date, '+' || payment_due_days || ' days')
+        AND COALESCE(
+          (SELECT SUM(jama_amount) FROM customer_jama_account
+           WHERE linked_invoice_id = invoices.invoice_id),
+          0
+        ) = 0
+    `).run();
+
+    // ── Pass 2: un-mark overdue invoices that no longer qualify ─────────────
+    // An overdue invoice should revert when any of these become true:
+    //   • a payment has since been made (total_paid > 0)
+    //   • customer reminder was disabled
+    //   • payment_due_days was cleared to 0
+    const clearOverdue = db.prepare(`
+      UPDATE invoices
+      SET status = 'awaiting_payment'
+      WHERE status = 'overdue'
+        AND (
+          payment_due_days = 0
+          OR customer_id NOT IN (
+            SELECT customer_id FROM customers WHERE reminder_enabled = 1
+          )
+          OR COALESCE(
+            (SELECT SUM(jama_amount) FROM customer_jama_account
+             WHERE linked_invoice_id = invoices.invoice_id),
+            0
+          ) > 0
+        )
+    `).run();
+
+    const updatedCount = markOverdue.changes + clearOverdue.changes;
+
+    // ── Notification sweep — only for invoices that actually changed ─────────
+    // We read only the invoices whose status flipped, so the loop is bounded
+    // to the changed set (usually single-digit count) not the full table.
+    if (updatedCount > 0) {
+      // Newly overdue: create a notification (INSERT OR IGNORE — safe if run twice)
+      const newlyOverdue = db.prepare(`
+        SELECT i.invoice_id, i.invoice_date, i.grand_total, i.customer_id,
+               c.name AS customer_name,
+               COALESCE(
+                 (SELECT SUM(jama_amount) FROM customer_jama_account
+                  WHERE linked_invoice_id = i.invoice_id),
+                 0
+               ) AS total_paid
+        FROM invoices i
+        JOIN customers c ON c.customer_id = i.customer_id
+        WHERE i.status = 'overdue'
+          AND NOT EXISTS (
+            SELECT 1 FROM notifications
+            WHERE reminder_key = 'overdue_invoice_' || i.invoice_id
+          )
+      `).all();
+
+      const insertNotif = db.prepare(`
+        INSERT OR IGNORE INTO notifications
+          (type, account_id, account_name, invoice_no, invoice_date,
+           pending_amount, message, is_read, created_at, reminder_key)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+      `);
+
+      const notifTxn = db.transaction((rows) => {
+        for (const inv of rows) {
+          const pending = inv.grand_total - inv.total_paid;
+          insertNotif.run(
+            'invoice_overdue',
+            inv.customer_id,
+            inv.customer_name,
+            inv.invoice_id,
+            inv.invoice_date,
+            pending,
+            `Invoice ${inv.invoice_id} for ${inv.customer_name}: ₹${Math.round(pending).toLocaleString('en-IN')} overdue`,
+            nowISO,
+            `overdue_invoice_${inv.invoice_id}`
+          );
+        }
+      });
+      notifTxn(newlyOverdue);
+
+      // No-longer-overdue: remove stale notifications
+      db.prepare(`
+        DELETE FROM notifications
+        WHERE type = 'invoice_overdue'
+          AND invoice_no IN (
+            SELECT invoice_id FROM invoices
+            WHERE status != 'overdue'
+          )
+      `).run();
     }
 
     return { success: true, updated: updatedCount }
@@ -1098,9 +1215,19 @@ module.exports = function registerIpcHandlers(ipcMain, db) {
     if (!invoice_id || !date || amount == null) {
       return { error: 'Missing required fields' };
     }
-    // Update linked invoice header (if exists)
-    db.prepare('UPDATE invoices SET invoice_date = ?, grand_total = ?, remark = ? WHERE invoice_id = ?')
-      .run(date, amount, remark || '', invoice_id);
+    // Only update the linked invoice header if it actually exists AND belongs
+    // to the same customer as this maal entry. Without the customer_id check,
+    // a crafted payload could overwrite an invoice belonging to a different customer.
+    const maalEntry = db.prepare(
+      'SELECT customer_id FROM customer_maal_account WHERE maal_invoice_no = ?'
+    ).get(invoice_id);
+    if (maalEntry) {
+      db.prepare(`
+        UPDATE invoices
+        SET invoice_date = ?, grand_total = ?, remark = ?
+        WHERE invoice_id = ? AND customer_id = ?
+      `).run(date, amount, remark || '', invoice_id, maalEntry.customer_id);
+    }
     const res = db.prepare(`UPDATE customer_maal_account 
                               SET maal_date = ?, maal_invoice_no = ?, maal_amount = ?, maal_remark = ?
                             WHERE maal_invoice_no = ?`)
